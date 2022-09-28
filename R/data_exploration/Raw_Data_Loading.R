@@ -5,6 +5,9 @@
 # The following script will accomplish some early data exploration ahead of the
 # first all-hands meeting in late-September.
 
+# NOTE - any plotly plots need to be prevented from being uploaded
+# to GitHub because they are enormous.
+
 # Load packages
 library(here)
 library(tidyverse)
@@ -222,9 +225,10 @@ write_csv(tahoe_all, "data_working/Tahoe_compiled_092622.csv")
   labs(x = "Date",
        y = "DO (mg/L)",
        color = "Water Depth (m)") +
-  theme_bw())
+  theme_bw() +
+  scale_x_datetime(date_breaks = "1 day"))
 
-bw_do_plotly <- ggplotly(bw_do_fig)
+(bw_do_plotly <- ggplotly(bw_do_fig))
 
 (bw_temp_fig <- ggplot(tahoe_all %>% 
                        filter(site == "Blackwood") %>%
@@ -235,9 +239,10 @@ bw_do_plotly <- ggplotly(bw_do_fig)
     labs(x = "Date",
          y = "Temperature (C)",
          color = "Water Depth (m)") +
-    theme_bw())
+    theme_bw() +
+    scale_x_datetime(date_breaks = "1 day"))
 
-bw_temp_plotly <- ggplotly(bw_temp_fig)
+(bw_temp_plotly <- ggplotly(bw_temp_fig))
 
 (gb_do_fig <- ggplot(tahoe_all %>% 
                        filter(site == "Glenbrook") %>%
@@ -249,9 +254,10 @@ bw_temp_plotly <- ggplotly(bw_temp_fig)
     labs(x = "Date",
          y = "DO (mg/L)",
          color = "Water Depth (m)") +
-    theme_bw())
+    theme_bw() +
+    scale_x_datetime(date_breaks = "1 day"))
 
-gb_do_plotly <- ggplotly(gb_do_fig)
+(gb_do_plotly <- ggplotly(gb_do_fig))
 
 (gb_temp_fig <- ggplot(tahoe_all %>% 
                          filter(site == "Glenbrook") %>%
@@ -263,9 +269,10 @@ gb_do_plotly <- ggplotly(gb_do_fig)
     labs(x = "Date",
          y = "Temperature (C)",
          color = "Water Depth (m)") +
-    theme_bw())
+    theme_bw()+
+    scale_x_datetime(date_breaks = "1 day"))
 
-gb_temp_plotly <- ggplotly(gb_temp_fig)
+(gb_temp_plotly <- ggplotly(gb_temp_fig))
 
 # Export static Blackwood plot for powerpoint.
 (bw_both <- bw_do_fig / bw_temp_fig)
@@ -284,9 +291,9 @@ gb_temp_plotly <- ggplotly(gb_temp_fig)
 #        units = "cm")
 
 # Export plotly plots for further exploration.
-saveWidget(as_widget(bw_do_plotly), "figures/BW_DO_092622.html")
-saveWidget(as_widget(bw_temp_plotly), "figures/BW_Temp_092622.html")
-saveWidget(as_widget(gb_do_plotly), "figures/GB_DO_092622.html")
-saveWidget(as_widget(gb_temp_plotly), "figures/GB_Temp_092622.html")
+saveWidget(as_widget(bw_do_plotly), "plotly/BW_DO_092722.html")
+saveWidget(as_widget(bw_temp_plotly), "plotly/BW_Temp_092722.html")
+saveWidget(as_widget(gb_do_plotly), "plotly/GB_DO_092722.html")
+saveWidget(as_widget(gb_temp_plotly), "plotly/GB_Temp_092722.html")
 
 # End of script.
