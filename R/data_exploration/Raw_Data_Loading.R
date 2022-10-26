@@ -8,6 +8,17 @@
 # NOTE - any plotly plots need to be prevented from being uploaded
 # to GitHub because they are enormous.
 
+# ----------------------------------README-------------------------------------
+# Future to-do list:
+# (1) Check to be sure dates aren't loaded in as duplicates for various sites,
+# since I've now done this data compilation in two stages.
+# (2) Verify which depth the 20m sensor at BW was deployed at previously and 
+# append to appropriate (benthic/pelagic) data file. This isn't necessary for
+# GB since that buoy went missing.
+# (3) ...
+
+#### Setup ####
+
 # Load packages
 library(here)
 library(tidyverse)
@@ -22,6 +33,8 @@ library(patchwork)
 
 # List of column names
 mylist <- c("Time_Sec", "BV_Volts", "Temp_C", "DO_mgL", "Q")
+
+#### Test Workflow ####
 
 # Load data
 test_txt <- read_csv("data_raw/2021-10-28 221500Z.txt", skip = 3, col_names = mylist)
@@ -52,7 +65,33 @@ read_plus_date <- function(flnm){
 # Note - initially got this working with a folder of n = 5
 test2 <- read_plus_date("data_raw/BuoyDownloads/GB15m/7450-686243/2021-10-28 221500z.txt")
 
-#### GB15m ####
+# ---------------------------------Glenbrook (GB)------------------------------
+
+##### GB20m ####
+
+###### Benthic #####
+
+# Load in all files from the GB20m benthic directory
+tbl_with_sources20b <- list.files(path = here("data_raw/BuoyDownloads/GB20m/Benthic/7450-227604"),
+                                      pattern = "*.txt",
+                                      full.names = T) %>%
+  map_df(~read_csv(., skip = 3, col_names = mylist))
+
+# Convert 24 character to full date/time
+tbl_with_sources20b$date_time <- as_datetime(tbl_with_sources20b$Time_Sec)
+
+# Trim and export data.
+gb20b <- tbl_with_sources20b %>%
+  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+
+write_csv(gb20b, "data_working/GB20m_benthic_compiled_102622.csv")
+
+###### Pelagic #####
+
+# No data in this directory as of October 26, 2022.
+
+##### GB15m ####
+
 # Load in all files from the GB15m directory
 tbl_with_sources <- list.files(path = here("data_raw/BuoyDownloads/GB15m/7450-686243"),
                                pattern = "*.txt",
@@ -80,9 +119,45 @@ tbl_with_sources$date_time <- as_datetime(tbl_with_sources$Time_Sec)
 gb15 <- tbl_with_sources %>%
   select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
 
-write_csv(gb15, "data_working/GB15m_compiled_092622.csv")
+#write_csv(gb15, "data_working/GB15m_compiled_092622.csv")
 
-#### GB10m ####
+# load in for additional compilation
+gb15 <- read_csv("data_working/GB15m_compiled_092622.csv")
+
+###### Oct 2022 Update #####
+# So, the compilation above went through April, so I need to compile both July
+# and October download dates.
+# Load in all files from the GB15m July directory
+tbl_with_sources15_july <- list.files(path = here("data_raw/BuoyDownloads/GB15m/20220714/7450-099447"),
+                                 pattern = "*.txt",
+                                 full.names = T) %>%
+  map_df(~read_csv(., skip = 3, col_names = mylist))
+
+# Load in all files from the GB15m October directory
+tbl_with_sources15_oct <- list.files(path = here("data_raw/BuoyDownloads/GB15m/20221018/7450-099447"),
+                                      pattern = "*.txt",
+                                      full.names = T) %>%
+  map_df(~read_csv(., skip = 3, col_names = mylist))
+
+# Convert 24 character to full date/time
+tbl_with_sources15_july$date_time <- as_datetime(tbl_with_sources15_july$Time_Sec)
+tbl_with_sources15_oct$date_time <- as_datetime(tbl_with_sources15_oct$Time_Sec)
+
+# Trim, join, and export data.
+gb15_july <- tbl_with_sources15_july %>%
+  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+gb15_oct <- tbl_with_sources15_oct %>%
+  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+gb15_1022 <- rbind(gb15_july, gb15_oct)
+gb15_all <- rbind(gb15, gb15_1022)
+
+write_csv(gb15_all, "data_working/GB15m_compiled_102622.csv")
+
+# Quick plot to see if all the data is there.
+plot(gb15_all$date_time, gb15_all$Temp_C) # Yep! :)
+
+##### GB10m ####
+
 # Load in all files from the GB10m directory
 tbl_with_sources10 <- list.files(path = here("data_raw/BuoyDownloads/GB10m/20220428/7450-193411"),
                                pattern = "*.txt",
@@ -96,9 +171,46 @@ tbl_with_sources10$date_time <- as_datetime(tbl_with_sources10$Time_Sec)
 gb10 <- tbl_with_sources10 %>%
   select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
 
-write_csv(gb10, "data_working/GB10m_compiled_092622.csv")
+#write_csv(gb10, "data_working/GB10m_compiled_092622.csv")
+# load in for additional compilation
+gb10 <- read_csv("data_working/GB10m_compiled_092622.csv")
 
-#### GB3m ####
+###### Oct 2022 Update #####
+# So, the compilation above went through April, so I need to compile both July
+# and October download dates.
+# Load in all files from the GB10m July directory
+tbl_with_sources10_july <- list.files(path = here("data_raw/BuoyDownloads/GB10m/20220714/7450-875894"),
+                                      pattern = "*.txt",
+                                      full.names = T) %>%
+  map_df(~read_csv(., skip = 3, col_names = mylist))
+
+# Load in all files from the GB10m October directory
+tbl_with_sources10_oct <- list.files(path = here("data_raw/BuoyDownloads/GB10m/20221018/7450-875894"),
+                                     pattern = "*.txt",
+                                     full.names = T) %>%
+  map_df(~read_csv(., skip = 3, col_names = mylist))
+
+# Convert 24 character to full date/time
+tbl_with_sources10_july$date_time <- as_datetime(tbl_with_sources10_july$Time_Sec)
+tbl_with_sources10_oct$date_time <- as_datetime(tbl_with_sources10_oct$Time_Sec)
+
+# Trim, join, and export data.
+gb10_july <- tbl_with_sources10_july %>%
+  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+gb10_oct <- tbl_with_sources10_oct %>%
+  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+gb10_1022 <- rbind(gb10_july, gb10_oct)
+gb10_all <- rbind(gb10, gb10_1022)
+
+write_csv(gb10_all, "data_working/GB10m_compiled_102622.csv")
+
+# Quick plot to see if all the data is there.
+plot(gb10_all$date_time, gb10_all$Temp_C) # Yep! :)
+
+##### GB3m ####
+
+###### NS2 #####
+
 # Load in all files from the GBNS2 directory
 tbl_with_sources3 <- list.files(path = here("data_raw/BuoyDownloads/GBNS2/20220523/7450-224208"),
                                  pattern = "*.txt",
@@ -112,9 +224,103 @@ tbl_with_sources3$date_time <- as_datetime(tbl_with_sources3$Time_Sec)
 gb3 <- tbl_with_sources3 %>%
   select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
 
-write_csv(gb3, "data_working/GBNS2_compiled_092622.csv")
+#write_csv(gb3, "data_working/GBNS2_compiled_092622.csv")
+# load in for compilation with other 3m sites
+gbNS2 <- read_csv("data_working/GBNS2_compiled_092622.csv")
 
-#### BW20m ####
+####### Oct 2022 Update ######
+# Load in files from the GBNS2 October directory
+tbl_with_sources3_oct <- list.files(path = here("data_raw/BuoyDownloads/GBNS2/20221018/7450-278010"),
+                                pattern = "*.txt",
+                                full.names = T) %>%
+  map_df(~read_csv(., skip = 3, col_names = mylist))
+
+# Convert 24 character to full date/time
+tbl_with_sources3_oct$date_time <- as_datetime(tbl_with_sources3_oct$Time_Sec)
+
+# Trim, join, and export data.
+gb3_oct <- tbl_with_sources3_oct %>%
+  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+gbNS2_all <- rbind(gbNS2, gb3_oct)
+
+write_csv(gbNS2_all, "data_working/GBNS2_compiled_102622.csv")
+
+# Quick plot to see if all the data is there.
+plot(gbNS2_all$date_time, gbNS2_all$Temp_C) # Yep! :)
+
+# Now, need to load in remaining shallow sites, because this wasn't done in Sept.
+
+###### NS1 #####
+
+# Load in files from the GBNS1 May directory
+tbl_with_sources3a_may <- list.files(path = here("data_raw/BuoyDownloads/GBNS1/20220523/7450-278010"),
+                                    pattern = "*.txt",
+                                    full.names = T) %>%
+  map_df(~read_csv(., skip = 3, col_names = mylist))
+# Load in files from the GBNS1 October directory
+tbl_with_sources3a_oct <- list.files(path = here("data_raw/BuoyDownloads/GBNS1/20221018/7450-224208"),
+                                    pattern = "*.txt",
+                                    full.names = T) %>%
+  map_df(~read_csv(., skip = 3, col_names = mylist))
+
+# Convert 24 character to full date/time
+tbl_with_sources3a_may$date_time <- as_datetime(tbl_with_sources3a_may$Time_Sec)
+tbl_with_sources3a_oct$date_time <- as_datetime(tbl_with_sources3a_oct$Time_Sec)
+
+# Trim, join, and export data.
+gb3a_may <- tbl_with_sources3a_may %>%
+  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+gb3a_oct <- tbl_with_sources3a_oct %>%
+  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+gbNS1_all <- rbind(gb3a_may, gb3a_oct)
+
+write_csv(gbNS1_all, "data_working/GBNS1_compiled_102622.csv")
+
+# Quick plot to see if all the data is there.
+plot(gbNS1_all$date_time, gbNS1_all$Temp_C) # Yep! :)
+
+###### NS3 #####
+
+# Load in files from the GBNS3 2021 directory
+tbl_with_sources3c_21 <- list.files(path = here("data_raw/BuoyDownloads/GBNS3/7450-227604"),
+                                     pattern = "*.txt",
+                                     full.names = T) %>%
+  map_df(~read_csv(., skip = 3, col_names = mylist))
+# Load in files from the GBNS3 July directory
+tbl_with_sources3c_july <- list.files(path = here("data_raw/BuoyDownloads/GBNS3/20220706/7450-227604"),
+                                    pattern = "*.txt",
+                                    full.names = T) %>%
+  map_df(~read_csv(., skip = 3, col_names = mylist))
+# Load in files from the GBNS3 October directory
+tbl_with_sources3c_oct <- list.files(path = here("data_raw/BuoyDownloads/GBNS3/20221018/7450-193411"),
+                                    pattern = "*.txt",
+                                    full.names = T) %>%
+  map_df(~read_csv(., skip = 3, col_names = mylist))
+
+# Convert 24 character to full date/time
+tbl_with_sources3c_21$date_time <- as_datetime(tbl_with_sources3c_21$Time_Sec)
+tbl_with_sources3c_july$date_time <- as_datetime(tbl_with_sources3c_july$Time_Sec)
+tbl_with_sources3c_oct$date_time <- as_datetime(tbl_with_sources3c_oct$Time_Sec)
+
+# Trim, join, and export data.
+gb3c_21 <- tbl_with_sources3c_21 %>%
+  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+gb3c_july <- tbl_with_sources3c_july %>%
+  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+gb3c_oct <- tbl_with_sources3c_oct %>%
+  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+gbNS3 <- rbind(gb3c_21, gb3c_july)
+gbNS3_all <- rbind(gbNS3, gb3c_oct)
+
+write_csv(gbNS3_all, "data_working/GBNS3_compiled_102622.csv")
+
+# Quick plot to see if all the data is there.
+plot(gbNS3_all$date_time, gbNS3_all$Temp_C) # Yep! :)
+
+####Blackwood (BW)####
+
+##### BW20m ####
+
 # Load in all files from the BW20m directory
 tbl_with_sources20bw1 <- list.files(path = here("data_raw/BuoyDownloads/BW20m/20220324/7450-336792"),
                                 pattern = "*.txt",
@@ -135,9 +341,49 @@ tbl_with_sources20bw$date_time <- as_datetime(tbl_with_sources20bw$Time_Sec)
 bw20 <- tbl_with_sources20bw %>%
   select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
 
-write_csv(bw20, "data_working/BW20m_compiled_092622.csv")
+#write_csv(bw20, "data_working/BW20m_compiled_092622.csv")
 
-#### BW15m ####
+# load in for additional compilation
+bw20 <- read_csv("data_working/BW20m_compiled_092622.csv")
+
+###### Oct 2022 Update #####
+
+###### Benthic #####
+
+# Load in all files from the BW20m benthic directory
+tbl_with_sources20bwb <- list.files(path = here("data_raw/BuoyDownloads/BW20m/Benthic/20221017/7450-547404"),
+                                  pattern = "*.txt",
+                                  full.names = T) %>%
+  map_df(~read_csv(., skip = 3, col_names = mylist))
+
+# Convert 24 character to full date/time
+tbl_with_sources20bwb$date_time <- as_datetime(tbl_with_sources20bwb$Time_Sec)
+
+# Trim and export data.
+bw20b <- tbl_with_sources20bwb %>%
+  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+
+write_csv(bw20b, "data_working/BW20m_benthic_compiled_102622.csv")
+
+###### Pelagic #####
+
+# Load in all files from the BW20m pelagic directory
+tbl_with_sources20bwp <- list.files(path = here("data_raw/BuoyDownloads/BW20m/Pelagic/20221017/7450-643897"),
+                                    pattern = "*.txt",
+                                    full.names = T) %>%
+  map_df(~read_csv(., skip = 3, col_names = mylist))
+
+# Convert 24 character to full date/time
+tbl_with_sources20bwp$date_time <- as_datetime(tbl_with_sources20bwp$Time_Sec)
+
+# Trim and export data.
+bw20p <- tbl_with_sources20bwp %>%
+  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+
+write_csv(bw20p, "data_working/BW20m_pelagic_compiled_102622.csv")
+
+##### BW15m ####
+
 # Load in all files from the BW15m directory
 tbl_with_sources15bw <- list.files(path = here("data_raw/BuoyDownloads/BW15m/20220715/7450-666671"),
                                     pattern = "*.txt",
@@ -151,9 +397,31 @@ tbl_with_sources15bw$date_time <- as_datetime(tbl_with_sources15bw$Time_Sec)
 bw15 <- tbl_with_sources15bw %>%
   select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
 
-write_csv(bw15, "data_working/BW15m_compiled_092622.csv")
+#write_csv(bw15, "data_working/BW15m_compiled_092622.csv")
 
-#### BW10m ####
+# load in file for additional compilation
+bw15 <- read_csv("data_working/BW15m_compiled_092622.csv")
+
+###### Oct 2022 Update ####
+
+# Load in all files from the BW15m October directory
+tbl_with_sources15bw_oct <- list.files(path = here("data_raw/BuoyDownloads/BW15m/20221017/Benthic/7450-666671"),
+                                    pattern = "*.txt",
+                                    full.names = T) %>%
+  map_df(~read_csv(., skip = 3, col_names = mylist))
+
+# Convert 24 character to full date/time
+tbl_with_sources15bw_oct$date_time <- as_datetime(tbl_with_sources15bw_oct$Time_Sec)
+
+# Trim, join, and export data.
+bw15_oct <- tbl_with_sources15bw_oct %>%
+  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+bw15_full <- rbind(bw15, bw15_oct)
+
+write_csv(bw15_full, "data_working/BW15m_compiled_102622.csv")
+
+##### BW10m ####
+
 # Load in all files from the BW10m directory
 tbl_with_sources10bw <- list.files(path = here("data_raw/BuoyDownloads/BW10m/20220715/7450-617000"),
                                    pattern = "*.txt",
@@ -167,9 +435,32 @@ tbl_with_sources10bw$date_time <- as_datetime(tbl_with_sources10bw$Time_Sec)
 bw10 <- tbl_with_sources10bw %>%
   select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
 
-write_csv(bw10, "data_working/BW10m_compiled_092622.csv")
+#write_csv(bw10, "data_working/BW10m_compiled_092622.csv")
+# load in file for additional compilation
+bw10 <- read_csv("data_working/BW10m_compiled_092622.csv")
 
-#### BW3m ####
+###### Oct 2022 Update ####
+
+# Load in all files from the BW10m October directory
+tbl_with_sources10bw_oct <- list.files(path = here("data_raw/BuoyDownloads/BW10m/20221017/Benthic/7450-617000"),
+                                       pattern = "*.txt",
+                                       full.names = T) %>%
+  map_df(~read_csv(., skip = 3, col_names = mylist))
+
+# Convert 24 character to full date/time
+tbl_with_sources10bw_oct$date_time <- as_datetime(tbl_with_sources10bw_oct$Time_Sec)
+
+# Trim, join, and export data.
+bw10_oct <- tbl_with_sources10bw_oct %>%
+  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+bw10_full <- rbind(bw10, bw10_oct)
+
+write_csv(bw10_full, "data_working/BW10m_compiled_102622.csv")
+
+##### BW3m ####
+
+###### NS2 #####
+
 # Load in all files from the BWNS2 directory
 tbl_with_sources3bw <- list.files(path = here("data_raw/BuoyDownloads/BWNS2/20220524/7450-287080"),
                                    pattern = "*.txt",
@@ -183,29 +474,136 @@ tbl_with_sources3bw$date_time <- as_datetime(tbl_with_sources3bw$Time_Sec)
 bw3 <- tbl_with_sources3bw %>%
   select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
 
-write_csv(bw3, "data_working/BWNS2_compiled_092622.csv")
+#write_csv(bw3, "data_working/BWNS2_compiled_092622.csv")
+# load data for additional compilation
+bw3 <- read_csv("data_working/BWNS2_compiled_092622.csv")
 
-#### Join and Plot ####
+####### Oct 2022 Update ######
+
+# No data in October directory as of October 26, 2022.
+
+###### NS1 ######
+
+# Load in files from the BWNS1 May directory
+tbl_with_sources3bwa_may <- list.files(path = here("data_raw/BuoyDownloads/BWNS1/20220524/7450-174159"),
+                                     pattern = "*.txt",
+                                     full.names = T) %>%
+  map_df(~read_csv(., skip = 3, col_names = mylist))
+# Load in files from the BWNS1 October directory
+tbl_with_sources3bwa_oct <- list.files(path = here("data_raw/BuoyDownloads/BWNS1/20221017/Benthic/7450-276557"),
+                                     pattern = "*.txt",
+                                     full.names = T) %>%
+  map_df(~read_csv(., skip = 3, col_names = mylist))
+
+# Convert 24 character to full date/time
+tbl_with_sources3bwa_may$date_time <- as_datetime(tbl_with_sources3bwa_may$Time_Sec)
+tbl_with_sources3bwa_oct$date_time <- as_datetime(tbl_with_sources3bwa_oct$Time_Sec)
+
+# Trim, join, and export data.
+bw3a_may <- tbl_with_sources3bwa_may %>%
+  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+bw3a_oct <- tbl_with_sources3bwa_oct %>%
+  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+bwNS1_all <- rbind(bw3a_may, bw3a_oct)
+
+write_csv(bwNS1_all, "data_working/BWNS1_compiled_102622.csv")
+
+###### NS3 ######
+
+# Load in files from the BWNS3 May directory
+tbl_with_sources3bwc_may <- list.files(path = here("data_raw/BuoyDownloads/BWNS3/20220524/7450-276557"),
+                                       pattern = "*.txt",
+                                       full.names = T) %>%
+  map_df(~read_csv(., skip = 3, col_names = mylist))
+# Load in files from the BWNS1 October directory
+tbl_with_sources3bwc_oct <- list.files(path = here("data_raw/BuoyDownloads/BWNS3/20221017/Benthic/7450-287080"),
+                                       pattern = "*.txt",
+                                       full.names = T) %>%
+  map_df(~read_csv(., skip = 3, col_names = mylist))
+
+# Convert 24 character to full date/time
+tbl_with_sources3bwc_may$date_time <- as_datetime(tbl_with_sources3bwc_may$Time_Sec)
+tbl_with_sources3bwc_oct$date_time <- as_datetime(tbl_with_sources3bwc_oct$Time_Sec)
+
+# Trim, join, and export data.
+bw3c_may <- tbl_with_sources3bwc_may %>%
+  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+bw3c_oct <- tbl_with_sources3bwc_oct %>%
+  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+bwNS3_all <- rbind(bw3c_may, bw3c_oct)
+
+write_csv(bwNS3_all, "data_working/BWNS3_compiled_102622.csv")
+
+#### Join All Sensor Data ####
+
+# Add a column to demarcate sensor ID.
+gbNS3_all$sensor <- "NS3"
+gbNS2_all$sensor <- "NS2"
+gbNS1_all$sensor <- "NS1"
+gb10_all$sensor <- NA
+gb15_all$sensor <- NA
+gb20b$sensor <- NA
 
 # Add a column to demarcate water depth.
-gb3$depth <- 3
-gb10$depth <- 10
-gb15$depth <- 15
+gbNS3_all$depth <- 3
+gbNS2_all$depth <- 3
+gbNS1_all$depth <- 3
+gb10_all$depth <- 10
+gb15_all$depth <- 15
+gb20b$depth <- 20
+
 # Join all Glenbrook datasets together.
-gb_j1 <- rbind(gb3, gb10)
-gb_all <- rbind(gb_j1, gb15)
+gb_j1 <- rbind(gbNS3_all, gbNS2_all)
+gb_j2 <- rbind(gb_j1, gbNS1_all)
+gb_j3 <- rbind(gb_j2, gb10_all)
+gb_j4 <- rbind(gb_j3, gb15_all)
+gb_all <- rbind(gb_j4, gb20b)
+
 # Add a column to demarcate site.
 gb_all$site <- "Glenbrook"
 
+# And a column for location in the water column to match the bw columns
+gb_all$location <- NA
+
+# And re-order so the columns bind nicely below.
+gb_all <- gb_all %>%
+  select(date_time, BV_Volts, Temp_C, DO_mgL, Q, sensor, depth, location, site)
+
+# Add a column to demarcate sensor ID.
+bwNS3_all$sensor <- "NS3"
+bw3$sensor <- "NS2"
+bwNS1_all$sensor <- "NS1"
+bw10_full$sensor <- NA
+bw15_full$sensor <- NA
+bw20p$sensor <- NA
+bw20b$sensor <- NA
+
 # Add a column to demarcate water depth.
+bwNS3_all$depth <- 3
 bw3$depth <- 3
-bw10$depth <- 10
-bw15$depth <- 15
-bw20$depth <- 20
+bwNS1_all$depth <- 3
+bw10_full$depth <- 10
+bw15_full$depth <- 15
+bw20p$depth <- 20
+bw20b$depth <- 20
+
+# Add a column to demarcate location in the water column.
+bwNS3_all$location <- NA
+bw3$location <- NA
+bwNS1_all$location <- NA
+bw10_full$location <- NA
+bw15_full$location <- NA
+bw20p$location <- "Pelagic"
+bw20b$location <- "Benthic"
+
 # Join all Blackwood datasets together.
-bw_j1 <- rbind(bw3, bw10)
-bw_j2 <- rbind(bw_j1, bw15)
-bw_all <- rbind(bw_j2, bw20)
+bw_j1 <- rbind(bwNS3_all, bw3)
+bw_j2 <- rbind(bw_j1, bwNS1_all)
+bw_j3 <- rbind(bw_j2, bw10_full)
+bw_j4 <- rbind(bw_j3, bw15_full)
+bw_j5 <- rbind(bw_j4, bw20b)
+bw_all <- rbind(bw_j5, bw20p)
+
 # Add a column to demarcate site.
 bw_all$site <- "Blackwood"
 
@@ -213,7 +611,9 @@ bw_all$site <- "Blackwood"
 tahoe_all <- rbind(gb_all, bw_all)
 
 # Export for future use.
-write_csv(tahoe_all, "data_working/Tahoe_compiled_092622.csv")
+write_csv(tahoe_all, "data_working/Tahoe_compiled_102622.csv")
+
+#### Plot ####
 
 # Plots for all-hands meeting September 28, 2022.
 (bw_do_fig <- ggplot(tahoe_all %>% 
@@ -291,9 +691,9 @@ write_csv(tahoe_all, "data_working/Tahoe_compiled_092622.csv")
 #        units = "cm")
 
 # Export plotly plots for further exploration.
-saveWidget(as_widget(bw_do_plotly), "plotly/BW_DO_092722.html")
-saveWidget(as_widget(bw_temp_plotly), "plotly/BW_Temp_092722.html")
-saveWidget(as_widget(gb_do_plotly), "plotly/GB_DO_092722.html")
-saveWidget(as_widget(gb_temp_plotly), "plotly/GB_Temp_092722.html")
+#saveWidget(as_widget(bw_do_plotly), "plotly/BW_DO_092722.html")
+#saveWidget(as_widget(bw_temp_plotly), "plotly/BW_Temp_092722.html")
+#saveWidget(as_widget(gb_do_plotly), "plotly/GB_DO_092722.html")
+#saveWidget(as_widget(gb_temp_plotly), "plotly/GB_Temp_092722.html")
 
 # End of script.
