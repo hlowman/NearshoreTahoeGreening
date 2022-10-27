@@ -615,85 +615,99 @@ write_csv(tahoe_all, "data_working/Tahoe_compiled_102622.csv")
 
 #### Plot ####
 
-# Plots for all-hands meeting September 28, 2022.
-(bw_do_fig <- ggplot(tahoe_all %>% 
+# Plots to explore initial DO values.
+# 3m sites at Blackwood
+(bw_do_fig_ns <- ggplot(tahoe_all %>% 
                        filter(site == "Blackwood") %>%
-                       filter(date_time > "2022-03-25 00:00:00"),
+                         filter(depth == 3),
                     aes(x = date_time, y = DO_mgL)) +
-  geom_line(aes(color = factor(depth))) +
-  scale_color_manual(values = c("#CECEB9", "#7AC9B7", "#6CA184", "#3793EC")) +
+  geom_line(aes(color = factor(sensor))) +
+  scale_color_manual(values = c("#CECEB9", "#7AC9B7", "#6CA184")) +
   labs(x = "Date",
        y = "DO (mg/L)",
-       color = "Water Depth (m)") +
+       color = "Sensor Location",
+       title = "Blackwood Nearshore (3m) Sensors") +
   theme_bw() +
-  scale_x_datetime(date_breaks = "1 day"))
+  scale_x_datetime(date_breaks = "3 months"))
+
+(bw_do_plotly_ns <- ggplotly(bw_do_fig_ns))
+
+# Remaining sites at Blackwood
+(bw_do_fig <- ggplot(tahoe_all %>% 
+                          filter(site == "Blackwood") %>%
+                          filter(depth != 3),
+                        aes(x = date_time, y = DO_mgL)) +
+    geom_line(aes(color = factor(depth),
+                  linetype = factor(location))) +
+    scale_color_manual(values = c("#CECEB9", "#7AC9B7", "#6CA184")) +
+    labs(x = "Date",
+         y = "DO (mg/L)",
+         color = "Water Depth",
+         linetype = "Sensor Depth",
+         title = "Blackwood Offshore Sensors") +
+    theme_bw() +
+    scale_x_datetime(date_breaks = "3 months"))
 
 (bw_do_plotly <- ggplotly(bw_do_fig))
 
-(bw_temp_fig <- ggplot(tahoe_all %>% 
-                       filter(site == "Blackwood") %>%
-                       filter(date_time > "2022-03-25 00:00:00"),
-                     aes(x = date_time, y = Temp_C)) +
-    geom_line(aes(color = factor(depth))) +
-    scale_color_manual(values = c("#CECEB9", "#7AC9B7", "#6CA184", "#3793EC")) +
-    labs(x = "Date",
-         y = "Temperature (C)",
-         color = "Water Depth (m)") +
-    theme_bw() +
-    scale_x_datetime(date_breaks = "1 day"))
+# Export static paneled plot of Blackwood sites.
+(bw_static <- bw_do_fig_ns + bw_do_fig +
+    plot_annotation(tag_levels = "A") +
+    plot_layout(nrow = 2))
 
-(bw_temp_plotly <- ggplotly(bw_temp_fig))
+# ggsave("figures/BW_DO_compiled_102622.png",
+#        width = 30,
+#        height = 30,
+#        units = "cm")
 
-(gb_do_fig <- ggplot(tahoe_all %>% 
+# Export plotly plots for further exploration.
+# saveWidget(as_widget(bw_do_plotly_ns), "plotly/BW_3m_DO_102722.html")
+# saveWidget(as_widget(bw_do_plotly), "plotly/BW_to20m_DO_102722.html")
+
+# 3m sites at Glenbrook
+(gb_do_fig_ns <- ggplot(tahoe_all %>% 
                        filter(site == "Glenbrook") %>%
-                       filter(date_time > "2021-11-01 00:00:00") %>%
-                       filter(date_time < "2022-04-15 00:00:00"),
+                       filter(depth == 3),
                      aes(x = date_time, y = DO_mgL)) +
+    geom_line(aes(color = factor(sensor))) +
+    scale_color_manual(values = c("#CECEB9", "#7AC9B7", "#6CA184")) +
+    labs(x = "Date",
+         y = "DO (mg/L)",
+         color = "Sensor Location",
+         title = "Glenbrook Nearshore (3m) Sensors") +
+    theme_bw() +
+    scale_x_datetime(date_breaks = "3 months"))
+
+(gb_do_plotly_ns <- ggplotly(gb_do_fig_ns))
+
+# Remaining sites at Glenbrook
+(gb_do_fig <- ggplot(tahoe_all %>% 
+                          filter(site == "Glenbrook") %>%
+                          filter(depth != 3),
+                        aes(x = date_time, y = DO_mgL)) +
     geom_line(aes(color = factor(depth))) +
     scale_color_manual(values = c("#CECEB9", "#7AC9B7", "#6CA184")) +
     labs(x = "Date",
          y = "DO (mg/L)",
-         color = "Water Depth (m)") +
+         color = "Water Depth",
+         title = "Glenbrook Offshore Sensors") +
     theme_bw() +
-    scale_x_datetime(date_breaks = "1 day"))
+    scale_x_datetime(date_breaks = "3 months"))
 
 (gb_do_plotly <- ggplotly(gb_do_fig))
 
-(gb_temp_fig <- ggplot(tahoe_all %>% 
-                         filter(site == "Glenbrook") %>%
-                         filter(date_time > "2021-11-01 00:00:00") %>%
-                         filter(date_time < "2022-04-15 00:00:00"),
-                       aes(x = date_time, y = Temp_C)) +
-    geom_line(aes(color = factor(depth))) +
-    scale_color_manual(values = c("#CECEB9", "#7AC9B7", "#6CA184", "#3793EC")) +
-    labs(x = "Date",
-         y = "Temperature (C)",
-         color = "Water Depth (m)") +
-    theme_bw()+
-    scale_x_datetime(date_breaks = "1 day"))
+# Export static paneled plot of Glenbrook sites.
+(gb_static <- gb_do_fig_ns + gb_do_fig +
+    plot_annotation(tag_levels = "A") +
+    plot_layout(nrow = 2))
 
-(gb_temp_plotly <- ggplotly(gb_temp_fig))
-
-# Export static Blackwood plot for powerpoint.
-(bw_both <- bw_do_fig / bw_temp_fig)
-
-# ggsave("figures/BW_compiled_092622.png",
+# ggsave("figures/GB_DO_compiled_102622.png",
 #        width = 30,
-#        height = 20,
-#        units = "cm")
-
-# And Glenbrook plot.
-(gb_both <- gb_do_fig / gb_temp_fig)
-
-# ggsave("figures/GB_compiled_092622.png",
-#        width = 35,
-#        height = 20,
+#        height = 30,
 #        units = "cm")
 
 # Export plotly plots for further exploration.
-#saveWidget(as_widget(bw_do_plotly), "plotly/BW_DO_092722.html")
-#saveWidget(as_widget(bw_temp_plotly), "plotly/BW_Temp_092722.html")
-#saveWidget(as_widget(gb_do_plotly), "plotly/GB_DO_092722.html")
-#saveWidget(as_widget(gb_temp_plotly), "plotly/GB_Temp_092722.html")
+# saveWidget(as_widget(gb_do_plotly_ns), "plotly/GB_3m_DO_102722.html")
+# saveWidget(as_widget(gb_do_plotly), "plotly/GB_to20m_DO_102722.html")
 
 # End of script.
