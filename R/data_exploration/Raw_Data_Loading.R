@@ -28,6 +28,7 @@ library(plotly)
 library(webshot)
 library(htmlwidgets)
 library(patchwork)
+library(R.matlab)
 
 # Need to first test out how to load this format of text data files.
 
@@ -611,7 +612,16 @@ bw_all$site <- "Blackwood"
 tahoe_all <- rbind(gb_all, bw_all)
 
 # Export for future use.
-write_csv(tahoe_all, "data_working/Tahoe_compiled_102622.csv")
+#write_csv(tahoe_all, "data_working/Tahoe_compiled_102622.csv")
+
+# And convert to matrix format to export as .mat file for Sally.
+# Larger file froze the server, so trying a smaller file.
+glenbrook10m <- tahoe_all %>%
+  filter(site == "Glenbrook") %>%
+  filter(depth == 10)
+
+GB_small <- glenbrook10m[1:100,]
+writeMat(con = "data_working/GB_test_10312022.mat", x = as.matrix(GB_small))
 
 #### Plot ####
 
