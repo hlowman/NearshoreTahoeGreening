@@ -776,12 +776,22 @@ saveRDS(tahoe_all, "data_working/Tahoe_compiled_trimmed_110322.rds")
 
 #### Plot ####
 
+# Create a version of the dataset aggregated by hour to smooth the lines a bit.
+tahoe_hourly <- tahoe_all %>%
+  group_by(site, depth, location, sensor,
+           hour = lubridate::floor_date(date_time, "1 hour")) %>%
+  summarize(BV_Volts_mean = mean(BV_Volts, na.rm = TRUE),
+            Temp_C_mean = mean(Temp_C, na.rm = TRUE),
+            DO_mgL_mean = mean(DO_mgL, na.rm = TRUE),
+            Q_mean = mean(Q, na.rm = TRUE)) %>%
+  ungroup()
+  
 # Plots to explore initial DO values.
 # 3m sites at Blackwood
-(bw_do_fig_ns <- ggplot(tahoe_all %>% 
+(bw_do_fig_ns <- ggplot(tahoe_hourly %>% 
                        filter(site == "Blackwood") %>%
                          filter(depth == 3),
-                    aes(x = date_time, y = DO_mgL)) +
+                    aes(x = hour, y = DO_mgL_mean)) +
   geom_line(aes(color = factor(sensor))) +
   scale_color_manual(values = c("#CECEB9", "#7AC9B7", "#6CA184")) +
   labs(x = "Date",
@@ -794,10 +804,10 @@ saveRDS(tahoe_all, "data_working/Tahoe_compiled_trimmed_110322.rds")
 (bw_do_plotly_ns <- ggplotly(bw_do_fig_ns))
 
 # Remaining sites at Blackwood
-(bw_do_fig <- ggplot(tahoe_all %>% 
+(bw_do_fig <- ggplot(tahoe_hourly %>% 
                           filter(site == "Blackwood") %>%
                           filter(depth != 3),
-                        aes(x = date_time, y = DO_mgL)) +
+                        aes(x = hour, y = DO_mgL_mean)) +
     geom_line(aes(color = factor(depth),
                   linetype = factor(location))) +
     scale_color_manual(values = c("#CECEB9", "#7AC9B7", "#6CA184")) +
@@ -816,20 +826,20 @@ saveRDS(tahoe_all, "data_working/Tahoe_compiled_trimmed_110322.rds")
     plot_annotation(tag_levels = "A") +
     plot_layout(nrow = 2))
 
-# ggsave("figures/BW_DO_compiled_102622.png",
-#        width = 30,
+# ggsave("figures/BW_DO_compiled_110322.png",
+#        width = 40,
 #        height = 30,
 #        units = "cm")
 
 # Export plotly plots for further exploration.
-# saveWidget(as_widget(bw_do_plotly_ns), "plotly/BW_3m_DO_102722.html")
-# saveWidget(as_widget(bw_do_plotly), "plotly/BW_to20m_DO_102722.html")
+# saveWidget(as_widget(bw_do_plotly_ns), "plotly/BW_3m_DO_110322.html")
+# saveWidget(as_widget(bw_do_plotly), "plotly/BW_to20m_DO_110322.html")
 
 # 3m sites at Glenbrook
-(gb_do_fig_ns <- ggplot(tahoe_all %>% 
+(gb_do_fig_ns <- ggplot(tahoe_hourly %>% 
                        filter(site == "Glenbrook") %>%
                        filter(depth == 3),
-                     aes(x = date_time, y = DO_mgL)) +
+                     aes(x = hour, y = DO_mgL_mean)) +
     geom_line(aes(color = factor(sensor))) +
     scale_color_manual(values = c("#CECEB9", "#7AC9B7", "#6CA184")) +
     labs(x = "Date",
@@ -842,15 +852,17 @@ saveRDS(tahoe_all, "data_working/Tahoe_compiled_trimmed_110322.rds")
 (gb_do_plotly_ns <- ggplotly(gb_do_fig_ns))
 
 # Remaining sites at Glenbrook
-(gb_do_fig <- ggplot(tahoe_all %>% 
+(gb_do_fig <- ggplot(tahoe_hourly %>% 
                           filter(site == "Glenbrook") %>%
                           filter(depth != 3),
-                        aes(x = date_time, y = DO_mgL)) +
-    geom_line(aes(color = factor(depth))) +
+                        aes(x = hour, y = DO_mgL_mean)) +
+    geom_line(aes(color = factor(depth),
+                  linetype = factor(location))) +
     scale_color_manual(values = c("#CECEB9", "#7AC9B7", "#6CA184")) +
     labs(x = "Date",
          y = "DO (mg/L)",
          color = "Water Depth",
+         linetype = "Sensor Depth",
          title = "Glenbrook Offshore Sensors") +
     theme_bw() +
     scale_x_datetime(date_breaks = "3 months"))
@@ -862,13 +874,13 @@ saveRDS(tahoe_all, "data_working/Tahoe_compiled_trimmed_110322.rds")
     plot_annotation(tag_levels = "A") +
     plot_layout(nrow = 2))
 
-# ggsave("figures/GB_DO_compiled_102622.png",
-#        width = 30,
+# ggsave("figures/GB_DO_compiled_110322.png",
+#        width = 40,
 #        height = 30,
 #        units = "cm")
 
 # Export plotly plots for further exploration.
-# saveWidget(as_widget(gb_do_plotly_ns), "plotly/GB_3m_DO_102722.html")
-# saveWidget(as_widget(gb_do_plotly), "plotly/GB_to20m_DO_102722.html")
+# saveWidget(as_widget(gb_do_plotly_ns), "plotly/GB_3m_DO_110322.html")
+# saveWidget(as_widget(gb_do_plotly), "plotly/GB_to20m_DO_110322.html")
 
 # End of script.
