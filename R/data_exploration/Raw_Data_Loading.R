@@ -12,7 +12,7 @@
 # Future to-do list:
 # (1) Check wiper data in April/May 2022 for GB NS1 & NS2 (re: fouling).
 # (2) Check to see what's going on at BW15 in the late summer/early fall.
-# (3) ...
+# (3) Check time zones for DO and barometric data.
 
 #### Setup ####
 

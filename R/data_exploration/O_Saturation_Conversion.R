@@ -17,8 +17,8 @@ library(webshot)
 library(htmlwidgets)
 library(patchwork)
 
-# Load assembled data
-tahoe_all <- read_csv("data_working/Tahoe_compiled_102622.csv")
+# Load assembled and trimmed data
+tahoe_all <- read_csv("data_working/Tahoe_compiled_trimmed_110322.csv")
 
 # Load Blackwood barometric pressure data.
 # Source: Synoptic Station D9413 (Homewood)
@@ -63,13 +63,10 @@ tahoe_15 <- tahoe_all %>%
   ungroup() %>%
   mutate(date_time15 = ymd_hms(by15))
 
-# For some reason this rounded to 16, 31, 46, and 01 minutes, so subtracting
-# 1 minute from each.
-tahoe_15$round15 <- tahoe_15$date_time15 - ms("01:00")
-
 # Trim down to columns of interest
 tahoe_15_trim <- tahoe_15 %>%
-  select(round15, meanDO, meanT, sensor, location, depth, site)
+  select(date_time15, meanDO, meanT, sensor, location, depth, site) %>%
+  rename("round15" = "date_time15")
 
 # And join with appropriate datasets.
 tahoe_15_full <- left_join(tahoe_15_trim, weather_15, by = c("site", "round15"))
@@ -95,12 +92,24 @@ tahoe_15_full <- tahoe_15_full %>%
 
 #### Plot ####
 
+# Create a version of the dataset aggregated by hour to smooth the lines a bit.
+tahoe_h <- tahoe_15_full %>%
+  group_by(site, depth, location, sensor,
+           roundhour = lubridate::floor_date(round15, "1 hour")) %>%
+  summarize(DO_mgL_mean = mean(meanDO, na.rm = TRUE),
+            Temp_C_mean = mean(meanT, na.rm = TRUE),
+            Press_P_mean = mean(meanP_Pascal, na.rm = TRUE),
+            Press_mmHg_mean = mean(meanP_mmHg, na.rm = TRUE),
+            Osat_mgL_mean = mean(Osat, na.rm = TRUE),
+            DOsat_perc_mean = mean(DOsat_perc, na.rm = TRUE)) %>%
+  ungroup()
+
 # Plots to explore initial DO saturation values.
 # 3m sites at Blackwood
-(bw_dosat_fig_ns <- ggplot(tahoe_15_full %>% 
+(bw_dosat_fig_ns <- ggplot(tahoe_h %>% 
                           filter(site == "Blackwood") %>%
                           filter(depth == 3),
-                        aes(x = round15, y = DOsat_perc)) +
+                        aes(x = roundhour, y = DOsat_perc_mean)) +
    geom_line(aes(color = factor(sensor))) +
    scale_color_manual(values = c("#CECEB9", "#7AC9B7", "#6CA184")) +
    labs(x = "Date",
@@ -113,10 +122,10 @@ tahoe_15_full <- tahoe_15_full %>%
 (bw_dosat_plotly_ns <- ggplotly(bw_dosat_fig_ns))
 
 # Remaining sites at Blackwood
-(bw_dosat_fig <- ggplot(tahoe_15_full %>% 
+(bw_dosat_fig <- ggplot(tahoe_h %>% 
                        filter(site == "Blackwood") %>%
-                       filter(depth %in% c(10,15,20)),
-                     aes(x = round15, y = DOsat_perc)) +
+                       filter(depth != 3),
+                     aes(x = roundhour, y = DOsat_perc_mean)) +
     geom_line(aes(color = factor(depth),
                   linetype = factor(location))) +
     scale_color_manual(values = c("#CECEB9", "#7AC9B7", "#6CA184")) +
@@ -135,8 +144,8 @@ tahoe_15_full <- tahoe_15_full %>%
     plot_annotation(tag_levels = "A") +
     plot_layout(nrow = 2))
 
-# ggsave("figures/BW_DOsat_compiled_103122.png",
-#        width = 30,
+# ggsave("figures/BW_DOsat_compiled_110322.png",
+#        width = 40,
 #        height = 30,
 #        units = "cm")
 
@@ -145,10 +154,10 @@ tahoe_15_full <- tahoe_15_full %>%
 # saveWidget(as_widget(bw_dosat_plotly), "plotly/BW_to20m_DOsat_103122.html")
 
 # 3m sites at Glenbrook
-(gb_dosat_fig_ns <- ggplot(tahoe_15_full %>% 
+(gb_dosat_fig_ns <- ggplot(tahoe_h %>% 
                           filter(site == "Glenbrook") %>%
                           filter(depth == 3),
-                        aes(x = round15, y = DOsat_perc)) +
+                        aes(x = roundhour, y = DOsat_perc_mean)) +
     geom_line(aes(color = factor(sensor))) +
     scale_color_manual(values = c("#CECEB9", "#7AC9B7", "#6CA184")) +
     labs(x = "Date",
@@ -161,15 +170,17 @@ tahoe_15_full <- tahoe_15_full %>%
 (gb_dosat_plotly_ns <- ggplotly(gb_dosat_fig_ns))
 
 # Remaining sites at Glenbrook
-(gb_dosat_fig <- ggplot(tahoe_15_full %>% 
+(gb_dosat_fig <- ggplot(tahoe_h %>% 
                        filter(site == "Glenbrook") %>%
                        filter(depth != 3),
-                     aes(x = round15, y = DOsat_perc)) +
-    geom_line(aes(color = factor(depth))) +
+                     aes(x = roundhour, y = DOsat_perc_mean)) +
+    geom_line(aes(color = factor(depth),
+                  linetype = factor(location))) +
     scale_color_manual(values = c("#CECEB9", "#7AC9B7", "#6CA184")) +
     labs(x = "Date",
          y = "DO Saturation (%)",
          color = "Water Depth",
+         linetype = "Sensor Depth",
          title = "Glenbrook Offshore Sensors") +
     theme_bw() +
     scale_x_datetime(date_breaks = "3 months"))
@@ -181,13 +192,13 @@ tahoe_15_full <- tahoe_15_full %>%
     plot_annotation(tag_levels = "A") +
     plot_layout(nrow = 2))
 
-# ggsave("figures/GB_DOsat_compiled_103122.png",
-#        width = 30,
+# ggsave("figures/GB_DOsat_compiled_110322.png",
+#        width = 40,
 #        height = 30,
 #        units = "cm")
 
 # Export plotly plots for further exploration.
-# saveWidget(as_widget(gb_dosat_plotly_ns), "plotly/GB_3m_DOsat_103122.html")
-# saveWidget(as_widget(gb_dosat_plotly), "plotly/GB_to20m_DOsat_103122.html")
+# saveWidget(as_widget(gb_dosat_plotly_ns), "plotly/GB_3m_DOsat_110322.html")
+# saveWidget(as_widget(gb_dosat_plotly), "plotly/GB_to20m_DOsat_110322.html")
 
 # End of script.
