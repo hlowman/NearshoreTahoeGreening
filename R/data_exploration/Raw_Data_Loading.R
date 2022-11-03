@@ -10,11 +10,8 @@
 
 # ----------------------------------README-------------------------------------
 # Future to-do list:
-# (1) Check to be sure dates aren't loaded in as duplicates for various sites,
-# since I've now done this data compilation in two stages.
-# (2) Verify which depth the 20m sensor at BW was deployed at previously and 
-# append to appropriate (benthic/pelagic) data file. This isn't necessary for
-# GB since that buoy went missing.
+# (1) Check wiper data in April/May 2022 for GB NS1 & NS2 (re: fouling).
+# (2) Check to see what's going on at BW15 in the late summer/early fall.
 # (3) ...
 
 #### Setup ####
@@ -89,7 +86,7 @@ write_csv(gb20b, "data_working/GB20m_benthic_compiled_102622.csv")
 
 ###### Pelagic #####
 
-# No data in this directory as of October 26, 2022.
+# No data in this directory as of November 3, 2022.
 
 ##### GB15m ####
 
@@ -244,12 +241,31 @@ gb3_oct <- tbl_with_sources3_oct %>%
   select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
 gbNS2_all <- rbind(gbNS2, gb3_oct)
 
-write_csv(gbNS2_all, "data_working/GBNS2_compiled_102622.csv")
+#write_csv(gbNS2_all, "data_working/GBNS2_compiled_102622.csv")
 
 # Quick plot to see if all the data is there.
 plot(gbNS2_all$date_time, gbNS2_all$Temp_C) # Yep! :)
 
-# Now, need to load in remaining shallow sites, because this wasn't done in Sept.
+# Load in previous data to add Oct 2021 data in.
+gbNS2_all <- read_csv("data_working/GBNS2_compiled_102622.csv")
+
+# Load in files from the GBNS2 October directory
+tbl_with_sources3_2021 <- list.files(path = here("data_raw/BuoyDownloads/GBNS2/20211001/7450-265933"),
+                                    pattern = "*.txt",
+                                    full.names = T) %>%
+  map_df(~read_csv(., skip = 3, col_names = mylist))
+
+# Convert 24 character to full date/time
+tbl_with_sources3_2021$date_time <- as_datetime(tbl_with_sources3_2021$Time_Sec)
+
+# Trim, join, and export data.
+gb3_2021 <- tbl_with_sources3_2021 %>%
+  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+gbNS2_rev <- rbind(gb3_2021, gbNS2_all)
+
+write_csv(gbNS2_rev, "data_working/GBNS2_compiled_110322.csv")
+
+# Now, need to load in remaining shallow sites, because wasn't done in Sept.
 
 ###### NS1 #####
 
@@ -366,6 +382,14 @@ bw20b <- tbl_with_sources20bwb %>%
 
 write_csv(bw20b, "data_working/BW20m_benthic_compiled_102622.csv")
 
+# Join with data above to create longer benthic record.
+bw20b_rev <- rbind(bw20, bw20b)
+
+write_csv(bw20b_rev, "data_working/BW20m_benthic_compiled_110322.csv")
+
+# Quick plot to see if all the data is there.
+plot(bw20b_rev$date_time, bw20b_rev$Temp_C) # Yep! :)
+
 ###### Pelagic #####
 
 # Load in all files from the BW20m pelagic directory
@@ -382,6 +406,9 @@ bw20p <- tbl_with_sources20bwp %>%
   select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
 
 write_csv(bw20p, "data_working/BW20m_pelagic_compiled_102622.csv")
+
+# Quick plot to see if all the data is there.
+plot(bw20p$date_time, bw20p$Temp_C) # Yep! :)
 
 ##### BW15m ####
 
@@ -421,6 +448,9 @@ bw15_full <- rbind(bw15, bw15_oct)
 
 write_csv(bw15_full, "data_working/BW15m_compiled_102622.csv")
 
+# Quick plot to see if all the data is there.
+plot(bw15_full$date_time, bw15_full$Temp_C) # Yep! :)
+
 ##### BW10m ####
 
 # Load in all files from the BW10m directory
@@ -458,6 +488,9 @@ bw10_full <- rbind(bw10, bw10_oct)
 
 write_csv(bw10_full, "data_working/BW10m_compiled_102622.csv")
 
+# Quick plot to see if all the data is there.
+plot(bw10_full$date_time, bw10_full$Temp_C) # Yep! :)
+
 ##### BW3m ####
 
 ###### NS2 #####
@@ -479,9 +512,12 @@ bw3 <- tbl_with_sources3bw %>%
 # load data for additional compilation
 bw3 <- read_csv("data_working/BWNS2_compiled_092622.csv")
 
+# Quick plot to see if all the data is there.
+plot(bw3$date_time, bw3$Temp_C) # Yep! :)
+
 ####### Oct 2022 Update ######
 
-# No data in October directory as of October 26, 2022.
+# No data in October directory as of November 3, 2022.
 
 ###### NS1 ######
 
@@ -509,6 +545,9 @@ bwNS1_all <- rbind(bw3a_may, bw3a_oct)
 
 write_csv(bwNS1_all, "data_working/BWNS1_compiled_102622.csv")
 
+# Quick plot to see if all the data is there.
+plot(bwNS1_all$date_time, bwNS1_all$Temp_C) # Yep! :)
+
 ###### NS3 ######
 
 # Load in files from the BWNS3 May directory
@@ -535,93 +574,205 @@ bwNS3_all <- rbind(bw3c_may, bw3c_oct)
 
 write_csv(bwNS3_all, "data_working/BWNS3_compiled_102622.csv")
 
-#### Join All Sensor Data ####
+# Quick plot to see if all the data is there.
+plot(bwNS3_all$date_time, bwNS3_all$Temp_C) # Yep! :)
+
+#### Trim and Join Sensor Data ####
+
+# Trim values indicative of deployment and retrieval.
+
+# Glenbrook sites
+plot(gb20b$date_time, gb20b$DO_mgL) # just need to trim for deployment
+gb20t <- gb20b %>%
+  filter(date_time >= as_datetime("2022-07-15 00:00:00")) # trimming off first day
+plot(gb20t$date_time, gb20t$DO_mgL)
+
+plot(gb15_all$date_time, gb15_all$DO_mgL) # just need to trim for deployment
+gb15t <- gb15_all %>%
+  filter(date_time >= as_datetime("2021-10-30 00:00:00")) %>% # trimming off first day
+  filter(date_time < as_datetime("2022-04-27 00:00:00") |
+           date_time >= as_datetime("2022-04-29 00:00:00")) # And trimming may retrieval date 4/27-4/28.
+plot(gb15t$date_time, gb15t$DO_mgL)
+
+plot(gb10_all$date_time, gb10_all$DO_mgL) # just need to trim same dates
+gb10t <- gb10_all %>%
+  filter(date_time >= as_datetime("2021-10-30 00:00:00")) %>% # trimming off first day
+  filter(date_time < as_datetime("2022-04-27 00:00:00") |
+           date_time >= as_datetime("2022-04-29 00:00:00")) # And trimming may retrieval date 4/27-4/28.
+plot(gb10t$date_time, gb10t$DO_mgL)
+
+plot(gbNS2_rev$date_time, gbNS2_rev$DO_mgL) # need to trim anoxic period
+gbNS2t <- gbNS2_rev %>%
+  filter(date_time >= as_datetime("2021-06-12 00:00:00")) %>% # trimming off first day
+  filter(date_time < as_datetime("2022-04-17 00:00:00") |
+           date_time >= as_datetime("2022-05-06 00:00:00")) # And trimming april fouling
+plot(gbNS2t$date_time, gbNS2t$DO_mgL)
+
+plot(gbNS1_all$date_time, gbNS1_all$DO_mgL) # need to trim similar dates
+gbNS1t <- gbNS1_all %>%
+  filter(date_time >= as_datetime("2021-10-03 00:00:00")) %>% # trimming off first day
+  filter(date_time < as_datetime("2022-04-17 00:00:00") |
+           date_time >= as_datetime("2022-05-06 00:00:00")) # And trimming april fouling
+plot(gbNS1t$date_time, gbNS1t$DO_mgL)
+
+plot(gbNS3_all$date_time, gbNS3_all$DO_mgL) # need to trim similar dates
+gbNS3t <- gbNS3_all %>%
+  filter(date_time >= as_datetime("2021-10-03 00:00:00")) # trimming first day
+plot(gbNS3t$date_time, gbNS3t$DO_mgL)
 
 # Add a column to demarcate sensor ID.
-gbNS3_all$sensor <- "NS3"
-gbNS2_all$sensor <- "NS2"
-gbNS1_all$sensor <- "NS1"
-gb10_all$sensor <- NA
-gb15_all$sensor <- NA
-gb20b$sensor <- NA
+gbNS3t$sensor <- "NS3"
+gbNS2t$sensor <- "NS2"
+gbNS1t$sensor <- "NS1"
+gb10t$sensor <- NA
+gb15t$sensor <- NA
+gb20t$sensor <- NA
 
 # Add a column to demarcate water depth.
-gbNS3_all$depth <- 3
-gbNS2_all$depth <- 3
-gbNS1_all$depth <- 3
-gb10_all$depth <- 10
-gb15_all$depth <- 15
-gb20b$depth <- 20
+gbNS3t$depth <- 3
+gbNS2t$depth <- 3
+gbNS1t$depth <- 3
+gb10t$depth <- 10
+gb15t$depth <- 15
+gb20t$depth <- 20
 
 # Join all Glenbrook datasets together.
-gb_j1 <- rbind(gbNS3_all, gbNS2_all)
-gb_j2 <- rbind(gb_j1, gbNS1_all)
-gb_j3 <- rbind(gb_j2, gb10_all)
-gb_j4 <- rbind(gb_j3, gb15_all)
-gb_all <- rbind(gb_j4, gb20b)
+gb_j1 <- rbind(gbNS3t, gbNS2t)
+gb_j2 <- rbind(gb_j1, gbNS1t)
+gb_j3 <- rbind(gb_j2, gb10t)
+gb_j4 <- rbind(gb_j3, gb15t)
+gb_all <- rbind(gb_j4, gb20t)
 
 # Add a column to demarcate site.
 gb_all$site <- "Glenbrook"
 
 # And a column for location in the water column to match the bw columns
-gb_all$location <- NA
+gb_all$location <- "Benthic"
 
 # And re-order so the columns bind nicely below.
 gb_all <- gb_all %>%
   select(date_time, BV_Volts, Temp_C, DO_mgL, Q, sensor, depth, location, site)
 
+# Export to save progress.
+saveRDS(gb_all, "data_working/GB_compiled_trimmed_110322.rds")
+
+# Trim values indicative of deployment and retrieval.
+
+# Blackwood sites
+plot(bw20b_rev$date_time, bw20b_rev$DO_mgL) # need to trim a few places
+bw20bt <- bw20b_rev %>%
+  filter(date_time >= as_datetime("2021-10-30 00:00:00")) %>% # trimming off first day
+  filter(date_time < as_datetime("2022-03-24 00:00:00") |
+           date_time >= as_datetime("2022-03-25 00:00:00")) %>% # trimming next retrieval date
+  # and trimming remaining max/min days
+  filter(date_time < as_datetime("2022-07-09 00:00:00") |
+           date_time >= as_datetime("2022-07-10 00:00:00")) %>%
+  filter(date_time < as_datetime("2022-09-05 00:00:00") |
+           date_time >= as_datetime("2022-09-06 00:00:00")) %>%
+  filter(date_time < as_datetime("2022-10-13 00:00:00") |
+           date_time >= as_datetime("2022-10-14 00:00:00"))
+plot(bw20bt$date_time, bw20bt$DO_mgL)
+
+plot(bw20p$date_time, bw20p$DO_mgL) # need to trim a few places
+bw20pt <- bw20p %>%
+  filter(date_time >= as_datetime("2022-07-17 00:00:00")) %>% # trimming off first day
+  # and trimming remaining max/min days
+  filter(date_time < as_datetime("2022-08-31 00:00:00") |
+           date_time >= as_datetime("2022-09-02 00:00:00")) %>%
+  filter(date_time < as_datetime("2022-09-24 00:00:00") |
+           date_time >= as_datetime("2022-09-25 00:00:00")) %>%
+  filter(date_time < as_datetime("2022-10-17 00:00:00"))
+plot(bw20pt$date_time, bw20pt$DO_mgL)
+
+plot(bw15_full$date_time, bw15_full$DO_mgL) # need to trim a few places
+bw15t <- bw15_full %>%
+  filter(date_time >= as_datetime("2022-03-25 00:00:00")) %>% # trimming off first day
+  # and trimming remaining max/min days
+  filter(date_time < as_datetime("2022-06-29 00:00:00") |
+           date_time >= as_datetime("2022-06-30 00:00:00")) %>%
+  filter(date_time < as_datetime("2022-07-09 00:00:00") |
+           date_time >= as_datetime("2022-07-10 00:00:00")) %>%
+  filter(date_time < as_datetime("2022-10-10 00:00:00"))
+plot(bw15t$date_time, bw15t$DO_mgL)
+
+plot(bw10_full$date_time, bw10_full$DO_mgL) # need to trim a few places
+bw10t <- bw10_full %>%
+  filter(date_time >= as_datetime("2022-03-25 00:00:00")) %>% # trimming off first day
+  # and trimming remaining max/min days
+  filter(date_time < as_datetime("2022-06-01 00:00:00") |
+           date_time >= as_datetime("2022-06-02 00:00:00"))
+plot(bw10t$date_time, bw10t$DO_mgL)
+
+plot(bw3$date_time, bw3$DO_mgL) # need to trim a few places
+bwNS2t <- bw3 %>%
+  filter(date_time >= as_datetime("2021-10-17 00:00:00")) %>% # trimming off first day
+  # and trimming last day
+  filter(date_time < as_datetime("2022-05-24 00:00:00"))
+plot(bwNS2t$date_time, bwNS2t$DO_mgL)
+
+plot(bwNS1_all$date_time, bwNS1_all$DO_mgL) # need to trim a few places
+bwNS1t <- bwNS1_all %>%
+  filter(date_time >= as_datetime("2021-10-17 00:00:00")) %>% # trimming off first day
+  # and trimming wonky day
+  filter(date_time < as_datetime("2022-05-24 00:00:00") |
+           date_time >= as_datetime("2022-05-25 00:00:00"))
+plot(bwNS1t$date_time, bwNS1t$DO_mgL)
+
+plot(bwNS3_all$date_time, bwNS3_all$DO_mgL) # need to trim same places
+bwNS3t <- bwNS3_all %>%
+  filter(date_time >= as_datetime("2021-10-17 00:00:00")) %>% # trimming off first day
+  # and trimming wonky day
+  filter(date_time < as_datetime("2022-05-24 00:00:00") |
+           date_time >= as_datetime("2022-05-25 00:00:00"))
+plot(bwNS3t$date_time, bwNS3t$DO_mgL)
+
 # Add a column to demarcate sensor ID.
-bwNS3_all$sensor <- "NS3"
-bw3$sensor <- "NS2"
-bwNS1_all$sensor <- "NS1"
-bw10_full$sensor <- NA
-bw15_full$sensor <- NA
-bw20p$sensor <- NA
-bw20b$sensor <- NA
+bwNS3t$sensor <- "NS3"
+bwNS2t$sensor <- "NS2"
+bwNS1t$sensor <- "NS1"
+bw10t$sensor <- NA
+bw15t$sensor <- NA
+bw20pt$sensor <- NA
+bw20bt$sensor <- NA
 
 # Add a column to demarcate water depth.
-bwNS3_all$depth <- 3
-bw3$depth <- 3
-bwNS1_all$depth <- 3
-bw10_full$depth <- 10
-bw15_full$depth <- 15
-bw20p$depth <- 20
-bw20b$depth <- 20
+bwNS3t$depth <- 3
+bwNS2t$depth <- 3
+bwNS1t$depth <- 3
+bw10t$depth <- 10
+bw15t$depth <- 15
+bw20pt$depth <- 20
+bw20bt$depth <- 20
 
 # Add a column to demarcate location in the water column.
-bwNS3_all$location <- NA
-bw3$location <- NA
-bwNS1_all$location <- NA
-bw10_full$location <- NA
-bw15_full$location <- NA
-bw20p$location <- "Pelagic"
-bw20b$location <- "Benthic"
+bwNS3t$location <- "Benthic"
+bwNS2t$location <- "Benthic"
+bwNS1t$location <- "Benthic"
+bw10t$location <- "Benthic"
+bw15t$location <- "Benthic"
+bw20pt$location <- "Pelagic"
+bw20bt$location <- "Benthic"
 
 # Join all Blackwood datasets together.
-bw_j1 <- rbind(bwNS3_all, bw3)
-bw_j2 <- rbind(bw_j1, bwNS1_all)
-bw_j3 <- rbind(bw_j2, bw10_full)
-bw_j4 <- rbind(bw_j3, bw15_full)
-bw_j5 <- rbind(bw_j4, bw20b)
-bw_all <- rbind(bw_j5, bw20p)
+bw_j1 <- rbind(bwNS3t, bwNS2t)
+bw_j2 <- rbind(bw_j1, bwNS1t)
+bw_j3 <- rbind(bw_j2, bw10t)
+bw_j4 <- rbind(bw_j3, bw15t)
+bw_j5 <- rbind(bw_j4, bw20bt)
+bw_all <- rbind(bw_j5, bw20pt)
 
 # Add a column to demarcate site.
 bw_all$site <- "Blackwood"
+
+# Export to save progress.
+saveRDS(bw_all, "data_working/BW_compiled_trimmed_110322.rds")
 
 # Join everythinggg
 tahoe_all <- rbind(gb_all, bw_all)
 
 # Export for future use.
-#write_csv(tahoe_all, "data_working/Tahoe_compiled_102622.csv")
-
-# And convert to matrix format to export as .mat file for Sally.
-# Larger file froze the server, so trying a smaller file.
-glenbrook10m <- tahoe_all %>%
-  filter(site == "Glenbrook") %>%
-  filter(depth == 10)
-
-GB_small <- glenbrook10m[1:100,]
-writeMat(con = "data_working/GB_test_10312022.mat", x = as.matrix(GB_small))
+write_csv(tahoe_all, "data_working/Tahoe_compiled_trimmed_110322.csv")
+saveRDS(tahoe_all, "data_working/Tahoe_compiled_trimmed_110322.rds")
 
 #### Plot ####
 
