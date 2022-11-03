@@ -150,8 +150,8 @@ tahoe_h <- tahoe_15_full %>%
 #        units = "cm")
 
 # Export plotly plots for further exploration.
-# saveWidget(as_widget(bw_dosat_plotly_ns), "plotly/BW_3m_DOsat_103122.html")
-# saveWidget(as_widget(bw_dosat_plotly), "plotly/BW_to20m_DOsat_103122.html")
+# saveWidget(as_widget(bw_dosat_plotly_ns), "plotly/BW_3m_DOsat_110322.html")
+# saveWidget(as_widget(bw_dosat_plotly), "plotly/BW_to20m_DOsat_110322.html")
 
 # 3m sites at Glenbrook
 (gb_dosat_fig_ns <- ggplot(tahoe_h %>% 
