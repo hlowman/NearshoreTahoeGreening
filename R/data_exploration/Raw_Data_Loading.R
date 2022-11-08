@@ -851,7 +851,7 @@ saveRDS(tahoe_all, "data_working/Tahoe_compiled_trimmed_110822.rds")
 # Create a version of the dataset aggregated by hour to smooth the lines a bit.
 tahoe_hourly <- tahoe_all %>%
   group_by(site, depth, location, sensor,
-           hour = lubridate::floor_date(date_time, "1 hour")) %>%
+           hour = lubridate::floor_date(date_timePST, "1 hour")) %>%
   summarize(BV_Volts_mean = mean(BV_Volts, na.rm = TRUE),
             Temp_C_mean = mean(Temp_C, na.rm = TRUE),
             DO_mgL_mean = mean(DO_mgL, na.rm = TRUE),
@@ -871,7 +871,8 @@ tahoe_hourly <- tahoe_all %>%
        color = "Sensor Location",
        title = "Blackwood Nearshore (3m) Sensors") +
   theme_bw() +
-  scale_x_datetime(date_breaks = "3 months"))
+  scale_x_datetime(date_breaks = "3 months") +
+  ylim(0, 13))
 
 (bw_do_plotly_ns <- ggplotly(bw_do_fig_ns))
 
@@ -889,7 +890,8 @@ tahoe_hourly <- tahoe_all %>%
          linetype = "Sensor Depth",
          title = "Blackwood Offshore Sensors") +
     theme_bw() +
-    scale_x_datetime(date_breaks = "3 months"))
+    scale_x_datetime(date_breaks = "3 months") +
+    ylim(0, 13))
 
 (bw_do_plotly <- ggplotly(bw_do_fig))
 
@@ -898,14 +900,14 @@ tahoe_hourly <- tahoe_all %>%
     plot_annotation(tag_levels = "A") +
     plot_layout(nrow = 2))
 
-# ggsave("figures/BW_DO_compiled_110322.png",
+# ggsave("figures/BW_DO_compiled_110822.png",
 #        width = 40,
 #        height = 30,
 #        units = "cm")
 
 # Export plotly plots for further exploration.
-# saveWidget(as_widget(bw_do_plotly_ns), "plotly/BW_3m_DO_110322.html")
-# saveWidget(as_widget(bw_do_plotly), "plotly/BW_to20m_DO_110322.html")
+# saveWidget(as_widget(bw_do_plotly_ns), "plotly/BW_3m_DO_110822.html")
+# saveWidget(as_widget(bw_do_plotly), "plotly/BW_to20m_DO_110822.html")
 
 # 3m sites at Glenbrook
 (gb_do_fig_ns <- ggplot(tahoe_hourly %>% 
@@ -919,7 +921,8 @@ tahoe_hourly <- tahoe_all %>%
          color = "Sensor Location",
          title = "Glenbrook Nearshore (3m) Sensors") +
     theme_bw() +
-    scale_x_datetime(date_breaks = "3 months"))
+    scale_x_datetime(date_breaks = "3 months") +
+    ylim(0, 13))
 
 (gb_do_plotly_ns <- ggplotly(gb_do_fig_ns))
 
@@ -937,7 +940,8 @@ tahoe_hourly <- tahoe_all %>%
          linetype = "Sensor Depth",
          title = "Glenbrook Offshore Sensors") +
     theme_bw() +
-    scale_x_datetime(date_breaks = "3 months"))
+    scale_x_datetime(date_breaks = "3 months") +
+    ylim(0,13))
 
 (gb_do_plotly <- ggplotly(gb_do_fig))
 
@@ -946,13 +950,13 @@ tahoe_hourly <- tahoe_all %>%
     plot_annotation(tag_levels = "A") +
     plot_layout(nrow = 2))
 
-# ggsave("figures/GB_DO_compiled_110322.png",
+# ggsave("figures/GB_DO_compiled_110822.png",
 #        width = 40,
 #        height = 30,
 #        units = "cm")
 
 # Export plotly plots for further exploration.
-# saveWidget(as_widget(gb_do_plotly_ns), "plotly/GB_3m_DO_110322.html")
-# saveWidget(as_widget(gb_do_plotly), "plotly/GB_to20m_DO_110322.html")
+# saveWidget(as_widget(gb_do_plotly_ns), "plotly/GB_3m_DO_110822.html")
+# saveWidget(as_widget(gb_do_plotly), "plotly/GB_to20m_DO_110822.html")
 
 # End of script.
