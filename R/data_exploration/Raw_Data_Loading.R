@@ -858,7 +858,7 @@ tahoe_hourly <- tahoe_all %>%
             Q_mean = mean(Q, na.rm = TRUE)) %>%
   ungroup()
   
-# Plots to explore initial DO values.
+# Plots to explore initial DO & Temp values.
 # 3m sites at Blackwood
 (bw_do_fig_ns <- ggplot(tahoe_hourly %>% 
                        filter(site == "Blackwood") %>%
@@ -875,6 +875,20 @@ tahoe_hourly <- tahoe_all %>%
   ylim(0, 13))
 
 (bw_do_plotly_ns <- ggplotly(bw_do_fig_ns))
+
+(bw_temp_fig_ns <- ggplot(tahoe_hourly %>% 
+                          filter(site == "Blackwood") %>%
+                          filter(depth == 3),
+                        aes(x = hour, y = Temp_C_mean)) +
+    geom_line(aes(color = factor(sensor))) +
+    scale_color_manual(values = c("#CECEB9", "#7AC9B7", "#6CA184")) +
+    labs(x = "Date",
+         y = "Temperature (C)",
+         color = "Sensor Location",
+         title = "Blackwood Nearshore (3m) Sensors") +
+    theme_bw() +
+    scale_x_datetime(date_breaks = "3 months") +
+    ylim(0, 25))
 
 # Remaining sites at Blackwood
 (bw_do_fig <- ggplot(tahoe_hourly %>% 
@@ -893,6 +907,22 @@ tahoe_hourly <- tahoe_all %>%
     scale_x_datetime(date_breaks = "3 months") +
     ylim(0, 13))
 
+(bw_temp_fig <- ggplot(tahoe_hourly %>% 
+                       filter(site == "Blackwood") %>%
+                       filter(depth != 3),
+                     aes(x = hour, y = Temp_C_mean)) +
+    geom_line(aes(color = factor(depth),
+                  linetype = factor(location))) +
+    scale_color_manual(values = c("#CECEB9", "#7AC9B7", "#6CA184")) +
+    labs(x = "Date",
+         y = "Temperature (C)",
+         color = "Water Depth",
+         linetype = "Sensor Depth",
+         title = "Blackwood Offshore Sensors") +
+    theme_bw() +
+    scale_x_datetime(date_breaks = "3 months") +
+    ylim(0, 25))
+
 (bw_do_plotly <- ggplotly(bw_do_fig))
 
 # Export static paneled plot of Blackwood sites.
@@ -901,6 +931,17 @@ tahoe_hourly <- tahoe_all %>%
     plot_layout(nrow = 2))
 
 # ggsave("figures/BW_DO_compiled_110822.png",
+#        width = 40,
+#        height = 30,
+#        units = "cm")
+
+# And temperature plots as well.
+# Export static paneled plot of Blackwood sites.
+(bw_static_temp <- bw_temp_fig_ns + bw_temp_fig +
+    plot_annotation(tag_levels = "A") +
+    plot_layout(nrow = 2))
+
+# ggsave("figures/BW_Temp_compiled_110822.png",
 #        width = 40,
 #        height = 30,
 #        units = "cm")
@@ -924,6 +965,20 @@ tahoe_hourly <- tahoe_all %>%
     scale_x_datetime(date_breaks = "3 months") +
     ylim(0, 13))
 
+(gb_temp_fig_ns <- ggplot(tahoe_hourly %>% 
+                          filter(site == "Glenbrook") %>%
+                          filter(depth == 3),
+                        aes(x = hour, y = Temp_C_mean)) +
+    geom_line(aes(color = factor(sensor))) +
+    scale_color_manual(values = c("#CECEB9", "#7AC9B7", "#6CA184")) +
+    labs(x = "Date",
+         y = "Temperature (C)",
+         color = "Sensor Location",
+         title = "Glenbrook Nearshore (3m) Sensors") +
+    theme_bw() +
+    scale_x_datetime(date_breaks = "3 months") +
+    ylim(0, 25))
+
 (gb_do_plotly_ns <- ggplotly(gb_do_fig_ns))
 
 # Remaining sites at Glenbrook
@@ -943,6 +998,22 @@ tahoe_hourly <- tahoe_all %>%
     scale_x_datetime(date_breaks = "3 months") +
     ylim(0,13))
 
+(gb_temp_fig <- ggplot(tahoe_hourly %>% 
+                       filter(site == "Glenbrook") %>%
+                       filter(depth != 3),
+                     aes(x = hour, y = Temp_C_mean)) +
+    geom_line(aes(color = factor(depth),
+                  linetype = factor(location))) +
+    scale_color_manual(values = c("#CECEB9", "#7AC9B7", "#6CA184")) +
+    labs(x = "Date",
+         y = "Temperature (C)",
+         color = "Water Depth",
+         linetype = "Sensor Depth",
+         title = "Glenbrook Offshore Sensors") +
+    theme_bw() +
+    scale_x_datetime(date_breaks = "3 months") +
+    ylim(0,25))
+
 (gb_do_plotly <- ggplotly(gb_do_fig))
 
 # Export static paneled plot of Glenbrook sites.
@@ -951,6 +1022,16 @@ tahoe_hourly <- tahoe_all %>%
     plot_layout(nrow = 2))
 
 # ggsave("figures/GB_DO_compiled_110822.png",
+#        width = 40,
+#        height = 30,
+#        units = "cm")
+
+# And temperature plots as well.
+(gb_static_temp <- gb_temp_fig_ns + gb_temp_fig +
+    plot_annotation(tag_levels = "A") +
+    plot_layout(nrow = 2))
+
+# ggsave("figures/GB_Temp_compiled_110822.png",
 #        width = 40,
 #        height = 30,
 #        units = "cm")
