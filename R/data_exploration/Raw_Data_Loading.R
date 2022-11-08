@@ -572,7 +572,7 @@ bw3 <- tbl_with_sources3bw %>%
 
 write_csv(bw3, "data_working/BWNS2_compiled_110822.csv")
 # load data for additional compilation
-#bw3 <- read_csv("data_working/BWNS2_compiled_092622.csv")
+bw3 <- read_csv("data_working/BWNS2_compiled_110822.csv")
 
 # Quick plot to see if all the data is there.
 plot(bw3$date_timePST, bw3$Temp_C) # Yep! :)

@@ -3,7 +3,7 @@
 ## Heili Lowman
 
 # The following script will convert DO data as it's downloaded from the sensors
-# (mg/L) to oxygen saturation.
+# (mg/L) to oxygen saturation using barometric pressure from Synoptic.
 
 #### Setup ####
 
@@ -18,23 +18,26 @@ library(htmlwidgets)
 library(patchwork)
 
 # Load assembled and trimmed data
-tahoe_all <- read_csv("data_working/Tahoe_compiled_trimmed_110322.csv")
+tahoe_all <- read_csv("data_working/Tahoe_compiled_trimmed_110822.csv")
 
 # Load Blackwood barometric pressure data.
 # Source: Synoptic Station D9413 (Homewood)
+# NOTE: TIME IN UTC.
 # Excess rows of metadata trimmed.
-bw_weather <- read_csv("data_raw/SynopticDownloads/D9413.2022-10-31_tidy.csv")
+bw_weather <- read_csv("data_raw/SynopticDownloads/D9413.2022-11-08_tidy.csv")
 bw_weather$site <- "Blackwood"
 bw_trim <- bw_weather %>%
-  select(Station_ID, Date_Time, pressure_set_1d, site)
+  mutate(Date_TimePST = with_tz(Date_Time, tzone = "America/Los_Angeles")) %>%
+  select(Station_ID, Date_TimePST, pressure_set_1d, site)
 
 # Load Glenbrook barometric pressure data.
 # Source: Synoptic Station F9917 (Glenbrook)
 # Excess rows of metadata trimmed.
-gb_weather <- read_csv("data_raw/SynopticDownloads/F9917.2022-10-31_tidy.csv")
+gb_weather <- read_csv("data_raw/SynopticDownloads/F9917.2022-11-08_tidy.csv")
 gb_weather$site <- "Glenbrook"
 gb_trim <- gb_weather %>%
-  select(Station_ID, Date_Time, pressure_set_1d, site)
+  mutate(Date_TimePST = with_tz(Date_Time, tzone = "America/Los_Angeles")) %>%
+  select(Station_ID, Date_TimePST, pressure_set_1d, site)
 
 # Bind weather data
 both_weather <- rbind(bw_trim, gb_trim)
@@ -44,29 +47,25 @@ both_weather <- rbind(bw_trim, gb_trim)
 # Need to first convert bp and then aggregate data by 15 minutes so 
 # timestamps match up.
 both_weather <- both_weather %>%
-  mutate(pressure_mm_Hg = pressure_set_1d*0.00750062,
-         round15 = ymd_hms(cut(Date_Time, breaks = "15 min")))
+  mutate(pressure_mm_Hg = pressure_set_1d*0.00750062)
 
 weather_15 <- both_weather %>%
-  group_by(site, round15) %>%
+  group_by(site,
+           round15 = lubridate::floor_date(Date_TimePST, "15 minutes")) %>%
   summarize(meanP_Pascal = mean(pressure_set_1d, na.rm = TRUE),
             meanP_mmHg = mean(pressure_mm_Hg, na.rm = TRUE)) %>%
   ungroup()
-  
-tahoe_all <- tahoe_all %>%
-  mutate(by15 = cut(date_time, breaks = "15 min"))
 
 tahoe_15 <- tahoe_all %>%
-  group_by(site, depth, location, sensor, by15) %>%
+  group_by(site, depth, location, sensor, 
+           round15 = lubridate::floor_date(date_timePST, "15 minutes")) %>%
   summarize(meanDO = mean(DO_mgL, na.rm = TRUE),
             meanT = mean(Temp_C, na.rm = TRUE)) %>%
-  ungroup() %>%
-  mutate(date_time15 = ymd_hms(by15))
+  ungroup()
 
 # Trim down to columns of interest
 tahoe_15_trim <- tahoe_15 %>%
-  select(date_time15, meanDO, meanT, sensor, location, depth, site) %>%
-  rename("round15" = "date_time15")
+  select(round15, meanDO, meanT, sensor, location, depth, site)
 
 # And join with appropriate datasets.
 tahoe_15_full <- left_join(tahoe_15_trim, weather_15, by = c("site", "round15"))
@@ -117,7 +116,8 @@ tahoe_h <- tahoe_15_full %>%
         color = "Sensor Location",
         title = "Blackwood Nearshore (3m) Sensors") +
    theme_bw() +
-   scale_x_datetime(date_breaks = "3 months"))
+   scale_x_datetime(date_breaks = "3 months") +
+   ylim(0, 150))
 
 (bw_dosat_plotly_ns <- ggplotly(bw_dosat_fig_ns))
 
@@ -135,7 +135,8 @@ tahoe_h <- tahoe_15_full %>%
          linetype = "Sensor Depth",
          title = "Blackwood Offshore Sensors") +
     theme_bw() +
-    scale_x_datetime(date_breaks = "3 months"))
+    scale_x_datetime(date_breaks = "3 months") +
+    ylim(0, 150))
 
 (bw_dosat_plotly <- ggplotly(bw_dosat_fig))
 
@@ -144,14 +145,14 @@ tahoe_h <- tahoe_15_full %>%
     plot_annotation(tag_levels = "A") +
     plot_layout(nrow = 2))
 
-# ggsave("figures/BW_DOsat_compiled_110322.png",
+# ggsave("figures/BW_DOsat_compiled_110822.png",
 #        width = 40,
 #        height = 30,
 #        units = "cm")
 
 # Export plotly plots for further exploration.
-# saveWidget(as_widget(bw_dosat_plotly_ns), "plotly/BW_3m_DOsat_110322.html")
-# saveWidget(as_widget(bw_dosat_plotly), "plotly/BW_to20m_DOsat_110322.html")
+# saveWidget(as_widget(bw_dosat_plotly_ns), "plotly/BW_3m_DOsat_110822.html")
+# saveWidget(as_widget(bw_dosat_plotly), "plotly/BW_to20m_DOsat_110822.html")
 
 # 3m sites at Glenbrook
 (gb_dosat_fig_ns <- ggplot(tahoe_h %>% 
@@ -165,7 +166,8 @@ tahoe_h <- tahoe_15_full %>%
          color = "Sensor Location",
          title = "Glenbrook Nearshore (3m) Sensors") +
     theme_bw() +
-    scale_x_datetime(date_breaks = "3 months"))
+    scale_x_datetime(date_breaks = "3 months") +
+    ylim(0, 150))
 
 (gb_dosat_plotly_ns <- ggplotly(gb_dosat_fig_ns))
 
@@ -183,7 +185,8 @@ tahoe_h <- tahoe_15_full %>%
          linetype = "Sensor Depth",
          title = "Glenbrook Offshore Sensors") +
     theme_bw() +
-    scale_x_datetime(date_breaks = "3 months"))
+    scale_x_datetime(date_breaks = "3 months") +
+    ylim(0, 150))
 
 (gb_dosat_plotly <- ggplotly(gb_dosat_fig))
 
@@ -192,13 +195,13 @@ tahoe_h <- tahoe_15_full %>%
     plot_annotation(tag_levels = "A") +
     plot_layout(nrow = 2))
 
-# ggsave("figures/GB_DOsat_compiled_110322.png",
+# ggsave("figures/GB_DOsat_compiled_110822.png",
 #        width = 40,
 #        height = 30,
 #        units = "cm")
 
 # Export plotly plots for further exploration.
-# saveWidget(as_widget(gb_dosat_plotly_ns), "plotly/GB_3m_DOsat_110322.html")
-# saveWidget(as_widget(gb_dosat_plotly), "plotly/GB_to20m_DOsat_110322.html")
+# saveWidget(as_widget(gb_dosat_plotly_ns), "plotly/GB_3m_DOsat_110822.html")
+# saveWidget(as_widget(gb_dosat_plotly), "plotly/GB_to20m_DOsat_110822.html")
 
 # End of script.
