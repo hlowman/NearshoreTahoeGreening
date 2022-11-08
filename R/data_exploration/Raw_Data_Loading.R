@@ -8,11 +8,15 @@
 # NOTE - any plotly plots need to be prevented from being uploaded
 # to GitHub because they are enormous.
 
+# NOTE - filename of raw data includes the UTC timestamp when data collection
+# began. For example, "2022-07-13 222200Z.txt" has a first measurement on July
+# 13, 2022 at 22:22:00 UTC. So, need to convert accordingly.
+
 # ----------------------------------README-------------------------------------
 # Future to-do list:
 # (1) Check wiper data in April/May 2022 for GB NS1 & NS2 (re: fouling).
 # (2) Check to see what's going on at BW15 in the late summer/early fall.
-# (3) Check time zones for DO and barometric data.
+# (3) Check time zones for barometric data.
 
 #### Setup ####
 
@@ -76,13 +80,16 @@ tbl_with_sources20b <- list.files(path = here("data_raw/BuoyDownloads/GB20m/Bent
   map_df(~read_csv(., skip = 3, col_names = mylist))
 
 # Convert 24 character to full date/time
-tbl_with_sources20b$date_time <- as_datetime(tbl_with_sources20b$Time_Sec)
+tbl_with_sources20b$date_timeUTC <- as_datetime(tbl_with_sources20b$Time_Sec)
+
+# And convert to PST.
+tbl_with_sources20b$date_timePST <- with_tz(tbl_with_sources20b$date_timeUTC, tzone = "America/Los_Angeles")
 
 # Trim and export data.
 gb20b <- tbl_with_sources20b %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 
-write_csv(gb20b, "data_working/GB20m_benthic_compiled_102622.csv")
+write_csv(gb20b, "data_working/GB20m_benthic_compiled_110822.csv")
 
 ###### Pelagic #####
 
@@ -97,30 +104,33 @@ tbl_with_sources <- list.files(path = here("data_raw/BuoyDownloads/GB15m/7450-68
   map_df(~read_plus_date(.))
 
 # Convert 24 character to full date/time
-tbl_with_sources$date_time <- as_datetime(tbl_with_sources$Time_Sec)
+tbl_with_sources$date_timeUTC <- as_datetime(tbl_with_sources$Time_Sec)
+
+# And convert to PST.
+tbl_with_sources$date_timePST <- with_tz(tbl_with_sources$date_timeUTC, tzone = "America/Los_Angeles")
 
 # GAH so I didn't even need the above lines re: folder/filenames. *sigh*
 
 # Quick plot just before I move on
 
-(ggplot(tbl_with_sources, aes(x = date_time, y = DO_mgL)) +
+(ggplot(tbl_with_sources, aes(x = date_timePST, y = DO_mgL)) +
     geom_line() +
     labs(x = "Date", y = "DO (mg/L)") +
     theme_bw())
 
-(ggplot(tbl_with_sources, aes(x = date_time, y = Temp_C)) +
+(ggplot(tbl_with_sources, aes(x = date_timePST, y = Temp_C)) +
     geom_line() +
     labs(x = "Date", y = "Temperature (C)") +
     theme_bw())
 
 # Trim and export data.
 gb15 <- tbl_with_sources %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 
-#write_csv(gb15, "data_working/GB15m_compiled_092622.csv")
+write_csv(gb15, "data_working/GB15m_compiled_110822.csv")
 
 # load in for additional compilation
-gb15 <- read_csv("data_working/GB15m_compiled_092622.csv")
+#gb15 <- read_csv("data_working/GB15m_compiled_092622.csv")
 
 ###### Oct 2022 Update #####
 # So, the compilation above went through April, so I need to compile both July
@@ -138,21 +148,25 @@ tbl_with_sources15_oct <- list.files(path = here("data_raw/BuoyDownloads/GB15m/2
   map_df(~read_csv(., skip = 3, col_names = mylist))
 
 # Convert 24 character to full date/time
-tbl_with_sources15_july$date_time <- as_datetime(tbl_with_sources15_july$Time_Sec)
-tbl_with_sources15_oct$date_time <- as_datetime(tbl_with_sources15_oct$Time_Sec)
+tbl_with_sources15_july$date_timeUTC <- as_datetime(tbl_with_sources15_july$Time_Sec)
+tbl_with_sources15_oct$date_timeUTC <- as_datetime(tbl_with_sources15_oct$Time_Sec)
+
+# And convert to PST.
+tbl_with_sources15_july$date_timePST <- with_tz(tbl_with_sources15_july$date_timeUTC, tzone = "America/Los_Angeles")
+tbl_with_sources15_oct$date_timePST <- with_tz(tbl_with_sources15_oct$date_timeUTC, tzone = "America/Los_Angeles")
 
 # Trim, join, and export data.
 gb15_july <- tbl_with_sources15_july %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 gb15_oct <- tbl_with_sources15_oct %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 gb15_1022 <- rbind(gb15_july, gb15_oct)
 gb15_all <- rbind(gb15, gb15_1022)
 
-write_csv(gb15_all, "data_working/GB15m_compiled_102622.csv")
+write_csv(gb15_all, "data_working/GB15m_compiled_110822.csv")
 
 # Quick plot to see if all the data is there.
-plot(gb15_all$date_time, gb15_all$Temp_C) # Yep! :)
+plot(gb15_all$date_timePST, gb15_all$Temp_C) # Yep! :)
 
 ##### GB10m ####
 
@@ -163,15 +177,18 @@ tbl_with_sources10 <- list.files(path = here("data_raw/BuoyDownloads/GB10m/20220
   map_df(~read_csv(., skip = 3, col_names = mylist))
 
 # Convert 24 character to full date/time
-tbl_with_sources10$date_time <- as_datetime(tbl_with_sources10$Time_Sec)
+tbl_with_sources10$date_timeUTC <- as_datetime(tbl_with_sources10$Time_Sec)
+
+# And convert to PST.
+tbl_with_sources10$date_timePST <- with_tz(tbl_with_sources10$date_timeUTC, tzone = "America/Los_Angeles")
 
 # Trim and export data.
 gb10 <- tbl_with_sources10 %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 
-#write_csv(gb10, "data_working/GB10m_compiled_092622.csv")
+write_csv(gb10, "data_working/GB10m_compiled_110822.csv")
 # load in for additional compilation
-gb10 <- read_csv("data_working/GB10m_compiled_092622.csv")
+#gb10 <- read_csv("data_working/GB10m_compiled_092622.csv")
 
 ###### Oct 2022 Update #####
 # So, the compilation above went through April, so I need to compile both July
@@ -189,21 +206,25 @@ tbl_with_sources10_oct <- list.files(path = here("data_raw/BuoyDownloads/GB10m/2
   map_df(~read_csv(., skip = 3, col_names = mylist))
 
 # Convert 24 character to full date/time
-tbl_with_sources10_july$date_time <- as_datetime(tbl_with_sources10_july$Time_Sec)
-tbl_with_sources10_oct$date_time <- as_datetime(tbl_with_sources10_oct$Time_Sec)
+tbl_with_sources10_july$date_timeUTC <- as_datetime(tbl_with_sources10_july$Time_Sec)
+tbl_with_sources10_oct$date_timeUTC <- as_datetime(tbl_with_sources10_oct$Time_Sec)
+
+# And convert to PST.
+tbl_with_sources10_july$date_timePST <- with_tz(tbl_with_sources10_july$date_timeUTC, tzone = "America/Los_Angeles")
+tbl_with_sources10_oct$date_timePST <- with_tz(tbl_with_sources10_oct$date_timeUTC, tzone = "America/Los_Angeles")
 
 # Trim, join, and export data.
 gb10_july <- tbl_with_sources10_july %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 gb10_oct <- tbl_with_sources10_oct %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 gb10_1022 <- rbind(gb10_july, gb10_oct)
 gb10_all <- rbind(gb10, gb10_1022)
 
-write_csv(gb10_all, "data_working/GB10m_compiled_102622.csv")
+write_csv(gb10_all, "data_working/GB10m_compiled_110822.csv")
 
 # Quick plot to see if all the data is there.
-plot(gb10_all$date_time, gb10_all$Temp_C) # Yep! :)
+plot(gb10_all$date_timePST, gb10_all$Temp_C) # Yep! :)
 
 ##### GB3m ####
 
@@ -216,15 +237,18 @@ tbl_with_sources3 <- list.files(path = here("data_raw/BuoyDownloads/GBNS2/202205
   map_df(~read_csv(., skip = 3, col_names = mylist))
 
 # Convert 24 character to full date/time
-tbl_with_sources3$date_time <- as_datetime(tbl_with_sources3$Time_Sec)
+tbl_with_sources3$date_timeUTC <- as_datetime(tbl_with_sources3$Time_Sec)
+
+# And convert to PST.
+tbl_with_sources3$date_timePST <- with_tz(tbl_with_sources3$date_timeUTC, tzone = "America/Los_Angeles")
 
 # Trim and export data.
 gb3 <- tbl_with_sources3 %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 
-#write_csv(gb3, "data_working/GBNS2_compiled_092622.csv")
+write_csv(gb3, "data_working/GBNS2_compiled_110822.csv")
 # load in for compilation with other 3m sites
-gbNS2 <- read_csv("data_working/GBNS2_compiled_092622.csv")
+# gbNS2 <- read_csv("data_working/GBNS2_compiled_092622.csv")
 
 ####### Oct 2022 Update ######
 # Load in files from the GBNS2 October directory
@@ -234,20 +258,24 @@ tbl_with_sources3_oct <- list.files(path = here("data_raw/BuoyDownloads/GBNS2/20
   map_df(~read_csv(., skip = 3, col_names = mylist))
 
 # Convert 24 character to full date/time
-tbl_with_sources3_oct$date_time <- as_datetime(tbl_with_sources3_oct$Time_Sec)
+tbl_with_sources3_oct$date_timeUTC <- as_datetime(tbl_with_sources3_oct$Time_Sec)
+
+# And convert to PST.
+tbl_with_sources3_oct$date_timePST <- with_tz(tbl_with_sources3_oct$date_timeUTC, tzone = "America/Los_Angeles")
 
 # Trim, join, and export data.
 gb3_oct <- tbl_with_sources3_oct %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
+#gbNS2 <- gb3
 gbNS2_all <- rbind(gbNS2, gb3_oct)
 
-#write_csv(gbNS2_all, "data_working/GBNS2_compiled_102622.csv")
+write_csv(gbNS2_all, "data_working/GBNS2_compiled_110822.csv")
 
 # Quick plot to see if all the data is there.
-plot(gbNS2_all$date_time, gbNS2_all$Temp_C) # Yep! :)
+plot(gbNS2_all$date_timePST, gbNS2_all$Temp_C) # Yep! :)
 
 # Load in previous data to add Oct 2021 data in.
-gbNS2_all <- read_csv("data_working/GBNS2_compiled_102622.csv")
+#gbNS2_all <- read_csv("data_working/GBNS2_compiled_102622.csv")
 
 # Load in files from the GBNS2 October directory
 tbl_with_sources3_2021 <- list.files(path = here("data_raw/BuoyDownloads/GBNS2/20211001/7450-265933"),
@@ -256,14 +284,17 @@ tbl_with_sources3_2021 <- list.files(path = here("data_raw/BuoyDownloads/GBNS2/2
   map_df(~read_csv(., skip = 3, col_names = mylist))
 
 # Convert 24 character to full date/time
-tbl_with_sources3_2021$date_time <- as_datetime(tbl_with_sources3_2021$Time_Sec)
+tbl_with_sources3_2021$date_timeUTC <- as_datetime(tbl_with_sources3_2021$Time_Sec)
+
+# And convert to PST.
+tbl_with_sources3_2021$date_timePST <- with_tz(tbl_with_sources3_2021$date_timeUTC, tzone = "America/Los_Angeles")
 
 # Trim, join, and export data.
 gb3_2021 <- tbl_with_sources3_2021 %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 gbNS2_rev <- rbind(gb3_2021, gbNS2_all)
 
-write_csv(gbNS2_rev, "data_working/GBNS2_compiled_110322.csv")
+write_csv(gbNS2_rev, "data_working/GBNS2_compiled_110822.csv")
 
 # Now, need to load in remaining shallow sites, because wasn't done in Sept.
 
@@ -281,20 +312,24 @@ tbl_with_sources3a_oct <- list.files(path = here("data_raw/BuoyDownloads/GBNS1/2
   map_df(~read_csv(., skip = 3, col_names = mylist))
 
 # Convert 24 character to full date/time
-tbl_with_sources3a_may$date_time <- as_datetime(tbl_with_sources3a_may$Time_Sec)
-tbl_with_sources3a_oct$date_time <- as_datetime(tbl_with_sources3a_oct$Time_Sec)
+tbl_with_sources3a_may$date_timeUTC <- as_datetime(tbl_with_sources3a_may$Time_Sec)
+tbl_with_sources3a_oct$date_timeUTC <- as_datetime(tbl_with_sources3a_oct$Time_Sec)
+
+# And convert to PST.
+tbl_with_sources3a_may$date_timePST <- with_tz(tbl_with_sources3a_may$date_timeUTC, tzone = "America/Los_Angeles")
+tbl_with_sources3a_oct$date_timePST <- with_tz(tbl_with_sources3a_oct$date_timeUTC, tzone = "America/Los_Angeles")
 
 # Trim, join, and export data.
 gb3a_may <- tbl_with_sources3a_may %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 gb3a_oct <- tbl_with_sources3a_oct %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 gbNS1_all <- rbind(gb3a_may, gb3a_oct)
 
-write_csv(gbNS1_all, "data_working/GBNS1_compiled_102622.csv")
+write_csv(gbNS1_all, "data_working/GBNS1_compiled_110822.csv")
 
 # Quick plot to see if all the data is there.
-plot(gbNS1_all$date_time, gbNS1_all$Temp_C) # Yep! :)
+plot(gbNS1_all$date_timePST, gbNS1_all$Temp_C) # Yep! :)
 
 ###### NS3 #####
 
@@ -315,24 +350,29 @@ tbl_with_sources3c_oct <- list.files(path = here("data_raw/BuoyDownloads/GBNS3/2
   map_df(~read_csv(., skip = 3, col_names = mylist))
 
 # Convert 24 character to full date/time
-tbl_with_sources3c_21$date_time <- as_datetime(tbl_with_sources3c_21$Time_Sec)
-tbl_with_sources3c_july$date_time <- as_datetime(tbl_with_sources3c_july$Time_Sec)
-tbl_with_sources3c_oct$date_time <- as_datetime(tbl_with_sources3c_oct$Time_Sec)
+tbl_with_sources3c_21$date_timeUTC <- as_datetime(tbl_with_sources3c_21$Time_Sec)
+tbl_with_sources3c_july$date_timeUTC <- as_datetime(tbl_with_sources3c_july$Time_Sec)
+tbl_with_sources3c_oct$date_timeUTC <- as_datetime(tbl_with_sources3c_oct$Time_Sec)
+
+# And convert to PST.
+tbl_with_sources3c_21$date_timePST <- with_tz(tbl_with_sources3c_21$date_timeUTC, tzone = "America/Los_Angeles")
+tbl_with_sources3c_july$date_timePST <- with_tz(tbl_with_sources3c_july$date_timeUTC, tzone = "America/Los_Angeles")
+tbl_with_sources3c_oct$date_timePST <- with_tz(tbl_with_sources3c_oct$date_timeUTC, tzone = "America/Los_Angeles")
 
 # Trim, join, and export data.
 gb3c_21 <- tbl_with_sources3c_21 %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 gb3c_july <- tbl_with_sources3c_july %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 gb3c_oct <- tbl_with_sources3c_oct %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 gbNS3 <- rbind(gb3c_21, gb3c_july)
 gbNS3_all <- rbind(gbNS3, gb3c_oct)
 
-write_csv(gbNS3_all, "data_working/GBNS3_compiled_102622.csv")
+write_csv(gbNS3_all, "data_working/GBNS3_compiled_110822.csv")
 
 # Quick plot to see if all the data is there.
-plot(gbNS3_all$date_time, gbNS3_all$Temp_C) # Yep! :)
+plot(gbNS3_all$date_timePST, gbNS3_all$Temp_C) # Yep! :)
 
 ####Blackwood (BW)####
 
