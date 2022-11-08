@@ -874,6 +874,26 @@ tahoe_hourly <- tahoe_all %>%
   scale_x_datetime(date_breaks = "3 months") +
   ylim(0, 13))
 
+(bw_do_fig_ns_inset <- ggplot(tahoe_hourly %>% 
+                                filter(site == "Blackwood") %>%
+                                filter(depth == 3) %>%
+                                filter(hour >= as_datetime("2022-03-01 00:00:00") & hour < as_datetime("2022-03-07 00:00:00")),
+                              aes(x = hour, y = DO_mgL_mean)) +
+    geom_line(aes(color = factor(sensor))) +
+    scale_color_manual(values = c("#CECEB9", "#7AC9B7", "#6CA184")) +
+    labs(x = "Date",
+         y = "DO (mg/L)",
+         color = "Sensor Location",
+         title = "Blackwood Nearshore (3m) Sensors") +
+    theme_bw() +
+    scale_x_datetime(date_breaks = "1 day") +
+    ylim(0, 13))
+
+# ggsave("figures/BW_DO_inset_110822.png",
+#        width = 20,
+#        height = 15,
+#        units = "cm")
+
 (bw_do_plotly_ns <- ggplotly(bw_do_fig_ns))
 
 (bw_temp_fig_ns <- ggplot(tahoe_hourly %>% 
@@ -964,6 +984,31 @@ tahoe_hourly <- tahoe_all %>%
     theme_bw() +
     scale_x_datetime(date_breaks = "3 months") +
     ylim(0, 13))
+
+do_inset_data <- tahoe_hourly %>% 
+  filter(site == "Glenbrook") %>%
+  filter(depth == 3) %>%
+  filter(hour >= as_datetime("2021-07-20 00:00:00") & hour < as_datetime("2021-07-28 00:00:00"))
+
+(gb_do_fig_ns_inset <- ggplot(tahoe_hourly %>% 
+                          filter(site == "Glenbrook") %>%
+                          filter(depth == 3) %>%
+                          filter(hour >= as_datetime("2021-06-28 00:00:00") & hour < as_datetime("2021-07-05 00:00:00")),
+                        aes(x = hour, y = DO_mgL_mean)) +
+    geom_line(aes(color = factor(sensor))) +
+    scale_color_manual(values = c("#7AC9B7")) +
+    labs(x = "Date",
+         y = "DO (mg/L)",
+         color = "Sensor Location",
+         title = "Glenbrook Nearshore (3m) Sensors") +
+    theme_bw() +
+    scale_x_datetime(date_breaks = "1 day") +
+    ylim(0, 13))
+
+# ggsave("figures/GB_DO_inset_110822.png",
+#        width = 20,
+#        height = 15,
+#        units = "cm")
 
 (gb_temp_fig_ns <- ggplot(tahoe_hourly %>% 
                           filter(site == "Glenbrook") %>%
