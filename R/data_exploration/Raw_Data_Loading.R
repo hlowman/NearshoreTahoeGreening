@@ -392,16 +392,19 @@ tbl_with_sources20bw2 <- list.files(path = here("data_raw/BuoyDownloads/BW20m/20
 tbl_with_sources20bw <- rbind(tbl_with_sources20bw1, tbl_with_sources20bw2)
 
 # Convert 24 character to full date/time
-tbl_with_sources20bw$date_time <- as_datetime(tbl_with_sources20bw$Time_Sec)
+tbl_with_sources20bw$date_timeUTC <- as_datetime(tbl_with_sources20bw$Time_Sec)
+
+# And convert to PST.
+tbl_with_sources20bw$date_timePST <- with_tz(tbl_with_sources20bw$date_timeUTC, tzone = "America/Los_Angeles")
 
 # Trim and export data.
 bw20 <- tbl_with_sources20bw %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 
-#write_csv(bw20, "data_working/BW20m_compiled_092622.csv")
+write_csv(bw20, "data_working/BW20m_compiled_110822.csv")
 
 # load in for additional compilation
-bw20 <- read_csv("data_working/BW20m_compiled_092622.csv")
+#bw20 <- read_csv("data_working/BW20m_compiled_092622.csv")
 
 ###### Oct 2022 Update #####
 
@@ -414,21 +417,22 @@ tbl_with_sources20bwb <- list.files(path = here("data_raw/BuoyDownloads/BW20m/Be
   map_df(~read_csv(., skip = 3, col_names = mylist))
 
 # Convert 24 character to full date/time
-tbl_with_sources20bwb$date_time <- as_datetime(tbl_with_sources20bwb$Time_Sec)
+tbl_with_sources20bwb$date_timeUTC <- as_datetime(tbl_with_sources20bwb$Time_Sec)
+
+# And convert to PST.
+tbl_with_sources20bwb$date_timePST <- with_tz(tbl_with_sources20bwb$date_timeUTC, tzone = "America/Los_Angeles")
 
 # Trim and export data.
 bw20b <- tbl_with_sources20bwb %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
-
-write_csv(bw20b, "data_working/BW20m_benthic_compiled_102622.csv")
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 
 # Join with data above to create longer benthic record.
 bw20b_rev <- rbind(bw20, bw20b)
 
-write_csv(bw20b_rev, "data_working/BW20m_benthic_compiled_110322.csv")
+write_csv(bw20b_rev, "data_working/BW20m_benthic_compiled_110822.csv")
 
 # Quick plot to see if all the data is there.
-plot(bw20b_rev$date_time, bw20b_rev$Temp_C) # Yep! :)
+plot(bw20b_rev$date_timePST, bw20b_rev$Temp_C) # Yep! :)
 
 ###### Pelagic #####
 
@@ -439,16 +443,19 @@ tbl_with_sources20bwp <- list.files(path = here("data_raw/BuoyDownloads/BW20m/Pe
   map_df(~read_csv(., skip = 3, col_names = mylist))
 
 # Convert 24 character to full date/time
-tbl_with_sources20bwp$date_time <- as_datetime(tbl_with_sources20bwp$Time_Sec)
+tbl_with_sources20bwp$date_timeUTC <- as_datetime(tbl_with_sources20bwp$Time_Sec)
+
+# And convert to PST.
+tbl_with_sources20bwp$date_timePST <- with_tz(tbl_with_sources20bwp$date_timeUTC, tzone = "America/Los_Angeles")
 
 # Trim and export data.
 bw20p <- tbl_with_sources20bwp %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 
-write_csv(bw20p, "data_working/BW20m_pelagic_compiled_102622.csv")
+write_csv(bw20p, "data_working/BW20m_pelagic_compiled_110822.csv")
 
 # Quick plot to see if all the data is there.
-plot(bw20p$date_time, bw20p$Temp_C) # Yep! :)
+plot(bw20p$date_timePST, bw20p$Temp_C) # Yep! :)
 
 ##### BW15m ####
 
@@ -459,16 +466,19 @@ tbl_with_sources15bw <- list.files(path = here("data_raw/BuoyDownloads/BW15m/202
   map_df(~read_csv(., skip = 3, col_names = mylist))
 
 # Convert 24 character to full date/time
-tbl_with_sources15bw$date_time <- as_datetime(tbl_with_sources15bw$Time_Sec)
+tbl_with_sources15bw$date_timeUTC <- as_datetime(tbl_with_sources15bw$Time_Sec)
+
+# And convert to PST.
+tbl_with_sources15bw$date_timePST <- with_tz(tbl_with_sources15bw$date_timeUTC, tzone = "America/Los_Angeles")
 
 # Trim and export data.
 bw15 <- tbl_with_sources15bw %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 
-#write_csv(bw15, "data_working/BW15m_compiled_092622.csv")
+write_csv(bw15, "data_working/BW15m_compiled_110822.csv")
 
 # load in file for additional compilation
-bw15 <- read_csv("data_working/BW15m_compiled_092622.csv")
+#bw15 <- read_csv("data_working/BW15m_compiled_092622.csv")
 
 ###### Oct 2022 Update ####
 
@@ -479,17 +489,20 @@ tbl_with_sources15bw_oct <- list.files(path = here("data_raw/BuoyDownloads/BW15m
   map_df(~read_csv(., skip = 3, col_names = mylist))
 
 # Convert 24 character to full date/time
-tbl_with_sources15bw_oct$date_time <- as_datetime(tbl_with_sources15bw_oct$Time_Sec)
+tbl_with_sources15bw_oct$date_timeUTC <- as_datetime(tbl_with_sources15bw_oct$Time_Sec)
+
+# And convert to PST.
+tbl_with_sources15bw_oct$date_timePST <- with_tz(tbl_with_sources15bw_oct$date_timeUTC, tzone = "America/Los_Angeles")
 
 # Trim, join, and export data.
 bw15_oct <- tbl_with_sources15bw_oct %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 bw15_full <- rbind(bw15, bw15_oct)
 
-write_csv(bw15_full, "data_working/BW15m_compiled_102622.csv")
+write_csv(bw15_full, "data_working/BW15m_compiled_110822.csv")
 
 # Quick plot to see if all the data is there.
-plot(bw15_full$date_time, bw15_full$Temp_C) # Yep! :)
+plot(bw15_full$date_timePST, bw15_full$Temp_C) # Yep! :)
 
 ##### BW10m ####
 
@@ -500,15 +513,18 @@ tbl_with_sources10bw <- list.files(path = here("data_raw/BuoyDownloads/BW10m/202
   map_df(~read_csv(., skip = 3, col_names = mylist))
 
 # Convert 24 character to full date/time
-tbl_with_sources10bw$date_time <- as_datetime(tbl_with_sources10bw$Time_Sec)
+tbl_with_sources10bw$date_timeUTC <- as_datetime(tbl_with_sources10bw$Time_Sec)
+
+# And convert to PST.
+tbl_with_sources10bw$date_timePST <- with_tz(tbl_with_sources10bw$date_timeUTC, tzone = "America/Los_Angeles")
 
 # Trim and export data.
 bw10 <- tbl_with_sources10bw %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 
-#write_csv(bw10, "data_working/BW10m_compiled_092622.csv")
+write_csv(bw10, "data_working/BW10m_compiled_110822.csv")
 # load in file for additional compilation
-bw10 <- read_csv("data_working/BW10m_compiled_092622.csv")
+#bw10 <- read_csv("data_working/BW10m_compiled_092622.csv")
 
 ###### Oct 2022 Update ####
 
@@ -519,17 +535,20 @@ tbl_with_sources10bw_oct <- list.files(path = here("data_raw/BuoyDownloads/BW10m
   map_df(~read_csv(., skip = 3, col_names = mylist))
 
 # Convert 24 character to full date/time
-tbl_with_sources10bw_oct$date_time <- as_datetime(tbl_with_sources10bw_oct$Time_Sec)
+tbl_with_sources10bw_oct$date_timeUTC <- as_datetime(tbl_with_sources10bw_oct$Time_Sec)
+
+# And convert to PST.
+tbl_with_sources10bw_oct$date_timePST <- with_tz(tbl_with_sources10bw_oct$date_timeUTC, tzone = "America/Los_Angeles")
 
 # Trim, join, and export data.
 bw10_oct <- tbl_with_sources10bw_oct %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 bw10_full <- rbind(bw10, bw10_oct)
 
-write_csv(bw10_full, "data_working/BW10m_compiled_102622.csv")
+write_csv(bw10_full, "data_working/BW10m_compiled_110822.csv")
 
 # Quick plot to see if all the data is there.
-plot(bw10_full$date_time, bw10_full$Temp_C) # Yep! :)
+plot(bw10_full$date_timePST, bw10_full$Temp_C) # Yep! :)
 
 ##### BW3m ####
 
@@ -542,18 +561,21 @@ tbl_with_sources3bw <- list.files(path = here("data_raw/BuoyDownloads/BWNS2/2022
   map_df(~read_csv(., skip = 3, col_names = mylist))
 
 # Convert 24 character to full date/time
-tbl_with_sources3bw$date_time <- as_datetime(tbl_with_sources3bw$Time_Sec)
+tbl_with_sources3bw$date_timeUTC <- as_datetime(tbl_with_sources3bw$Time_Sec)
+
+# And convert to PST.
+tbl_with_sources3bw$date_timePST <- with_tz(tbl_with_sources3bw$date_timeUTC, tzone = "America/Los_Angeles")
 
 # Trim and export data.
 bw3 <- tbl_with_sources3bw %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 
-#write_csv(bw3, "data_working/BWNS2_compiled_092622.csv")
+write_csv(bw3, "data_working/BWNS2_compiled_110822.csv")
 # load data for additional compilation
-bw3 <- read_csv("data_working/BWNS2_compiled_092622.csv")
+#bw3 <- read_csv("data_working/BWNS2_compiled_092622.csv")
 
 # Quick plot to see if all the data is there.
-plot(bw3$date_time, bw3$Temp_C) # Yep! :)
+plot(bw3$date_timePST, bw3$Temp_C) # Yep! :)
 
 ####### Oct 2022 Update ######
 
@@ -573,20 +595,24 @@ tbl_with_sources3bwa_oct <- list.files(path = here("data_raw/BuoyDownloads/BWNS1
   map_df(~read_csv(., skip = 3, col_names = mylist))
 
 # Convert 24 character to full date/time
-tbl_with_sources3bwa_may$date_time <- as_datetime(tbl_with_sources3bwa_may$Time_Sec)
-tbl_with_sources3bwa_oct$date_time <- as_datetime(tbl_with_sources3bwa_oct$Time_Sec)
+tbl_with_sources3bwa_may$date_timeUTC <- as_datetime(tbl_with_sources3bwa_may$Time_Sec)
+tbl_with_sources3bwa_oct$date_timeUTC <- as_datetime(tbl_with_sources3bwa_oct$Time_Sec)
+
+# And convert to PST.
+tbl_with_sources3bwa_may$date_timePST <- with_tz(tbl_with_sources3bwa_may$date_timeUTC, tzone = "America/Los_Angeles")
+tbl_with_sources3bwa_oct$date_timePST <- with_tz(tbl_with_sources3bwa_oct$date_timeUTC, tzone = "America/Los_Angeles")
 
 # Trim, join, and export data.
 bw3a_may <- tbl_with_sources3bwa_may %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 bw3a_oct <- tbl_with_sources3bwa_oct %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 bwNS1_all <- rbind(bw3a_may, bw3a_oct)
 
-write_csv(bwNS1_all, "data_working/BWNS1_compiled_102622.csv")
+write_csv(bwNS1_all, "data_working/BWNS1_compiled_110822.csv")
 
 # Quick plot to see if all the data is there.
-plot(bwNS1_all$date_time, bwNS1_all$Temp_C) # Yep! :)
+plot(bwNS1_all$date_timePST, bwNS1_all$Temp_C) # Yep! :)
 
 ###### NS3 ######
 
@@ -602,63 +628,69 @@ tbl_with_sources3bwc_oct <- list.files(path = here("data_raw/BuoyDownloads/BWNS3
   map_df(~read_csv(., skip = 3, col_names = mylist))
 
 # Convert 24 character to full date/time
-tbl_with_sources3bwc_may$date_time <- as_datetime(tbl_with_sources3bwc_may$Time_Sec)
-tbl_with_sources3bwc_oct$date_time <- as_datetime(tbl_with_sources3bwc_oct$Time_Sec)
+tbl_with_sources3bwc_may$date_timeUTC <- as_datetime(tbl_with_sources3bwc_may$Time_Sec)
+tbl_with_sources3bwc_oct$date_timeUTC <- as_datetime(tbl_with_sources3bwc_oct$Time_Sec)
+
+# And convert to PST.
+tbl_with_sources3bwc_may$date_timePST <- with_tz(tbl_with_sources3bwc_may$date_timeUTC, tzone = "America/Los_Angeles")
+tbl_with_sources3bwc_oct$date_timePST <- with_tz(tbl_with_sources3bwc_oct$date_timeUTC, tzone = "America/Los_Angeles")
 
 # Trim, join, and export data.
 bw3c_may <- tbl_with_sources3bwc_may %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 bw3c_oct <- tbl_with_sources3bwc_oct %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q)
 bwNS3_all <- rbind(bw3c_may, bw3c_oct)
 
-write_csv(bwNS3_all, "data_working/BWNS3_compiled_102622.csv")
+write_csv(bwNS3_all, "data_working/BWNS3_compiled_110822.csv")
 
 # Quick plot to see if all the data is there.
-plot(bwNS3_all$date_time, bwNS3_all$Temp_C) # Yep! :)
+plot(bwNS3_all$date_timePST, bwNS3_all$Temp_C) # Yep! :)
 
 #### Trim and Join Sensor Data ####
 
 # Trim values indicative of deployment and retrieval.
 
 # Glenbrook sites
-plot(gb20b$date_time, gb20b$DO_mgL) # just need to trim for deployment
+plot(gb20b$date_timePST, gb20b$DO_mgL) # just need to trim for deployment
 gb20t <- gb20b %>%
-  filter(date_time >= as_datetime("2022-07-15 00:00:00")) # trimming off first day
-plot(gb20t$date_time, gb20t$DO_mgL)
+  filter(date_timePST >= as_datetime("2022-07-15 00:00:00")) # trimming off first day
+plot(gb20t$date_timePST, gb20t$DO_mgL)
 
-plot(gb15_all$date_time, gb15_all$DO_mgL) # just need to trim for deployment
+plot(gb15_all$date_timePST, gb15_all$DO_mgL) # trim a few dates
 gb15t <- gb15_all %>%
-  filter(date_time >= as_datetime("2021-10-30 00:00:00")) %>% # trimming off first day
-  filter(date_time < as_datetime("2022-04-27 00:00:00") |
-           date_time >= as_datetime("2022-04-29 00:00:00")) # And trimming may retrieval date 4/27-4/28.
-plot(gb15t$date_time, gb15t$DO_mgL)
+  filter(date_timePST >= as_datetime("2021-10-30 00:00:00")) %>% # trimming off first day
+  filter(date_timePST < as_datetime("2022-04-27 00:00:00") |
+           date_timePST >= as_datetime("2022-04-29 00:00:00")) # And trimming may retrieval date 4/27-4/28.
+plot(gb15t$date_timePST, gb15t$DO_mgL)
 
-plot(gb10_all$date_time, gb10_all$DO_mgL) # just need to trim same dates
+plot(gb10_all$date_timePST, gb10_all$DO_mgL) # trim 2 dates
 gb10t <- gb10_all %>%
-  filter(date_time >= as_datetime("2021-10-30 00:00:00")) %>% # trimming off first day
-  filter(date_time < as_datetime("2022-04-27 00:00:00") |
-           date_time >= as_datetime("2022-04-29 00:00:00")) # And trimming may retrieval date 4/27-4/28.
-plot(gb10t$date_time, gb10t$DO_mgL)
+  filter(date_timePST >= as_datetime("2021-10-30 00:00:00")) %>% # trimming off first day
+  filter(date_timePST < as_datetime("2022-04-27 00:00:00") |
+           date_timePST >= as_datetime("2022-04-29 00:00:00")) # And trimming may retrieval date 4/27-4/28.
+plot(gb10t$date_timePST, gb10t$DO_mgL)
 
-plot(gbNS2_rev$date_time, gbNS2_rev$DO_mgL) # need to trim anoxic period
+plot(gbNS2_rev$date_timePST, gbNS2_rev$DO_mgL) # trim anoxia
 gbNS2t <- gbNS2_rev %>%
-  filter(date_time >= as_datetime("2021-06-12 00:00:00")) %>% # trimming off first day
-  filter(date_time < as_datetime("2022-04-17 00:00:00") |
-           date_time >= as_datetime("2022-05-06 00:00:00")) # And trimming april fouling
-plot(gbNS2t$date_time, gbNS2t$DO_mgL)
+  filter(date_timePST >= as_datetime("2021-06-12 00:00:00")) %>% # trimming off first day
+  filter(date_timePST < as_datetime("2022-04-17 00:00:00") |
+           date_timePST >= as_datetime("2022-05-06 00:00:00")) # And trimming april fouling
+plot(gbNS2t$date_timePST, gbNS2t$DO_mgL)
 
-plot(gbNS1_all$date_time, gbNS1_all$DO_mgL) # need to trim similar dates
+plot(gbNS1_all$date_timePST, gbNS1_all$DO_mgL) # trim same days
 gbNS1t <- gbNS1_all %>%
-  filter(date_time >= as_datetime("2021-10-03 00:00:00")) %>% # trimming off first day
-  filter(date_time < as_datetime("2022-04-17 00:00:00") |
-           date_time >= as_datetime("2022-05-06 00:00:00")) # And trimming april fouling
-plot(gbNS1t$date_time, gbNS1t$DO_mgL)
+  filter(date_timePST >= as_datetime("2021-10-03 00:00:00")) %>% # trimming off first day
+  filter(date_timePST < as_datetime("2022-04-17 00:00:00") |
+           date_timePST >= as_datetime("2022-05-06 00:00:00")) # And trimming april fouling
+# Note- this is a tricky one. May need to come back and revise
+# this trim job.
+plot(gbNS1t$date_timePST, gbNS1t$DO_mgL)
 
-plot(gbNS3_all$date_time, gbNS3_all$DO_mgL) # need to trim similar dates
+plot(gbNS3_all$date_timePST, gbNS3_all$DO_mgL) # need to trim similar dates
 gbNS3t <- gbNS3_all %>%
-  filter(date_time >= as_datetime("2021-10-03 00:00:00")) # trimming first day
-plot(gbNS3t$date_time, gbNS3t$DO_mgL)
+  filter(date_timePST >= as_datetime("2021-10-03 00:00:00")) # trimming first day
+plot(gbNS3t$date_timePST, gbNS3t$DO_mgL)
 
 # Add a column to demarcate sensor ID.
 gbNS3t$sensor <- "NS3"
@@ -691,80 +723,80 @@ gb_all$location <- "Benthic"
 
 # And re-order so the columns bind nicely below.
 gb_all <- gb_all %>%
-  select(date_time, BV_Volts, Temp_C, DO_mgL, Q, sensor, depth, location, site)
+  select(date_timePST, BV_Volts, Temp_C, DO_mgL, Q, sensor, depth, location, site)
 
 # Export to save progress.
-saveRDS(gb_all, "data_working/GB_compiled_trimmed_110322.rds")
+saveRDS(gb_all, "data_working/GB_compiled_trimmed_110822.rds")
 
 # Trim values indicative of deployment and retrieval.
 
 # Blackwood sites
-plot(bw20b_rev$date_time, bw20b_rev$DO_mgL) # need to trim a few places
+plot(bw20b_rev$date_timePST, bw20b_rev$DO_mgL) # need to trim a few places
 bw20bt <- bw20b_rev %>%
-  filter(date_time >= as_datetime("2021-10-30 00:00:00")) %>% # trimming off first day
-  filter(date_time < as_datetime("2022-03-24 00:00:00") |
-           date_time >= as_datetime("2022-03-25 00:00:00")) %>% # trimming next retrieval date
+  filter(date_timePST >= as_datetime("2021-10-30 00:00:00")) %>% # trimming off first day
+  filter(date_timePST < as_datetime("2022-03-24 00:00:00") |
+           date_timePST >= as_datetime("2022-03-25 00:00:00")) %>% # trimming next retrieval date
   # and trimming remaining max/min days
-  filter(date_time < as_datetime("2022-07-09 00:00:00") |
-           date_time >= as_datetime("2022-07-10 00:00:00")) %>%
-  filter(date_time < as_datetime("2022-09-05 00:00:00") |
-           date_time >= as_datetime("2022-09-06 00:00:00")) %>%
-  filter(date_time < as_datetime("2022-10-13 00:00:00") |
-           date_time >= as_datetime("2022-10-14 00:00:00"))
-plot(bw20bt$date_time, bw20bt$DO_mgL)
+  filter(date_timePST < as_datetime("2022-07-09 00:00:00") |
+           date_timePST >= as_datetime("2022-07-10 00:00:00")) %>%
+  filter(date_timePST < as_datetime("2022-09-05 00:00:00") |
+           date_timePST >= as_datetime("2022-09-06 00:00:00")) %>%
+  filter(date_timePST < as_datetime("2022-10-13 00:00:00") |
+           date_timePST >= as_datetime("2022-10-14 00:00:00"))
+plot(bw20bt$date_timePST, bw20bt$DO_mgL)
 
-plot(bw20p$date_time, bw20p$DO_mgL) # need to trim a few places
+plot(bw20p$date_timePST, bw20p$DO_mgL) # trim a few places
 bw20pt <- bw20p %>%
-  filter(date_time >= as_datetime("2022-07-17 00:00:00")) %>% # trimming off first day
+  filter(date_timePST >= as_datetime("2022-07-17 00:00:00")) %>% # trimming off first day
   # and trimming remaining max/min days
-  filter(date_time < as_datetime("2022-08-31 00:00:00") |
-           date_time >= as_datetime("2022-09-02 00:00:00")) %>%
-  filter(date_time < as_datetime("2022-09-24 00:00:00") |
-           date_time >= as_datetime("2022-09-25 00:00:00")) %>%
-  filter(date_time < as_datetime("2022-10-17 00:00:00"))
-plot(bw20pt$date_time, bw20pt$DO_mgL)
+  filter(date_timePST < as_datetime("2022-08-31 00:00:00") |
+           date_timePST >= as_datetime("2022-09-02 00:00:00")) %>%
+  filter(date_timePST < as_datetime("2022-09-24 00:00:00") |
+           date_timePST >= as_datetime("2022-09-25 00:00:00")) %>%
+  filter(date_timePST < as_datetime("2022-10-17 00:00:00"))
+plot(bw20pt$date_timePST, bw20pt$DO_mgL)
 
-plot(bw15_full$date_time, bw15_full$DO_mgL) # need to trim a few places
+plot(bw15_full$date_timePST, bw15_full$DO_mgL) # need to trim a few places
 bw15t <- bw15_full %>%
-  filter(date_time >= as_datetime("2022-03-25 00:00:00")) %>% # trimming off first day
+  filter(date_timePST >= as_datetime("2022-03-25 00:00:00")) %>% # trimming off first day
   # and trimming remaining max/min days
-  filter(date_time < as_datetime("2022-06-29 00:00:00") |
-           date_time >= as_datetime("2022-06-30 00:00:00")) %>%
-  filter(date_time < as_datetime("2022-07-09 00:00:00") |
-           date_time >= as_datetime("2022-07-10 00:00:00")) %>%
-  filter(date_time < as_datetime("2022-10-10 00:00:00"))
-plot(bw15t$date_time, bw15t$DO_mgL)
+  filter(date_timePST < as_datetime("2022-06-29 00:00:00") |
+           date_timePST >= as_datetime("2022-06-30 00:00:00")) %>%
+  filter(date_timePST < as_datetime("2022-07-09 00:00:00") |
+           date_timePST >= as_datetime("2022-07-10 00:00:00")) %>%
+  filter(date_timePST < as_datetime("2022-10-10 00:00:00"))
+plot(bw15t$date_timePST, bw15t$DO_mgL)
 
-plot(bw10_full$date_time, bw10_full$DO_mgL) # need to trim a few places
+plot(bw10_full$date_timePST, bw10_full$DO_mgL) # need to trim a few places
 bw10t <- bw10_full %>%
-  filter(date_time >= as_datetime("2022-03-25 00:00:00")) %>% # trimming off first day
+  filter(date_timePST >= as_datetime("2022-03-25 00:00:00")) %>% # trimming off first day
   # and trimming remaining max/min days
-  filter(date_time < as_datetime("2022-06-01 00:00:00") |
-           date_time >= as_datetime("2022-06-02 00:00:00"))
-plot(bw10t$date_time, bw10t$DO_mgL)
+  filter(date_timePST < as_datetime("2022-06-01 00:00:00") |
+           date_timePST >= as_datetime("2022-06-02 00:00:00"))
+plot(bw10t$date_timePST, bw10t$DO_mgL)
 
-plot(bw3$date_time, bw3$DO_mgL) # need to trim a few places
+plot(bw3$date_timePST, bw3$DO_mgL) # need to trim a few places
 bwNS2t <- bw3 %>%
-  filter(date_time >= as_datetime("2021-10-17 00:00:00")) %>% # trimming off first day
+  filter(date_timePST >= as_datetime("2021-10-17 00:00:00")) %>% # trimming off first day
   # and trimming last day
-  filter(date_time < as_datetime("2022-05-24 00:00:00"))
-plot(bwNS2t$date_time, bwNS2t$DO_mgL)
+  filter(date_timePST < as_datetime("2022-05-24 00:00:00"))
+plot(bwNS2t$date_timePST, bwNS2t$DO_mgL)
 
-plot(bwNS1_all$date_time, bwNS1_all$DO_mgL) # need to trim a few places
+plot(bwNS1_all$date_timePST, bwNS1_all$DO_mgL) # need to trim a few places
 bwNS1t <- bwNS1_all %>%
-  filter(date_time >= as_datetime("2021-10-17 00:00:00")) %>% # trimming off first day
+  filter(date_timePST >= as_datetime("2021-10-17 00:00:00")) %>% # trimming off first day
   # and trimming wonky day
-  filter(date_time < as_datetime("2022-05-24 00:00:00") |
-           date_time >= as_datetime("2022-05-25 00:00:00"))
-plot(bwNS1t$date_time, bwNS1t$DO_mgL)
+  filter(date_timePST < as_datetime("2022-05-24 00:00:00") |
+           date_timePST >= as_datetime("2022-05-25 00:00:00"))
+plot(bwNS1t$date_timePST, bwNS1t$DO_mgL)
 
-plot(bwNS3_all$date_time, bwNS3_all$DO_mgL) # need to trim same places
+plot(bwNS3_all$date_timePST, bwNS3_all$DO_mgL) # need to trim same places
 bwNS3t <- bwNS3_all %>%
-  filter(date_time >= as_datetime("2021-10-17 00:00:00")) %>% # trimming off first day
+  filter(date_timePST >= as_datetime("2021-10-17 00:00:00")) %>% # trimming off first day
   # and trimming wonky day
-  filter(date_time < as_datetime("2022-05-24 00:00:00") |
-           date_time >= as_datetime("2022-05-25 00:00:00"))
-plot(bwNS3t$date_time, bwNS3t$DO_mgL)
+  filter(date_timePST < as_datetime("2022-05-24 00:00:00") |
+           date_timePST >= as_datetime("2022-05-25 00:00:00"))
+plot(bwNS3t$date_timePST, bwNS3t$DO_mgL)
 
 # Add a column to demarcate sensor ID.
 bwNS3t$sensor <- "NS3"
@@ -805,14 +837,14 @@ bw_all <- rbind(bw_j5, bw20pt)
 bw_all$site <- "Blackwood"
 
 # Export to save progress.
-saveRDS(bw_all, "data_working/BW_compiled_trimmed_110322.rds")
+saveRDS(bw_all, "data_working/BW_compiled_trimmed_110822.rds")
 
 # Join everythinggg
 tahoe_all <- rbind(gb_all, bw_all)
 
 # Export for future use.
-write_csv(tahoe_all, "data_working/Tahoe_compiled_trimmed_110322.csv")
-saveRDS(tahoe_all, "data_working/Tahoe_compiled_trimmed_110322.rds")
+write_csv(tahoe_all, "data_working/Tahoe_compiled_trimmed_110822.csv")
+saveRDS(tahoe_all, "data_working/Tahoe_compiled_trimmed_110822.rds")
 
 #### Plot ####
 
