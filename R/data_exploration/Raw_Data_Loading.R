@@ -296,6 +296,25 @@ gbNS2_rev <- rbind(gb3_2021, gbNS2_all)
 
 write_csv(gbNS2_rev, "data_working/GBNS2_compiled_110822.csv")
 
+###### NS2 Wiper data ######
+
+# Load in all files from the GBNS2 directory
+tbl_with_sources3_wiper <- list.files(path = here("data_raw/BuoyDownloads/GBNS2/20220523/wiper/5958-584575"),
+                                pattern = "*.txt",
+                                full.names = T) %>%
+  map_df(~read_csv(., skip = 4))
+
+View(tbl_with_sources3_wiper)
+
+# Convert 24 character to full date/time
+tbl_with_sources3_wiper$date_timeUTC <- as_datetime(tbl_with_sources3_wiper$`Time (sec)`)
+
+# And convert to PST.
+tbl_with_sources3_wiper$date_timePST <- with_tz(tbl_with_sources3_wiper$date_timeUTC, tzone = "America/Los_Angeles")
+
+# Export data.
+write_csv(tbl_with_sources3_wiper, "data_working/GBNS2_wiper_compiled_110822.csv")
+
 # Now, need to load in remaining shallow sites, because wasn't done in Sept.
 
 ###### NS1 #####
@@ -985,11 +1004,6 @@ tahoe_hourly <- tahoe_all %>%
     scale_x_datetime(date_breaks = "3 months") +
     ylim(0, 13))
 
-do_inset_data <- tahoe_hourly %>% 
-  filter(site == "Glenbrook") %>%
-  filter(depth == 3) %>%
-  filter(hour >= as_datetime("2021-07-20 00:00:00") & hour < as_datetime("2021-07-28 00:00:00"))
-
 (gb_do_fig_ns_inset <- ggplot(tahoe_hourly %>% 
                           filter(site == "Glenbrook") %>%
                           filter(depth == 3) %>%
@@ -1009,6 +1023,16 @@ do_inset_data <- tahoe_hourly %>%
 #        width = 20,
 #        height = 15,
 #        units = "cm")
+
+(gb_wiper_fig_ns <- ggplot(tbl_with_sources3_wiper,
+                              aes(x = date_timePST, 
+                                  y = DO_mgL_mean)) +
+    geom_line() +
+    labs(x = "Date",
+         y = "DO (mg/L)",
+         title = "Glenbrook Nearshore (3m) Wiper") +
+    theme_bw() +
+    scale_x_datetime(date_breaks = "3 months"))
 
 (gb_temp_fig_ns <- ggplot(tahoe_hourly %>% 
                           filter(site == "Glenbrook") %>%
