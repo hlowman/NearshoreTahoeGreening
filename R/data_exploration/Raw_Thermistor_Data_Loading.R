@@ -127,4 +127,32 @@ temp_all_wide <- temp_all_long %>%
 write_csv(temp_all_long, "data_working/GB20m_Thermistor_110922_long.csv")
 write_csv(temp_all_wide, "data_working/GB20m_Thermistor_110922_wide.csv")
 
+#### Formatting DO data for Sally ####
+gb20b <- read_csv("data_working/GB20m_benthic_compiled_111022.csv")
+
+# Tidy data.
+do64.3 <- gb20b %>%
+  rename("Date_TimePDT" = "date_timePST") %>%
+  mutate(depth = 64.3,
+         Record = seq(1,length(Temp_C)))
+
+# Create a decimal date.
+do64.3 <- do64.3 %>%
+  mutate(doy = yday(Date_TimePDT),
+         hour = hour(Date_TimePDT)) %>%
+  mutate(hour_decimal = hour/24) %>%
+  mutate(date_decimal = doy + hour_decimal)
+
+# And reformat the long dataset.
+do_long <- do64.3 %>%
+  select(Record, Date_TimePDT, date_decimal, Temp_C, DO_mgL, depth)
+
+# Also to wide format.
+do_wide <- do_long %>%
+  pivot_wider(names_from = depth, values_from = c(Temp_C, DO_mgL))
+
+# Export both files.
+write_csv(do_long, "data_working/GB20m_DO_110922_long.csv")
+write_csv(do_wide, "data_working/GB20m_DO_110922_wide.csv")
+
 # End of script.
