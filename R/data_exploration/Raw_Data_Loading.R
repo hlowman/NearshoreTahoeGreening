@@ -858,15 +858,6 @@ tahoe_hourly <- tahoe_all %>%
             Q_mean = mean(Q, na.rm = TRUE)) %>%
   ungroup()
 
-tahoe_hourly2 <- Tahoe_compiled_trimmed_110822 %>%
-  group_by(site, depth, location, sensor,
-           hour = lubridate::floor_date(date_timePST, "1 hour")) %>%
-  summarize(BV_Volts_mean = mean(BV_Volts, na.rm = TRUE),
-            Temp_C_mean = mean(Temp_C, na.rm = TRUE),
-            DO_mgL_mean = mean(DO_mgL, na.rm = TRUE),
-            Q_mean = mean(Q, na.rm = TRUE)) %>%
-  ungroup()
-  
 # Plots to explore initial DO & Temp values.
 # 3m sites at Blackwood
 (bw_do_fig_ns <- ggplot(tahoe_hourly %>% 
@@ -898,22 +889,7 @@ tahoe_hourly2 <- Tahoe_compiled_trimmed_110822 %>%
     scale_x_datetime(date_breaks = "1 day") +
     ylim(0, 13))
 
-(bw_do_fig_ns_inset2 <- ggplot(tahoe_hourly2 %>% 
-                                filter(site == "Blackwood") %>%
-                                filter(depth == 3) %>%
-                                filter(hour >= as_datetime("2022-03-01 00:00:00") & hour < as_datetime("2022-03-07 00:00:00")),
-                              aes(x = hour, y = DO_mgL_mean)) +
-    geom_line(aes(color = factor(sensor))) +
-    scale_color_manual(values = c("#CECEB9", "#7AC9B7", "#6CA184")) +
-    labs(x = "Date",
-         y = "DO (mg/L)",
-         color = "Sensor Location",
-         title = "Blackwood Nearshore (3m) Sensors") +
-    theme_bw() +
-    scale_x_datetime(date_breaks = "1 day") +
-    ylim(0, 13))
-
-# ggsave("figures/BW_DO_inset_110922.png",
+# ggsave("figures/BW_DO_inset_111422.png",
 #        width = 20,
 #        height = 15,
 #        units = "cm")
@@ -933,6 +909,8 @@ tahoe_hourly2 <- Tahoe_compiled_trimmed_110822 %>%
     theme_bw() +
     scale_x_datetime(date_breaks = "3 months") +
     ylim(0, 25))
+
+(bw_temp_plotly_ns <- ggplotly(bw_temp_fig_ns))
 
 # Remaining sites at Blackwood
 (bw_do_fig <- ggplot(tahoe_hourly %>% 
@@ -969,12 +947,14 @@ tahoe_hourly2 <- Tahoe_compiled_trimmed_110822 %>%
 
 (bw_do_plotly <- ggplotly(bw_do_fig))
 
+(bw_temp_plotly <- ggplotly(bw_temp_fig))
+
 # Export static paneled plot of Blackwood sites.
 (bw_static <- bw_do_fig_ns + bw_do_fig +
     plot_annotation(tag_levels = "A") +
     plot_layout(nrow = 2))
 
-# ggsave("figures/BW_DO_compiled_110822.png",
+# ggsave("figures/BW_DO_compiled_111422.png",
 #        width = 40,
 #        height = 30,
 #        units = "cm")
@@ -985,14 +965,16 @@ tahoe_hourly2 <- Tahoe_compiled_trimmed_110822 %>%
     plot_annotation(tag_levels = "A") +
     plot_layout(nrow = 2))
 
-# ggsave("figures/BW_Temp_compiled_110822.png",
+# ggsave("figures/BW_Temp_compiled_111422.png",
 #        width = 40,
 #        height = 30,
 #        units = "cm")
 
 # Export plotly plots for further exploration.
-# saveWidget(as_widget(bw_do_plotly_ns), "plotly/BW_3m_DO_110822.html")
-# saveWidget(as_widget(bw_do_plotly), "plotly/BW_to20m_DO_110822.html")
+# saveWidget(as_widget(bw_do_plotly_ns), "plotly/BW_3m_DO_111422.html")
+# saveWidget(as_widget(bw_do_plotly), "plotly/BW_to20m_DO_111422.html")
+# saveWidget(as_widget(bw_temp_plotly_ns), "plotly/BW_3m_Temp_111422.html")
+# saveWidget(as_widget(bw_temp_plotly), "plotly/BW_to20m_Temp_111422.html")
 
 # 3m sites at Glenbrook
 (gb_do_fig_ns <- ggplot(tahoe_hourly %>% 
@@ -1009,13 +991,13 @@ tahoe_hourly2 <- Tahoe_compiled_trimmed_110822 %>%
     scale_x_datetime(date_breaks = "3 months") +
     ylim(0, 13))
 
-(gb_do_fig_ns_inset2 <- ggplot(tahoe_hourly2 %>% 
+(gb_do_fig_ns_inset <- ggplot(tahoe_hourly %>% 
                           filter(site == "Glenbrook") %>%
                           filter(depth == 3) %>%
-                          filter(hour >= as_datetime("2021-06-25 00:00:00") & hour < as_datetime("2021-07-02 00:00:00")),
+                          filter(hour >= as_datetime("2022-06-25 00:00:00") & hour < as_datetime("2022-07-02 00:00:00")),
                         aes(x = hour, y = DO_mgL_mean)) +
     geom_line(aes(color = factor(sensor))) +
-    scale_color_manual(values = c("#7AC9B7")) +
+    scale_color_manual(values = c("#CECEB9", "#6CA184")) +
     labs(x = "Date",
          y = "DO (mg/L)",
          color = "Sensor Location",
@@ -1024,7 +1006,7 @@ tahoe_hourly2 <- Tahoe_compiled_trimmed_110822 %>%
     scale_x_datetime(date_breaks = "1 day") +
     ylim(0, 13))
 
-# ggsave("figures/GB_DO_inset_110922.png",
+# ggsave("figures/GB_DO_inset_111422.png",
 #        width = 20,
 #        height = 15,
 #        units = "cm")
@@ -1054,6 +1036,7 @@ tahoe_hourly2 <- Tahoe_compiled_trimmed_110822 %>%
     ylim(0, 25))
 
 (gb_do_plotly_ns <- ggplotly(gb_do_fig_ns))
+(gb_temp_plotly_ns <- ggplotly(gb_temp_fig_ns))
 
 # Remaining sites at Glenbrook
 (gb_do_fig <- ggplot(tahoe_hourly %>% 
@@ -1089,13 +1072,14 @@ tahoe_hourly2 <- Tahoe_compiled_trimmed_110822 %>%
     ylim(0,25))
 
 (gb_do_plotly <- ggplotly(gb_do_fig))
+(gb_temp_plotly <- ggplotly(gb_temp_fig))
 
 # Export static paneled plot of Glenbrook sites.
 (gb_static <- gb_do_fig_ns + gb_do_fig +
     plot_annotation(tag_levels = "A") +
     plot_layout(nrow = 2))
 
-# ggsave("figures/GB_DO_compiled_110822.png",
+# ggsave("figures/GB_DO_compiled_111422.png",
 #        width = 40,
 #        height = 30,
 #        units = "cm")
@@ -1105,13 +1089,15 @@ tahoe_hourly2 <- Tahoe_compiled_trimmed_110822 %>%
     plot_annotation(tag_levels = "A") +
     plot_layout(nrow = 2))
 
-# ggsave("figures/GB_Temp_compiled_110822.png",
+# ggsave("figures/GB_Temp_compiled_111422.png",
 #        width = 40,
 #        height = 30,
 #        units = "cm")
 
 # Export plotly plots for further exploration.
-# saveWidget(as_widget(gb_do_plotly_ns), "plotly/GB_3m_DO_110822.html")
-# saveWidget(as_widget(gb_do_plotly), "plotly/GB_to20m_DO_110822.html")
+# saveWidget(as_widget(gb_do_plotly_ns), "plotly/GB_3m_DO_111422.html")
+# saveWidget(as_widget(gb_do_plotly), "plotly/GB_to20m_DO_111422.html")
+# saveWidget(as_widget(gb_temp_plotly_ns), "plotly/GB_3m_Temp_111422.html")
+# saveWidget(as_widget(gb_temp_plotly), "plotly/GB_to20m_Temp_111422.html")
 
 # End of script.
