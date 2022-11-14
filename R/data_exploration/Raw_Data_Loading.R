@@ -871,7 +871,7 @@ tahoe_hourly <- tahoe_all %>%
        color = "Sensor Location",
        title = "Blackwood Nearshore (3m) Sensors") +
   theme_bw() +
-  scale_x_datetime(date_breaks = "3 months") +
+  scale_x_datetime(date_breaks = "1 day") +
   ylim(0, 13))
 
 (bw_do_fig_ns_inset <- ggplot(tahoe_hourly %>% 
@@ -907,7 +907,7 @@ tahoe_hourly <- tahoe_all %>%
          color = "Sensor Location",
          title = "Blackwood Nearshore (3m) Sensors") +
     theme_bw() +
-    scale_x_datetime(date_breaks = "3 months") +
+    scale_x_datetime(date_breaks = "1 day") +
     ylim(0, 25))
 
 (bw_temp_plotly_ns <- ggplotly(bw_temp_fig_ns))
@@ -926,7 +926,7 @@ tahoe_hourly <- tahoe_all %>%
          linetype = "Sensor Depth",
          title = "Blackwood Offshore Sensors") +
     theme_bw() +
-    scale_x_datetime(date_breaks = "3 months") +
+    scale_x_datetime(date_breaks = "1 day") +
     ylim(0, 13))
 
 (bw_temp_fig <- ggplot(tahoe_hourly %>% 
@@ -942,7 +942,7 @@ tahoe_hourly <- tahoe_all %>%
          linetype = "Sensor Depth",
          title = "Blackwood Offshore Sensors") +
     theme_bw() +
-    scale_x_datetime(date_breaks = "3 months") +
+    scale_x_datetime(date_breaks = "1 day") +
     ylim(0, 25))
 
 (bw_do_plotly <- ggplotly(bw_do_fig))
@@ -988,7 +988,7 @@ tahoe_hourly <- tahoe_all %>%
          color = "Sensor Location",
          title = "Glenbrook Nearshore (3m) Sensors") +
     theme_bw() +
-    scale_x_datetime(date_breaks = "3 months") +
+    scale_x_datetime(date_breaks = "1 day") +
     ylim(0, 13))
 
 (gb_do_fig_ns_inset <- ggplot(tahoe_hourly %>% 
@@ -1032,7 +1032,7 @@ tahoe_hourly <- tahoe_all %>%
          color = "Sensor Location",
          title = "Glenbrook Nearshore (3m) Sensors") +
     theme_bw() +
-    scale_x_datetime(date_breaks = "3 months") +
+    scale_x_datetime(date_breaks = "1 day") +
     ylim(0, 25))
 
 (gb_do_plotly_ns <- ggplotly(gb_do_fig_ns))
@@ -1052,7 +1052,7 @@ tahoe_hourly <- tahoe_all %>%
          linetype = "Sensor Depth",
          title = "Glenbrook Offshore Sensors") +
     theme_bw() +
-    scale_x_datetime(date_breaks = "3 months") +
+    scale_x_datetime(date_breaks = "1 day") +
     ylim(0,13))
 
 (gb_temp_fig <- ggplot(tahoe_hourly %>% 
@@ -1068,7 +1068,7 @@ tahoe_hourly <- tahoe_all %>%
          linetype = "Sensor Depth",
          title = "Glenbrook Offshore Sensors") +
     theme_bw() +
-    scale_x_datetime(date_breaks = "3 months") +
+    scale_x_datetime(date_breaks = "1 day") +
     ylim(0,25))
 
 (gb_do_plotly <- ggplotly(gb_do_fig))
