@@ -6,6 +6,8 @@
 # solar radiation isn't available at all sites, for use in eventual
 # metabolism modeling.
 
+# This script will also be to combine cleaned DO data at sites.
+
 # Load packages.
 library(tidyverse)
 library(lubridate)
@@ -14,6 +16,10 @@ library(here)
 # Load raw datasets.
 bw_syn_1 <- read_csv("data_raw/SynopticDownloads/D9413.2023-02-07_tidy.csv")
 bw_syn_2 <- read_csv("data_raw/SynopticDownloads/HMDC1.2023-02-08_tidy.csv")
+
+bw_do <- read_csv("data_raw/CleanedDO/BWNS1/BWNS1_20221017.csv")
+
+#### Synoptic data compilation ####
 
 # Pull out solar radiation from second dataset at station HMDC1
 bw_syn_2_solar <- bw_syn_2 %>%
@@ -36,6 +42,11 @@ bw_syn_1 <- bw_syn_1 %>%
 bw_joined <- left_join(bw_syn_1, bw_syn_2_solar, by = c("Year", "Month", "Day", "Hour"))
 
 # Export for use in metab modeling.
-saveRDS(bw_joined, "D9413_HMDC1solar_compiled_021523.rds")
+saveRDS(bw_joined, "data_working/D9413_HMDC1solar_compiled_021523.rds")
+
+#### DO data compilation ####
+
+# At this time, only using one file's worth of data to model,
+# so not compiling any DO data at the moment.
 
 # End of script.
