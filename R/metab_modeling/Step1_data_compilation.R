@@ -14,8 +14,8 @@ library(lubridate)
 library(here)
 
 # Load raw datasets.
-bw_syn_1 <- read_csv("data_raw/SynopticDownloads/D9413.2023-02-07_tidy.csv")
-bw_syn_2 <- read_csv("data_raw/SynopticDownloads/HMDC1.2023-02-08_tidy.csv")
+bw_syn_1 <- read_csv("data_raw/SynopticDownloads/D9413.2023-02-20_tidy.csv")
+bw_syn_2 <- read_csv("data_raw/SynopticDownloads/HMDC1.2023-02-20_tidy.csv")
 
 bw_do <- read_csv("data_raw/CleanedDO/BWNS1/BWNS1_20221017.csv")
 
@@ -42,7 +42,7 @@ bw_syn_1 <- bw_syn_1 %>%
 bw_joined <- left_join(bw_syn_1, bw_syn_2_solar, by = c("Year", "Month", "Day", "Hour"))
 
 # Export for use in metab modeling.
-saveRDS(bw_joined, "data_working/D9413_HMDC1solar_compiled_021523.rds")
+saveRDS(bw_joined, "data_working/D9413_HMDC1solar_compiled_022023.rds")
 
 #### DO data compilation ####
 
