@@ -18,25 +18,34 @@ library(plotly)
 
 lake <- "BWNS1"
 lake_id <- "BWNS1"
+# ASSUMPTIONS HERE
 max_d <- 501 # total depth of lake tahoe in m
 lake.area <- 496000 # need to adjust for nearshore area
 out.time.period <- "60 min"
-tz <-  c('America/Los_Angeles')
+tz <-  c('US/Pacific')
 
-# Load in dataset. 
+# Load in dataset prepped in Step2 script. 
 sonde <- read_csv("data_working/BWNS1Inputs.csv") 
 
 years <- c(2022)
 
-if(lake == "BWNS1"){
+# Examine data to check times
+head(sonde$datetime_PST) # loads back in as UTC gah how annoying!!
+
+#if(lake == "BWNS1"){
   data <- sonde %>% 
     # Need to coerce the correct time zone from UTC to PST
-    mutate(datetime_PST = force_tz(datetime_PST, tz=tz)) %>% 
+    mutate(datetime_PST = with_tz(datetime_PST, tz=tz)) %>% 
     # Need to remove the extinction coefficient column before...
     select(-extcoef) %>%
     # Dropping all NAs.
     drop_na()
-  }
+#  }
+  
+# Visually compared "data" above to "data_full" from Step2 script
+# to be sure times are correct and daily PAR trends look correct.
+  
+# All good :)
 
 data$z <- c(3) # assume complete mixing at 3 meters
 
@@ -48,8 +57,10 @@ data_summ <- data %>%
 
 # Not making additional changes to the mixed layer now, but
 # keeping this code here for later...
-  #mutate(z = ifelse(z<=0.5,.5,z))%>% #can't have zero depth zmix
-  #mutate(z = ifelse(z>=3,3,z)) #in littoral zone depth zmix can not be deeper than the littoral depth
+#mutate(z = ifelse(z<=0.5,.5,z))%>% 
+#can't have zero depth zmix
+#mutate(z = ifelse(z>=3,3,z)) 
+#in littoral zone depth zmix can not be deeper than the littoral depth
 
 # determine data frequency obs/day should be 24
 freq <- nrlmetab::calc.freq(data$datetime_PST)
@@ -63,12 +74,12 @@ data_k600 <- data_summ %>%
               temperature = wtemp,gas = "O2")) %>% # m/d
   mutate(k = (kgas/freq)/z) #convert gas to T^-1
 
-if(lake == "BWNS1") { 
+#if(lake == "BWNS1") { 
   data_k600 <- data_k600 %>% 
     mutate(k = ifelse(z<3, 0, k)) 
   # We assume no DO exchange with the Atmosphere. 
   # All DO change is related to metabolism.
-}
+#}
 
 ggplot(data = data_k600, aes(x = yday, y = do_eq)) + 
   geom_line() + 
@@ -118,121 +129,68 @@ ggplot(sonde_check, aes(x = datetime_PST, y = do)) +
   facet_wrap(vars(year),scales="free_x")
 
 # Export prepared data
-if(length(years) == 1) {
+#if(length(years) == 1) {
   sonde_check %>%
     write_csv(paste("data_working/sonde_prep_",
                     lake,"_",years,".csv",sep =""))
-} else {
-  sonde_check %>%
-    write_csv(paste("data_working/sonde_prep_",
-                    lake,"_",min(years),"_",max(years),".csv",sep =""))
-}
+# } else {
+#   sonde_check %>%
+#     write_csv(paste("data_working/sonde_prep_",
+#                     lake,"_",min(years),"_",max(years),".csv",sep =""))
+# }
 
 #### Package data for STAN model ####
 
-# NOTE - I have two primary series of data to run, so I've duplicated the below code to export both datasets.
-
-sonde_prep1 <- sonde_prep %>%
-  filter(datetime_PST < '2022-07-19') # filters for spring data
-
-sonde_prep2 <- sonde_prep %>%
-  filter(datetime_PST > '2022-07-19') # filters for summer data
-
 # define variables in environment 
 o2_freq = freq
-o2_obs = 1000*sonde_prep1$do # convert to mg m^-3
-o2_eq = 1000*sonde_prep1$do_eq # convert to mg m^-3
-light = sonde_prep1$par_int
-temp = sonde_prep1$wtemp
-wspeed = sonde_prep1$wspeed
+o2_obs = 1000*sonde_prep$do # convert to mg m^-3
+o2_eq = 1000*sonde_prep$do_eq # convert to mg m^-3
+light = sonde_prep$par_int
+temp = sonde_prep$wtemp
+wspeed = sonde_prep$wspeed
 # sch_conv = sonde_prep$sch_conv
-map_days = sonde_prep1$unique_day
-k = sonde_prep1$k
+map_days = sonde_prep$unique_day
+k = sonde_prep$k
 
-if(length(years) == 1) {
-  days_per_year = array(c({sonde_prep1 %>%
+#if(length(years) == 1) {
+  days_per_year <- array(c({sonde_prep %>%
       group_by(year) %>%
-      summarize(value = length(unique(unique_day)))}$value), dim = 1)
-} else {
-  days_per_year = array(c({sonde_prep1 %>%
-      group_by(year) %>%
-      summarize(value = length(unique(unique_day)))}$value))
-} # 49
+      summarize(value = length(unique(unique_day)))}$value), dim = 1) # 142
+# } else {
+#   days_per_year <- array(c({sonde_prep %>%
+#       group_by(year) %>%
+#       summarize(value = length(unique(unique_day)))}$value))
+# }
 
-obs_per_series <- array(c({sonde_prep1 %>%
+obs_per_series <- array(c({sonde_prep %>%
     group_by(unique_series) %>%
-    summarize(value = length(unique_series))}$value)) 
+    summarize(value = length(unique_series))}$value)) # 3402
 
-obs_per_day <- array(c({sonde_prep1 %>%
+obs_per_day <- array(c({sonde_prep %>%
     group_by(unique_day) %>%
     summarize(value = length(unique_day))}$value)) 
 
-z = sonde_prep1$z
+z = sonde_prep$z
 n_obs = length(o2_obs)
 n_series = length(obs_per_series) 
 n_days = sum(days_per_year)
 n_years = length(days_per_year)
 
 # Export as .R for STAN model.
-if(length(years)>1) {
-  stan_rdump(c("o2_freq","o2_obs","o2_eq","light",
-               "temp","wspeed","map_days","obs_per_series",
-               "days_per_year","obs_per_day","z","k",
-               "n_obs","n_series","n_days","n_years"),
-             file = paste("data_working/",lake,"_",min(years),
-                          "_",max(years),"_sonde_list1.R",sep=""))
-} else {
-  stan_rdump(c('o2_freq','o2_obs','o2_eq','light','temp','wspeed','map_days','obs_per_series','days_per_year','obs_per_day','z','k','n_obs','n_series','n_days','n_years'),
+# if(length(years)>1) {
+#   stan_rdump(c("o2_freq","o2_obs","o2_eq","light",
+#                "temp","wspeed","map_days","obs_per_series",
+#                "days_per_year","obs_per_day","z","k",
+#                "n_obs","n_series","n_days","n_years"),
+#              file = paste("data_working/",lake,"_",min(years),
+#                           "_",max(years),"_sonde_list.R",sep=""))
+# } else {
+  stan_rdump(c('o2_freq','o2_obs','o2_eq','light',
+               'temp','wspeed','map_days','obs_per_series',
+               'days_per_year','obs_per_day','z','k',
+               'n_obs','n_series','n_days','n_years'),
              file = paste("data_working/",lake,"_",years,
-                          "_sonde_list1.R",sep=""))
-}
-
-# And again for summer season
-o2_freq = freq
-o2_obs2 = 1000*sonde_prep2$do # convert to mg m^-3
-o2_eq2 = 1000*sonde_prep2$do_eq # convert to mg m^-3
-light2 = sonde_prep2$par_int
-temp2 = sonde_prep2$wtemp
-wspeed2 = sonde_prep2$wspeed
-map_days2 = sonde_prep2$unique_day
-k2 = sonde_prep2$k
-
-if(length(years) == 1) {
-  days_per_year2 = array(c({sonde_prep2 %>%
-      group_by(year) %>%
-      summarize(value = length(unique(unique_day)))}$value), dim = 1)
-} else {
-  days_per_year2 = array(c({sonde_prep2 %>%
-      group_by(year) %>%
-      summarize(value = length(unique(unique_day)))}$value))
-} # 60
-
-obs_per_series2 <- array(c({sonde_prep2 %>%
-    group_by(unique_series) %>%
-    summarize(value = length(unique_series))}$value)) 
-
-obs_per_day2 <- array(c({sonde_prep2 %>%
-    group_by(unique_day) %>%
-    summarize(value = length(unique_day))}$value)) 
-
-z2 = sonde_prep2$z
-n_obs2 = length(o2_obs2)
-n_series2 = length(obs_per_series2) 
-n_days2 = sum(days_per_year2)
-n_years2 = length(days_per_year2)
-
-# Export as .R for STAN model.
-if(length(years)>1) {
-  stan_rdump(c("o2_freq","o2_obs2","o2_eq2","light2",
-               "temp2","wspeed2","map_days2","obs_per_series2",
-               "days_per_year2","obs_per_day2","z2","k2",
-               "n_obs2","n_series2","n_days2","n_years2"),
-             file = paste("data_working/",lake,"_",min(years),
-                          "_",max(years),"_sonde_list2.R",sep=""))
-} else {
-  stan_rdump(c('o2_freq','o2_obs2','o2_eq2','light2','temp2','wspeed2','map_days2','obs_per_series2','days_per_year2','obs_per_day2','z2','k2','n_obs2','n_series2','n_days2','n_years2'),
-             file = paste("data_working/",lake,"_",years,
-                          "_sonde_list2.R",sep=""))
-}
+                          "_sonde_list.R",sep=""))
+#}
 
 # End of script.
