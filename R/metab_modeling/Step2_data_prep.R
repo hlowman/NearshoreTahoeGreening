@@ -36,8 +36,10 @@ wtr.ts <- do_raw %>% select(PCT,Temp) %>%
 # water temp to account for drift
 
 # Load in raw Synoptic climate data.
-climate.raw <- readRDS("data_working/D9413_HMDC1solar_compiled_021523.rds") %>%
+climate.raw <- readRDS("data_working/D9413_HMDC1solarwind_compiled_022123.rds") %>%
   rename(datetime='Date_Time.x')
+# Ok to use the first column, despite repeating values
+# since we're aggregating by hour anyway.
 
 head(climate.raw$datetime) # check time zone
 
@@ -49,8 +51,8 @@ climate.raw$datetime_PST <- with_tz(climate.raw$datetime,
 
 # Create separate windspeed dataset.
 wsp.ts <- climate.raw %>% 
-  select(datetime_PST, wind_speed_set_1) %>% 
-  rename(wspeed = 'wind_speed_set_1')
+  select(datetime_PST, wind_speed_set_1_ed) %>% 
+  rename(wspeed = 'wind_speed_set_1_ed')
 
 # Creater separate light dataset by multiplying PAR by 2.114.
 par.ts <- climate.raw %>% 
@@ -67,7 +69,7 @@ ggplot(data = do.ts,aes(x = datetime_PST, y = do.obs)) +
 
 describe.ts(do.ts)
 
-# usually use 3, but the spikes might be poor.  
+# Time outliers
 do.ts.clean <- trim.outliers(do.ts, width = 7, sd.dev = 3) %>%
   rename(datetime_PST = datetime)
 
@@ -77,95 +79,130 @@ ggplot(data = do.ts, aes(x = datetime_PST, y = do.obs)) +
   geom_line(data = do.ts.clean,
             aes(x = datetime_PST, y = do.obs), col = "red")
 
-do.ts.avg <- aggregate.data(data = do.ts.clean,time.step = 60)
-#Picks max values during day, and min during night.
-#do.ts.avg <- extract.do.data(data = do.ts.clean,time.step = 60,lat = 41.226,lon = -122.383,tz = "US/Pacific")
+do.ts.avg <- aggregate.data(data = do.ts.clean,time.step = 60) %>%
+  rename(datetime_PST = datetime)
 
+# Next, tidy temperature data using similar workflow as above.
+# Visualize.
+ggplot(data = wtr.ts,aes(x = datetime_PST, y = wtr)) + 
+  geom_line()
 
-######
-###clean wtr data
-ggplot(data = wtr.ts,aes(x=datetime,y=wtr)) + geom_line()
 describe.ts(wtr.ts)
-wtr.ts.clean <- trim.outliers(wtr.ts,width = 7,sd.dev = 5) 
-ggplot(data = wtr.ts,aes(x=datetime,y=wtr)) + geom_line() + 
-  geom_line(data=wtr.ts.clean,aes(x=datetime,y=wtr),col="red")
-wtr.ts.avg <- aggregate.data(data = wtr.ts.clean,time.step = 60)
 
-######
-### clean wind speed data
-ggplot(data = wsp.ts,aes(x=datetime,y=wspeed)) + geom_line()
+# Trim outliers.
+wtr.ts.clean <- trim.outliers(wtr.ts,
+                              width = 7,
+                              sd.dev = 5) %>%
+  rename(datetime_PST = datetime)
+
+# Visualize once more.
+ggplot(data = wtr.ts, aes(x = datetime_PST, y = wtr)) + 
+  geom_line() + 
+  geom_line(data = wtr.ts.clean, aes(x = datetime_PST, y = wtr), 
+            col="red")
+
+# Aggregate to the nearest hour.
+wtr.ts.avg <- aggregate.data(data = wtr.ts.clean, 
+                             time.step = 60) %>%
+  rename(datetime_PST = datetime)
+
+# Then, tidy wind data using the same workflow.
+# Visualize.
+ggplot(data = wsp.ts, aes(x = datetime_PST, y = wspeed)) + 
+  geom_line()
+
 describe.ts(wsp.ts)
-wsp.ts.clean <- trim.outliers(wsp.ts,width = 50,sd.dev = 50) # usually use 3, but the spikes might be poor.  
-ggplot(data = wsp.ts,aes(x=datetime,y=wspeed)) + geom_line() + 
-  geom_line(data=wsp.ts.clean,aes(x=datetime,y=wspeed),col="red")
-wsp.ts.avg <- aggregate.data(data = wsp.ts.clean,time.step = 60)
 
+# Trim outliers.
+wsp.ts.clean <- trim.outliers(wsp.ts, width = 50, sd.dev = 50) %>%
+  rename(datetime_PST = datetime)
 
-### clean par data
-ggplot(data = par.ts,aes(x=datetime,y=par)) + geom_line()
+# Visualize again.
+ggplot(data = wsp.ts, aes(x = datetime_PST, y = wspeed)) + 
+  geom_line() + 
+  geom_line(data = wsp.ts.clean, aes(x = datetime_PST, y = wspeed),
+            col="red")
+
+# Aggregate to the nearest hour.
+wsp.ts.avg <- aggregate.data(data = wsp.ts.clean, 
+                             time.step = 60) %>%
+  rename(datetime_PST = datetime)
+
+# And finally, tidy the PAR dataset using workflow from above.
+# Visualize.
+ggplot(data = par.ts, aes(x = datetime_PST, y = par)) + 
+  geom_line()
+
 describe.ts(par.ts)
-par.ts.clean <- trim.outliers(par.ts,width = 50,sd.dev = 50) # usually use 3, but the spikes might be poor.  
-ggplot(data = par.ts,aes(x=datetime,y=par)) + geom_line() + 
-  geom_line(data=par.ts.clean,aes(x=datetime,y=par),col="red")
-par.ts.avg <- aggregate.data(data = par.ts.clean,time.step = 60)
 
+# Trim outliers.
+par.ts.clean <- trim.outliers(par.ts,
+                              width = 50,
+                              sd.dev = 50) %>%
+  rename(datetime_PST = datetime)
 
-#Join the drift dataset and Calcualte do_eq and do_sat
+# Visualize again.
+ggplot(data = par.ts, aes(x = datetime_PST, y = par)) + 
+  geom_line() + 
+  geom_line(data = par.ts.clean, aes(x = datetime_PST, y = par),
+            col="red")
 
-dat <- do.ts.avg %>% #note in this case I am not using the drift correction -KL
-  full_join(wtr.ts.avg) %>% 
-  mutate(year=year(datetime), 
-         yday=yday(datetime),
-         hour=hour(datetime)+1) %>% 
-  mutate(do_eq=o2.at.sat.base(temp = wtr,altitude = 1897)) %>%  # Tahoe altitude in m  = 1897, we barometeric 
-  mutate(o2_sat=do.obs/do_eq) 
-# %>% 
-#   full_join(climate)
+# Aggregate to the nearest hour.
+par.ts.avg <- aggregate.data(data = par.ts.clean, 
+                             time.step = 60) %>%
+  rename(datetime_PST = datetime)
 
+# Calculate do_eq and do_sat.
+dat <- do.ts.avg %>% # no drift correction at the moment.
+  left_join(wtr.ts.avg) %>% # join with temperature
+  mutate(year = year(datetime_PST), 
+         yday = yday(datetime_PST),
+         hour = hour(datetime_PST)) %>% 
+  # o2.at.sat.base() from lakeMetabolizer
+  mutate(do_eq = o2.at.sat.base(temp = wtr,altitude = 1897)) %>%  
+  # Tahoe altitude in m  = 1897 m
+  mutate(o2_sat = do.obs/do_eq) 
 
-dat2 <- dat %>% #note in this case I am not using the drift correction -KL
-  full_join(par.ts.avg) %>% 
-  mutate(year=year(datetime), 
-         yday=yday(datetime),
-         hour=hour(datetime)+1) 
+dat2 <- dat %>% 
+  left_join(par.ts.avg) # join above with light data
 
-dat3 <- dat2 %>% #note in this case I am not using the drift correction -KL
-  full_join(wsp.ts.avg) %>% 
-  mutate(year=year(datetime), 
-         yday=yday(datetime),
-         hour=hour(datetime)+1) 
+dat3 <- dat2 %>% 
+  left_join(wsp.ts.avg) # join above with windspeed data
 
+# Convert windspeed to 10m wind (required for gas exchange models 
+# per LakeMetabolizer).
+dat3$wspeed10m <- wind.scale.base(dat3$wspeed, wnd.z = 50.9) 
+# z check for the weather station for altitude 6.1
 
-#convert windspeed to 10m wind (required for gas exchange models per LakeMetabolizer)
-dat <- dat3 %>% mutate(wspeed=wind.scale.base(wspeed,wnd.z=50.9)) # z check for the weather station for altitude 6.1 
+# Calculating par_int based on extinction coefficents, PAR and zmix 
+# (in this case I am using 2 in line 151 instead of z which is the
+# variable zmix from dat).
 
-
-####
-#Calculating par_int base on extinction coefficents, PAR and zmix (in this case I am using
-# 2 in line 151 instead of z which is the variable zmix from dat)
-
-extcoef <- read_csv("./CleanDat/Rose2009extcoef.csv") 
+# Load in experimental extinction coefficient values.
+extcoef <- read_csv("data_raw/Rose2009extcoef.csv") 
 
 extcoef <- extcoef %>% 
   mutate(year = year(datetime),yday=yday(datetime)) %>% 
   select(year,yday,extcoef) 
 
-#date_matrix <- extcoef %>% expand(year, yday=full_seq(yday,1)) 
+# Make rows for all days of the year.
+date_matrix <- extcoef %>% 
+  expand(year, yday = full_seq(yday, 1))
 
-date_matrix22 <- extcoef %>% tidyr::expand(year, yday=full_seq(yday,1)) %>%
-  subset(year==2022)
+extcoef2 <- date_matrix %>% left_join(extcoef) 
 
-extcoef22 <- date_matrix22 %>% left_join(extcoef) 
-#These lines are the one that do the linear extrapolation
-extcoefb <- extcoef22 %>%
-  mutate(
-    extcoef=na.approx(extcoef))
+# Perform linear extrapolation.
+extcoefb <- extcoef2 %>%
+  mutate(extcoef = na.approx(extcoef))
 
-ggplot(data = extcoefb ,aes(x=yday,y=extcoef))+geom_point()+scale_y_reverse()
+# Visualize to see how it looks.
+ggplot(data = extcoefb, aes(x = yday, y = extcoef)) +
+  geom_point() +
+  scale_y_reverse()
 
+extcoef_final <- extcoefb %>% 
+  select(yday, extcoef) 
 
-extcoef <- extcoefb %>% 
-  select(yday,extcoef) 
 
 dat <- dat %>% 
   full_join(extcoef) %>% 

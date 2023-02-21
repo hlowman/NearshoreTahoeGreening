@@ -89,7 +89,7 @@ ggplot(data = wtr.ts, aes(x = datetime_PST, y = wtr)) +
 wtr.ts.avg <- aggregate.data(data = wtr.ts.clean, time.step = 60) %>%
   rename(datetime_PST = datetime)
 
-# Then, tidy wind data using thesame workflow.
+# Then, tidy wind data using the same workflow.
 # Visualize.
 ggplot(data = wsp.ts, aes(x = datetime_PST, y = wspeed)) + 
   geom_line()
