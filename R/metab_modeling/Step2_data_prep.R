@@ -23,13 +23,21 @@ library(here)
 # Load raw DO dataset.
 do_raw <- read_csv("data_raw/CleanedDO/BWNS1/BWNS1_20221017.csv")
 
+head(do_raw$PCT) # denoted in UTC
+
+do_raw <- do_raw %>%
+  force_tz(PCT, tz = "US/Pacific")
+
+head(do_raw$PCT) # now in PDT
+
 # Rename columns (dates already formatted)
 do.ts <- do_raw %>% 
   select(PCT, DO) %>% 
   rename(datetime_PST = PCT, do.obs = DO)
 
 # Create new temperature dataset as well
-wtr.ts <- do_raw %>% select(PCT,Temp) %>% 
+wtr.ts <- do_raw %>% 
+  select(PCT,Temp) %>% 
   rename(datetime_PST = PCT, wtr = Temp)
 
 # Note - Eventually need to aggregate RBR profiles for DO and 
@@ -41,6 +49,8 @@ climate.raw <- readRDS("data_working/D9413_HMDC1solarwind_compiled_022123.rds") 
 # Ok to use the first column, despite repeating values
 # since we're aggregating by hour anyway.
 
+# Note, did no time transformation in Step 1, so what you see
+# is what you get here.
 head(climate.raw$datetime) # check time zone
 
 # Can view recognized timezones in OlsonNames()
@@ -48,6 +58,8 @@ head(climate.raw$datetime) # check time zone
 # Note - Synoptic data is in UTC, so need to convert to PST.
 climate.raw$datetime_PST <- with_tz(climate.raw$datetime, 
                                     "US/Pacific")
+
+head(climate.raw$datetime_PST) # Now in PDT as well
 
 # Create separate windspeed dataset.
 wsp.ts <- climate.raw %>% 
@@ -73,6 +85,8 @@ describe.ts(do.ts)
 do.ts.clean <- trim.outliers(do.ts, width = 7, sd.dev = 3) %>%
   rename(datetime_PST = datetime)
 
+head(do.ts.clean$datetime_PST) # Just checking timezone again to be sure.
+
 # Plot once more w/ df's overlaying one another.
 ggplot(data = do.ts, aes(x = datetime_PST, y = do.obs)) + 
   geom_line() + 
@@ -81,6 +95,8 @@ ggplot(data = do.ts, aes(x = datetime_PST, y = do.obs)) +
 
 do.ts.avg <- aggregate.data(data = do.ts.clean,time.step = 60) %>%
   rename(datetime_PST = datetime)
+
+head(do.ts.avg$datetime_PST) # And again to be sure in PDT.
 
 # Next, tidy temperature data using similar workflow as above.
 # Visualize.
@@ -215,11 +231,7 @@ dat_full <- dat3 %>%
 # multiplier = "(extcoef*3)" should be depth of water column
 
 range(dat_full$datetime_PST) # May through October
-
-dat_full <- dat_full %>%
-  force_tz(datetime_PST, tzone = "US/Pacific")
-
-range(dat_full$datetime_PST) # fixed time zone stamp
+# time zone stamp looks good
 
 dat_full <- dat_full %>% 
   rename(do = do.obs, wtemp= wtr) 
