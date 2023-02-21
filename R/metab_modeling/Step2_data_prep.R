@@ -203,24 +203,39 @@ ggplot(data = extcoefb, aes(x = yday, y = extcoef)) +
 extcoef_final <- extcoefb %>% 
   select(yday, extcoef) 
 
+# Join with full dataset.
+dat_full <- dat3 %>% 
+  full_join(extcoef_final) %>% 
+  # ASSUMPTION HERE:
+  # Note, since I don't currently have data for the full year, I am
+  # using 0.08 for all dates prior to June 21 and after Sept 28
+  mutate(par_int = case_when(extcoef > 0 ~ 
+         round((par - par*exp(-extcoef*3))/(extcoef*3), digits = 0),
+         TRUE ~ round((par - par*exp(-0.08*3))/(0.08*3), digits = 0)))
+# multiplier = "(extcoef*3)" should be depth of water column
 
-dat <- dat %>% 
-  full_join(extcoef) %>% 
-  mutate(par_int = round((par - par*exp(-extcoef*3))/(extcoef*3),digits=0)) %>% # multipler = "(extcoef*3)" should be depth of water column
-  select(-extcoef)
+range(dat_full$datetime_PST) # May through October
 
+dat_full <- dat_full %>%
+  force_tz(datetime_PST, tzone = "US/Pacific")
 
-range(dat$datetime)
-dat <- dat %>% 
+range(dat_full$datetime_PST) # fixed time zone stamp
+
+dat_full <- dat_full %>% 
   rename(do = do.obs, wtemp= wtr) 
 
-ggplot(data = dat,aes(x=datetime,y=par_int)) + geom_point()
-ggplot(data = dat,aes(x=datetime,y=do)) + geom_point()
+# Take one last look at the data.
+ggplot(data = dat_full, aes(x = datetime_PST, y = par_int)) + 
+  geom_point() # looks about right
 
-dat <- na.omit(dat)
-range(dat$datetime)
+ggplot(data = dat_full, aes(x = datetime_PST, y = do)) + 
+  geom_point()
 
-# dat2 <- dat[!duplicated(dat),]
+# Export datasets.
+write.table(x = dat_full, 
+            file = "data_working/BWNS1Inputs.txt", 
+            row.names = TRUE)
+write_csv(x = dat_full, 
+          file = "data_working/BWNS1Inputs.csv")
 
-# write.table(x = dat, file = "./FinalInputs/BWNS1Inputs.txt", row.names = TRUE)
-# write.csv(x = dat, file = "./FinalInputs/BWNS1Inputs.csv", row.names = TRUE)
+# End of script.
