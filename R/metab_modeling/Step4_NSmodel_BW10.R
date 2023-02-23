@@ -18,7 +18,7 @@ library(here)
 source("R/metab_modeling/stan_utility.R")
 # Contains helpful functions written by N. Lottig.
 
-lake <- "BWNS1" 
+lake <- "BW10" 
 
 year <- c(2022)
 
@@ -27,11 +27,11 @@ options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
 
 # Read data in
-data <- read_rdump("data_working/BWNS1_2022_sonde_list.R")
+data <- read_rdump("data_working/BW10_2022_sonde_list.R")
 
 # Set reference temperature
-# mean(data$temp) # 15.61039
-data$temp_ref <- 15.61039
+# mean(data$temp) # 9.405215
+data$temp_ref <- 9.405215
 
 # Add parameters that can be modified
 data$sig_b0 <- 0.01 #pmax smoothing parameter
@@ -100,7 +100,7 @@ fit_clean <- fit_summary %>%
   select(name, index, day, middle,lower,upper)
 
 # Read in input data
-sonde_data <- read_csv("data_working/sonde_prep_BWNS1_2022.csv")
+sonde_data <- read_csv("data_working/sonde_prep_BW10_2022.csv")
 
 # Join model fit summary with input data.
 out <- fit_clean %>%
@@ -126,8 +126,8 @@ out2 <- fit_clean %>%
 out3 <- rbind(out,out2)
 
 # Export model summaries.
-write_csv(out3, "data_model_outputs/BWNS1_daily_full_022213.csv")
-write_csv(fit_clean, "data_model_outputs/BWNS1_summary_clean_022213.csv")
+write_csv(out3, "data_model_outputs/BW10_daily_full_022313.csv")
+write_csv(fit_clean, "data_model_outputs/BW10_summary_clean_022313.csv")
 
 # Plot primary parameters
 (p1 <- fit_clean %>%  
@@ -142,7 +142,7 @@ write_csv(fit_clean, "data_model_outputs/BWNS1_summary_clean_022213.csv")
   labs(y="Mean Estimated Value",color="year",x="Day of Year"))
 
 # Export figure.
-ggsave(plot = p1,filename = "figures/BWNS1fit_2022_022223.png",
+ggsave(plot = p1,filename = "figures/BW10fit_2022_022323.png",
        width=8, height=4.5, dpi=300)
 
 # Plot time series of estimates
@@ -151,6 +151,7 @@ ggsave(plot = p1,filename = "figures/BWNS1fit_2022_022223.png",
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = name),
               linetype = 0, alpha = 0.2)+
   geom_line()+
+  ylim(-27.5, 30) +
   #geom_point(data = out %>% left_join(c14),aes(x=yday,y=(p80/12.011),color="C14")) +
   scale_color_manual(values = c("green","black","dodgerblue","firebrick")) +
   scale_fill_manual(values = c("dodgerblue","firebrick","black")) +
@@ -159,7 +160,7 @@ ggsave(plot = p1,filename = "figures/BWNS1fit_2022_022223.png",
   facet_wrap(vars(year)))
 
 # Export figure.
-ggsave(plot = p2,filename = "figures/BWNS1metab_2022_022223.png",
+ggsave(plot = p2,filename = "figures/BW10metab_2022_022323.png",
        width=8, height=4.5, dpi=300)
 
 # End of script.

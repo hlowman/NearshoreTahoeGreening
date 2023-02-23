@@ -17,7 +17,9 @@ library(here)
 bw_syn_1 <- read_csv("data_raw/SynopticDownloads/D9413.2023-02-07_tidy.csv")
 bw_syn_2 <- read_csv("data_raw/SynopticDownloads/HMDC1.2023-02-08_tidy.csv")
 
-bw_do <- read_csv("data_raw/CleanedDO/BWNS1/BWNS1_20221017.csv")
+#bw_do <- read_csv("data_raw/CleanedDO/BWNS1/BWNS1_20221017.csv")
+bw_do_1 <- read_csv("data_raw/CleanedDO/BW10/BW10m_20220715.csv")
+bw_do_2 <- read_csv("data_raw/CleanedDO/BW10/BW10m_20221017.csv")
 
 #### Synoptic data compilation ####
 
@@ -57,7 +59,14 @@ saveRDS(bw_joined, "data_working/D9413_HMDC1solarwind_compiled_022123.rds")
 
 #### DO data compilation ####
 
-# At this time, only using one file's worth of data to model,
-# so not compiling any DO data at the moment.
+# Compiling cleaned DO data.
+bw_do_joined <- rbind(bw_do_1, bw_do_2)
+
+# Filter out data that I feel may be affected by bio-fouling.
+bw_do_joined <- bw_do_joined %>%
+  filter(PCT < "2022-08-01")
+
+# Export for use in metab modeling.
+saveRDS(bw_do_joined, "data_working/BW10m_compiled_022223.rds")
 
 # End of script.
