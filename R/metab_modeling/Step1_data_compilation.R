@@ -14,12 +14,15 @@ library(lubridate)
 library(here)
 
 # Load raw datasets.
-bw_syn_1 <- read_csv("data_raw/SynopticDownloads/D9413.2023-02-07_tidy.csv")
-bw_syn_2 <- read_csv("data_raw/SynopticDownloads/HMDC1.2023-02-08_tidy.csv")
+# bw_syn_1 <- read_csv("data_raw/SynopticDownloads/D9413.2023-02-07_tidy.csv")
+# bw_syn_2 <- read_csv("data_raw/SynopticDownloads/HMDC1.2023-02-08_tidy.csv")
+gb_syn <- read_csv("data_raw/SynopticDownloads/F9917.2023-02-07_tidy.csv")
 
 #bw_do <- read_csv("data_raw/CleanedDO/BWNS1/BWNS1_20221017.csv")
-bw_do_1 <- read_csv("data_raw/CleanedDO/BW10/BW10m_20220715.csv")
-bw_do_2 <- read_csv("data_raw/CleanedDO/BW10/BW10m_20221017.csv")
+#bw_do_ns3 <- read_csv("data_raw/CleanedDO/BWNS3/BWNS3_20221017.csv")
+#bw_do_1 <- read_csv("data_raw/CleanedDO/BW10/BW10m_20220715.csv")
+#bw_do_2 <- read_csv("data_raw/CleanedDO/BW10/BW10m_20221017.csv")
+gb_do_ns1 <- read_csv("data_raw/CleanedDO/GBNS1/GBNS1_20221018_miniDOT.csv")
 
 #### Synoptic data compilation ####
 
@@ -68,5 +71,7 @@ bw_do_joined <- bw_do_joined %>%
 
 # Export for use in metab modeling.
 saveRDS(bw_do_joined, "data_working/BW10m_compiled_022223.rds")
+
+# No additional compilation needed for GBNS1.
 
 # End of script.

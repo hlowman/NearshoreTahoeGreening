@@ -21,7 +21,7 @@ library(gridExtra)
 library(here)
 
 # Load raw DO dataset.
-do_raw <- readRDS("data_working/BW10m_compiled_022223.rds")
+do_raw <- read_csv("data_raw/CleanedDO/GBNS1/GBNS1_20221018_miniDOT.csv")
 
 head(do_raw$PCT) # denoted in UTC
 
@@ -44,8 +44,8 @@ wtr.ts <- do_raw %>%
 # water temp to account for drift
 
 # Load in raw Synoptic climate data.
-climate.raw <- readRDS("data_working/D9413_HMDC1solarwind_compiled_022123.rds") %>%
-  rename(datetime='Date_Time.x')
+climate.raw <- read_csv("data_raw/SynopticDownloads/F9917.2023-02-07_tidy.csv") %>%
+  rename(datetime='Date_Time')
 # Ok to use the first column, despite repeating values
 # since we're aggregating by hour anyway.
 
@@ -62,9 +62,10 @@ climate.raw$datetime_PST <- with_tz(climate.raw$datetime,
 head(climate.raw$datetime_PST) # Now in PDT as well
 
 # Create separate windspeed dataset.
+# NOTE - for BW sites this is "wind_speed_set_1_ed" column!!!
 wsp.ts <- climate.raw %>% 
-  select(datetime_PST, wind_speed_set_1_ed) %>% 
-  rename(wspeed = 'wind_speed_set_1_ed')
+  select(datetime_PST, wind_speed_set_1) %>% 
+  rename(wspeed = 'wind_speed_set_1')
 
 # Creater separate light dataset by multiplying PAR by 2.114.
 par.ts <- climate.raw %>% 
@@ -187,6 +188,7 @@ dat3 <- dat2 %>%
 
 # Convert windspeed to 10m wind (required for gas exchange models 
 # per LakeMetabolizer).
+# NOTE - Double check this input with Kelly!!
 dat3$wspeed10m <- wind.scale.base(dat3$wspeed, wnd.z = 50.9) 
 # z check for the weather station for altitude 6.1
 
@@ -226,11 +228,11 @@ dat_full <- dat3 %>%
   # Note, since I don't currently have data for the full year, I am
   # using 0.08 for all dates prior to June 21 and after Sept 28
   mutate(par_int = case_when(extcoef > 0 ~ 
-         round((par - par*exp(-extcoef*10))/(extcoef*10), digits = 0),
-         TRUE ~ round((par - par*exp(-0.08*10))/(0.08*10), digits = 0)))
+         round((par - par*exp(-extcoef*3))/(extcoef*3), digits = 0),
+         TRUE ~ round((par - par*exp(-0.08*3))/(0.08*3), digits = 0)))
 # multiplier = "(extcoef*3)" should be depth of water column
 
-range(dat_full$datetime_PST) # March through October
+range(dat_full$datetime_PST) # May through October
 # time zone stamp looks good
 
 dat_full <- dat_full %>% 
@@ -245,9 +247,9 @@ ggplot(data = dat_full, aes(x = datetime_PST, y = do)) +
 
 # Export datasets.
 write.table(x = dat_full, 
-            file = "data_working/BW10Inputs.txt", 
+            file = "data_working/GBNS1Inputs.txt", 
             row.names = TRUE)
 write_csv(x = dat_full, 
-          file = "data_working/BW10Inputs.csv")
+          file = "data_working/GBNS1Inputs.csv")
 
 # End of script.
