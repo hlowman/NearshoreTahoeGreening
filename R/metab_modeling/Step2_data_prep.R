@@ -21,7 +21,7 @@ library(gridExtra)
 library(here)
 
 # Load raw DO dataset.
-do_raw <- read_csv("data_raw/CleanedDO/GBNS1/GBNS1_20221018_miniDOT.csv")
+do_raw <- readRDS("data_working/GBNS3_compiled_030323.rds")
 
 head(do_raw$PCT) # denoted in UTC
 
@@ -247,9 +247,9 @@ ggplot(data = dat_full, aes(x = datetime_PST, y = do)) +
 
 # Export datasets.
 write.table(x = dat_full, 
-            file = "data_working/GBNS1Inputs.txt", 
+            file = "data_working/GBNS3Inputs.txt", 
             row.names = TRUE)
 write_csv(x = dat_full, 
-          file = "data_working/GBNS1Inputs.csv")
+          file = "data_working/GBNS3Inputs.csv")
 
 # End of script.

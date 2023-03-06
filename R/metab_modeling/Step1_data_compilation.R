@@ -22,7 +22,9 @@ gb_syn <- read_csv("data_raw/SynopticDownloads/F9917.2023-02-07_tidy.csv")
 #bw_do_ns3 <- read_csv("data_raw/CleanedDO/BWNS3/BWNS3_20221017.csv")
 #bw_do_1 <- read_csv("data_raw/CleanedDO/BW10/BW10m_20220715.csv")
 #bw_do_2 <- read_csv("data_raw/CleanedDO/BW10/BW10m_20221017.csv")
-gb_do_ns1 <- read_csv("data_raw/CleanedDO/GBNS1/GBNS1_20221018_miniDOT.csv")
+#gb_do_ns1 <- read_csv("data_raw/CleanedDO/GBNS1/GBNS1_20221018_miniDOT.csv")
+gb_do_ns3 <- read_csv("data_raw/CleanedDO/GBNS3/GBNS3_20220706.csv")
+gb_do_ns3_2 <- read_csv("data_raw/CleanedDO/GBNS3/GBNS3_20221018_miniDOT.csv")
 
 #### Synoptic data compilation ####
 
@@ -73,5 +75,27 @@ bw_do_joined <- bw_do_joined %>%
 saveRDS(bw_do_joined, "data_working/BW10m_compiled_022223.rds")
 
 # No additional compilation needed for GBNS1.
+
+# Add some columns to the second GBNS3 dataset for joining.
+gb_do_ns3_2 <- gb_do_ns3_2 %>%
+  mutate(V_wiper = NA,
+         Temp_wiper = NA,
+         Wipe_Time = NA,
+         Average_Current = NA,
+         serial.y = NA,
+         site.y = NA,
+         Approved = NA) %>%
+  rename(serial.x = serial,
+         site.x = site)
+
+# Compiling cleaned DO data for GBNS3.
+gb_do_joined <- rbind(gb_do_ns3, gb_do_ns3_2)
+
+# Filter out data prior to May servicing.
+gb_do_joined <- gb_do_joined %>%
+  filter(PCT > "2022-05-24")
+
+# Export for use in metab modeling.
+saveRDS(gb_do_joined, "data_working/GBNS3_compiled_030323.rds")
 
 # End of script.
