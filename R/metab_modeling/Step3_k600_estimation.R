@@ -16,8 +16,8 @@ library(plotly)
 
 #### Get and process high frequency sensor data ####
 
-lake <- "GBNS3"
-lake_id <- "GBNS3"
+lake <- "GBNS2"
+lake_id <- "GBNS2"
 # ASSUMPTIONS HERE
 max_d <- 501 # total depth of lake tahoe in m
 lake.area <- 496000 # need to adjust for nearshore area
@@ -25,7 +25,7 @@ out.time.period <- "60 min"
 tz <-  c('US/Pacific')
 
 # Load in dataset prepped in Step2 script. 
-sonde <- read_csv("data_working/GBNS3Inputs.csv") 
+sonde <- read_csv("data_working/GBNS2Inputs.csv") 
 
 years <- c(2022)
 
