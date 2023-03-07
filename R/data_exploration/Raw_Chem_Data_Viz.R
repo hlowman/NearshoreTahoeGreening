@@ -125,4 +125,44 @@ nut_dat <- nut_dat %>%
 #        height = 10,
 #        units = "cm")
 
+# TN figure.
+(fig_tn <- ggplot(nut_dat %>%
+                    drop_na(Location) %>%
+                    group_by(Location, Date) %>%
+                    summarize(mean_TN_ugL = mean(TN_ugL)) %>%
+                    ungroup(), 
+                  aes(x = Date, y = mean_TN_ugL)) +
+    geom_point(size = 3, aes(color = Location)) +
+    scale_color_manual(values = cal_palette("figmtn")) +
+    scale_y_log10() +
+    facet_wrap(.~Location) +
+    theme_bw() +
+    theme(legend.position = "none"))
+
+# ggsave(fig_tn,
+#        filename = "figures/Chem_TN_030723.jpg",
+#        width = 25,
+#        height = 10,
+#        units = "cm")
+
+# TC figure.
+(fig_tc <- ggplot(nut_dat %>%
+                    drop_na(Location) %>%
+                    group_by(Location, Date) %>%
+                    summarize(mean_TC_ugL = mean(TC_ugL)) %>%
+                    ungroup(), 
+                  aes(x = Date, y = mean_TC_ugL)) +
+    geom_point(size = 3, aes(color = Location)) +
+    scale_color_manual(values = cal_palette("figmtn")) +
+    #scale_y_log10() +
+    facet_wrap(.~Location) +
+    theme_bw() +
+    theme(legend.position = "none"))
+
+# ggsave(fig_tc,
+#        filename = "figures/Chem_TC_030723.jpg",
+#        width = 25,
+#        height = 10,
+#        units = "cm")
+
 # End of script.
