@@ -119,7 +119,7 @@ nut_dat <- nut_dat %>%
     theme_bw() +
     theme(legend.position = "none"))
 
-# ggsave(fig_doc,
+# ggsave(fig_op,
 #        filename = "figures/Chem_OP_030723.jpg",
 #        width = 25,
 #        height = 10,
