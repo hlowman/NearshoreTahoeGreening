@@ -5,6 +5,8 @@
 # The following script will read in all chenistry data currently available
 # on the Google Drive and compile make some initial plots.
 
+#### Setup ####
+
 # Load packages.
 library(tidyverse)
 library(here)
@@ -12,6 +14,9 @@ library(calecopal)
 
 # Load dataset.
 nut_dat <- read_csv("data_raw/Water_chemistry_record_030723.csv")
+nut_lake_dat <- read_csv("data_raw/Lake_Tahoe_Water_Record_Sample_Collection.csv")
+
+#### Stream Data ####
 
 # Check the structure of the dataset.
 str(nut_dat)
@@ -162,6 +167,78 @@ nut_dat <- nut_dat %>%
 # ggsave(fig_tc,
 #        filename = "figures/Chem_TC_030723.jpg",
 #        width = 25,
+#        height = 10,
+#        units = "cm")
+
+#### Lake Data ####
+
+# First, going to trim to only aqueous samples for this first pass.
+aq_lake_chem <- nut_lake_dat %>%
+  filter(`sample type` == "water")
+
+# And need to reformat so easier plotting occurs.
+aq_lake_chem <- aq_lake_chem %>%
+  mutate(NO3_mgNL_ed = case_when(is.na(`NO3 rerun`) == FALSE ~ `NO3 rerun`,
+                                 TRUE ~ `NO3_mgNL`),
+         PO4_ugL_ed = case_when(is.na(`PO4 rerun`) == FALSE ~ `PO4 rerun`,
+                            TRUE ~ `PO4_ugL`),
+         NH4_mgL_ed = case_when(is.na(`Nh4 rerun`) == FALSE ~ `Nh4 rerun`,
+                             TRUE ~ `Nh4_mgNL`)) %>%
+  mutate(water_depth = case_when(`depth (m)` == "0.5m" ~ "0.5",
+                                 `depth (m)` == "Outlet" ~ "0.1",
+                                 `depth (m)` == "N/A" ~ NA,
+                                 TRUE ~ `depth (m)`)) %>%
+  mutate(water_depth = as.numeric(water_depth))
+
+# Nitrate plot.
+(fig_no3_lake <- ggplot(aq_lake_chem %>%
+                          drop_na(water_depth) %>%
+                          filter(site %in% c("BW", "GB"))%>%
+                          # and filtering out one outlier for perspective
+                          filter(NO3_mgNL_ed < 0.2), 
+                        aes(x = `date (yyyy-mm-dd)`, y = NO3_mgNL_ed)) +
+    geom_point(size = 3, aes(color = -water_depth)) +
+    labs(x = "Date", color = "Water Depth (m)") +
+    facet_wrap(.~site) +
+    theme_bw())
+
+# ggsave(fig_no3_lake,
+#        filename = "figures/Chem_NO3_lake_030723.jpg",
+#        width = 20,
+#        height = 10,
+#        units = "cm")
+
+# Ammonium plot.
+(fig_nh4_lake <- ggplot(aq_lake_chem %>%
+                          drop_na(water_depth) %>%
+                          filter(site %in% c("BW", "GB")) %>%
+                          # and filtering out one outlier for perspective
+                          filter(NH4_mgL_ed < 0.075), 
+                        aes(x = `date (yyyy-mm-dd)`, y = NH4_mgL_ed)) +
+    geom_point(size = 3, aes(color = -water_depth)) +
+    labs(x = "Date", color = "Water Depth (m)") +
+    facet_wrap(.~site) +
+    theme_bw())
+
+# ggsave(fig_nh4_lake,
+#        filename = "figures/Chem_NH4_lake_030723.jpg",
+#        width = 20,
+#        height = 10,
+#        units = "cm")
+
+# Phosphate plot.
+(fig_po4_lake <- ggplot(aq_lake_chem %>%
+                          drop_na(water_depth) %>%
+                          filter(site %in% c("BW", "GB")), 
+                        aes(x = `date (yyyy-mm-dd)`, y = PO4_ugL_ed)) +
+    geom_point(size = 3, aes(color = -water_depth)) +
+    labs(x = "Date", color = "Water Depth (m)") +
+    facet_wrap(.~site) +
+    theme_bw())
+
+# ggsave(fig_po4_lake,
+#        filename = "figures/Chem_PO4_lake_030723.jpg",
+#        width = 20,
 #        height = 10,
 #        units = "cm")
 
