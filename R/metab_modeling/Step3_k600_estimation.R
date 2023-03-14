@@ -16,8 +16,8 @@ library(plotly)
 
 #### Get and process high frequency sensor data ####
 
-lake <- "GB15"
-lake_id <- "GB15"
+lake <- "GB20"
+lake_id <- "GB20"
 # ASSUMPTIONS HERE
 max_d <- 501 # total depth of lake tahoe in m
 lake.area <- 496000 # need to adjust for nearshore area
@@ -25,7 +25,7 @@ out.time.period <- "60 min"
 tz <-  c('US/Pacific')
 
 # Load in dataset prepped in Step2 script. 
-sonde <- read_csv("data_working/GB15Inputs.csv") 
+sonde <- read_csv("data_working/GB20Inputs.csv") 
 
 years <- c(2022)
 
@@ -48,7 +48,7 @@ head(sonde$datetime_PST) # loads back in as UTC gah how annoying!!
 # All good :)
 
 # ASSUMPTION HERE
-data$z <- c(15) # assume complete mixing at 3 meters
+data$z <- c(20) # assume complete mixing at 3 meters
 
 # Identify and filter records that have < 23 hrs of data. 
 data_summ <- data %>% 
@@ -78,7 +78,7 @@ data_k600 <- data_summ %>%
 ### ASSUMPTION HERE TOO ###
 #if(lake == "BWNS1") { 
   data_k600 <- data_k600 %>% 
-    mutate(k = ifelse(z<15, 0, k)) 
+    mutate(k = ifelse(z<20, 0, k)) 
   # We assume no DO exchange with the Atmosphere. 
   # All DO change is related to metabolism.
 #}
@@ -166,7 +166,7 @@ k = sonde_prep$k
 
 obs_per_series <- array(c({sonde_prep %>%
     group_by(unique_series) %>%
-    summarize(value = length(unique_series))}$value)) # 3520
+    summarize(value = length(unique_series))}$value)) # 2198
 
 obs_per_day <- array(c({sonde_prep %>%
     group_by(unique_day) %>%
