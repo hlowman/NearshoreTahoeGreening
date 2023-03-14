@@ -16,8 +16,8 @@ library(plotly)
 
 #### Get and process high frequency sensor data ####
 
-lake <- "GB10"
-lake_id <- "GB10"
+lake <- "GB15"
+lake_id <- "GB15"
 # ASSUMPTIONS HERE
 max_d <- 501 # total depth of lake tahoe in m
 lake.area <- 496000 # need to adjust for nearshore area
@@ -25,7 +25,7 @@ out.time.period <- "60 min"
 tz <-  c('US/Pacific')
 
 # Load in dataset prepped in Step2 script. 
-sonde <- read_csv("data_working/GB10Inputs.csv") 
+sonde <- read_csv("data_working/GB15Inputs.csv") 
 
 years <- c(2022)
 
@@ -48,7 +48,7 @@ head(sonde$datetime_PST) # loads back in as UTC gah how annoying!!
 # All good :)
 
 # ASSUMPTION HERE
-data$z <- c(10) # assume complete mixing at 3 meters
+data$z <- c(15) # assume complete mixing at 3 meters
 
 # Identify and filter records that have < 23 hrs of data. 
 data_summ <- data %>% 
@@ -78,7 +78,7 @@ data_k600 <- data_summ %>%
 ### ASSUMPTION HERE TOO ###
 #if(lake == "BWNS1") { 
   data_k600 <- data_k600 %>% 
-    mutate(k = ifelse(z<10, 0, k)) 
+    mutate(k = ifelse(z<15, 0, k)) 
   # We assume no DO exchange with the Atmosphere. 
   # All DO change is related to metabolism.
 #}

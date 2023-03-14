@@ -25,8 +25,10 @@ gb_syn <- read_csv("data_raw/SynopticDownloads/F9917.2023-02-07_tidy.csv")
 #gb_do_ns1 <- read_csv("data_raw/CleanedDO/GBNS1/GBNS1_20221018_miniDOT.csv")
 # gb_do_ns3 <- read_csv("data_raw/CleanedDO/GBNS3/GBNS3_20220706.csv")
 # gb_do_ns3_2 <- read_csv("data_raw/CleanedDO/GBNS3/GBNS3_20221018_miniDOT.csv")
-gb_do_10 <- read_csv("data_raw/CleanedDO/GB10/GB10m_20220714.csv")
-gb_do_10_2 <- read_csv("data_raw/CleanedDO/GB10/GB10m_20221018_miniDOT.csv")
+# gb_do_10 <- read_csv("data_raw/CleanedDO/GB10/GB10m_20220714.csv")
+# gb_do_10_2 <- read_csv("data_raw/CleanedDO/GB10/GB10m_20221018_miniDOT.csv")
+gb_do_15 <- read_csv("data_raw/CleanedDO/GB15/GB15m_20220714_miniDOT.csv")
+gb_do_15_2 <- read_csv("data_raw/CleanedDO/GB15/GB15m_20221018_miniDOT.csv")
 
 #### Synoptic data compilation ####
 
@@ -99,5 +101,15 @@ gb_do_joined <- gb_do_joined %>%
 
 # Export for use in metab modeling.
 saveRDS(gb_do_joined, "data_working/GB10_compiled_030623.rds")
+
+# Compiling cleaned DO data for GB15.
+gb_do_15_joined <- rbind(gb_do_15, gb_do_15_2)
+
+# Filter out data that I feel may be affected by bio-fouling.
+gb_do_15_joined <- gb_do_15_joined %>%
+  filter(PCT < "2022-08-01")
+
+# Export for use in metab modeling.
+saveRDS(gb_do_15_joined, "data_working/GB15_compiled_031323.rds")
 
 # End of script.

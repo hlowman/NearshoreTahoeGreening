@@ -21,7 +21,7 @@ library(gridExtra)
 library(here)
 
 # Load raw DO dataset.
-do_raw <- readRDS("data_working/GB10_compiled_030623.rds")
+do_raw <- readRDS("data_working/GB15_compiled_031323.rds")
 
 head(do_raw$PCT) # denoted in UTC
 
@@ -228,11 +228,11 @@ dat_full <- dat3 %>%
   # Note, since I don't currently have data for the full year, I am
   # using 0.08 for all dates prior to June 21 and after Sept 28
   mutate(par_int = case_when(extcoef > 0 ~ 
-         round((par - par*exp(-extcoef*10))/(extcoef*10), digits = 0),
-         TRUE ~ round((par - par*exp(-0.08*10))/(0.08*10), digits = 0)))
+         round((par - par*exp(-extcoef*15))/(extcoef*15), digits = 0),
+         TRUE ~ round((par - par*exp(-0.08*15))/(0.08*15), digits = 0)))
 # multiplier = "(extcoef*3)" should be depth of water column
 
-range(dat_full$datetime_PST) # May through October
+range(dat_full$datetime_PST) # May through October/April through August
 # time zone stamp looks good
 
 dat_full <- dat_full %>% 
@@ -247,9 +247,9 @@ ggplot(data = dat_full, aes(x = datetime_PST, y = do)) +
 
 # Export datasets.
 write.table(x = dat_full, 
-            file = "data_working/GB10Inputs.txt", 
+            file = "data_working/GB15Inputs.txt", 
             row.names = TRUE)
 write_csv(x = dat_full, 
-          file = "data_working/GB10Inputs.csv")
+          file = "data_working/GB15Inputs.csv")
 
 # End of script.
