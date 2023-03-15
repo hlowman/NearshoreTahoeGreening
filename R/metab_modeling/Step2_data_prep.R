@@ -68,6 +68,7 @@ wsp.ts <- climate.raw %>%
   rename(wspeed = 'wind_speed_set_1')
 
 # Creater separate light dataset by multiplying PAR by 2.114.
+# Converts from shortwave radiation to PAR.
 par.ts <- climate.raw %>% 
   select(datetime_PST, solar_radiation_set_1) %>% 
   rename(par = "solar_radiation_set_1") %>% 
@@ -176,7 +177,7 @@ dat <- do.ts.avg %>% # no drift correction at the moment.
          yday = yday(datetime_PST),
          hour = hour(datetime_PST)) %>% 
   # o2.at.sat.base() from lakeMetabolizer
-  mutate(do_eq = o2.at.sat.base(temp = wtr,altitude = 1897)) %>%  
+  mutate(do_eq = o2.at.sat.base(temp = wtr, altitude = 1897)) %>%  
   # Tahoe altitude in m  = 1897 m
   mutate(o2_sat = do.obs/do_eq) 
 
