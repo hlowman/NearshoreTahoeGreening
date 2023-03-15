@@ -21,7 +21,7 @@ library(gridExtra)
 library(here)
 
 # Load raw DO dataset.
-do_raw <- readRDS("data_working/GB20_compiled_031423.rds")
+do_raw <- readRDS("data_working/BW15m_compiled_031523.rds")
 
 head(do_raw$PCT) # denoted in UTC
 
@@ -44,8 +44,10 @@ wtr.ts <- do_raw %>%
 # water temp to account for drift
 
 # Load in raw Synoptic climate data.
-climate.raw <- read_csv("data_raw/SynopticDownloads/F9917.2023-02-07_tidy.csv") %>%
-  rename(datetime='Date_Time')
+climate.raw <- readRDS("data_working/D9413_HMDC1solarwind_compiled_022123.rds") %>%
+  rename(datetime = Date_Time.x)
+  # read_csv("data_raw/SynopticDownloads/F9917.2023-02-07_tidy.csv") %>%
+  #rename(datetime='Date_Time')
 # Ok to use the first column, despite repeating values
 # since we're aggregating by hour anyway.
 
@@ -229,8 +231,8 @@ dat_full <- dat3 %>%
   # Note, since I don't currently have data for the full year, I am
   # using 0.08 for all dates prior to June 21 and after Sept 28
   mutate(par_int = case_when(extcoef > 0 ~ 
-         round((par - par*exp(-extcoef*20))/(extcoef*20), digits = 0),
-         TRUE ~ round((par - par*exp(-0.08*20))/(0.08*20), digits = 0)))
+         round((par - par*exp(-extcoef*15))/(extcoef*15), digits = 0),
+         TRUE ~ round((par - par*exp(-0.08*15))/(0.08*15), digits = 0)))
 # multiplier = "(extcoef*3)" should be depth of water column
 
 range(dat_full$datetime_PST) # May through October/April through August
@@ -248,9 +250,9 @@ ggplot(data = dat_full, aes(x = datetime_PST, y = do)) +
 
 # Export datasets.
 write.table(x = dat_full, 
-            file = "data_working/GB20Inputs.txt", 
+            file = "data_working/BW15Inputs.txt", 
             row.names = TRUE)
 write_csv(x = dat_full, 
-          file = "data_working/GB20Inputs.csv")
+          file = "data_working/BW15Inputs.csv")
 
 # End of script.
