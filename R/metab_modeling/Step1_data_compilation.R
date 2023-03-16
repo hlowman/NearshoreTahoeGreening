@@ -22,8 +22,11 @@ library(here)
 #bw_do_ns3 <- read_csv("data_raw/CleanedDO/BWNS3/BWNS3_20221017.csv")
 #bw_do_1 <- read_csv("data_raw/CleanedDO/BW10/BW10m_20220715.csv")
 #bw_do_2 <- read_csv("data_raw/CleanedDO/BW10/BW10m_20221017.csv")
-bw_do_15 <- read_csv("data_raw/CleanedDO/BW15/BW15m_20220715.csv")
-bw_do_15_2 <- read_csv("data_raw/CleanedDO/BW15/BW15m_20221017.csv")
+# bw_do_15 <- read_csv("data_raw/CleanedDO/BW15/BW15m_20220715.csv")
+# bw_do_15_2 <- read_csv("data_raw/CleanedDO/BW15/BW15m_20221017.csv")
+bw_do_20 <- read_csv("data_raw/CleanedDO/BW20/BW20m_20220715_miniDOTbenthic.csv")
+bw_do_20_2 <- read_csv("data_raw/CleanedDO/BW20/BW20m_20221017_miniDOTbenthic.csv")
+
 #gb_do_ns1 <- read_csv("data_raw/CleanedDO/GBNS1/GBNS1_20221018_miniDOT.csv")
 # gb_do_ns3 <- read_csv("data_raw/CleanedDO/GBNS3/GBNS3_20220706.csv")
 # gb_do_ns3_2 <- read_csv("data_raw/CleanedDO/GBNS3/GBNS3_20221018_miniDOT.csv")
@@ -90,6 +93,16 @@ bw_do15_joined <- bw_do15_joined %>%
 
 # Export for use in metab modeling.
 saveRDS(bw_do15_joined, "data_working/BW15m_compiled_031523.rds")
+
+# Compiling cleaned DO data.
+bw_do20_joined <- rbind(bw_do_20, bw_do_20_2)
+
+# Filter out data that I feel may be affected by bio-fouling.
+bw_do20_joined <- bw_do20_joined %>%
+  filter(PCT < "2022-08-01")
+
+# Export for use in metab modeling.
+saveRDS(bw_do20_joined, "data_working/BW20m_compiled_031623.rds")
 
 # No additional compilation needed for GBNS1.
 

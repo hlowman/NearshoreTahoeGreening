@@ -21,7 +21,7 @@ library(gridExtra)
 library(here)
 
 # Load raw DO dataset.
-do_raw <- readRDS("data_working/BW15m_compiled_031523.rds")
+do_raw <- readRDS("data_working/BW20m_compiled_031623.rds")
 
 head(do_raw$PCT) # denoted in UTC
 
@@ -66,8 +66,8 @@ head(climate.raw$datetime_PST) # Now in PDT as well
 # Create separate windspeed dataset.
 # NOTE - for BW sites this is "wind_speed_set_1_ed" column!!!
 wsp.ts <- climate.raw %>% 
-  select(datetime_PST, wind_speed_set_1) %>% 
-  rename(wspeed = 'wind_speed_set_1')
+  select(datetime_PST, wind_speed_set_1_ed) %>% 
+  rename(wspeed = 'wind_speed_set_1_ed')
 
 # Creater separate light dataset by multiplying PAR by 2.114.
 par.ts <- climate.raw %>% 
@@ -230,8 +230,8 @@ dat_full <- dat3 %>%
   # Note, since I don't currently have data for the full year, I am
   # using 0.08 for all dates prior to June 21 and after Sept 28
   mutate(par_int = case_when(extcoef > 0 ~ 
-         round((par - par*exp(-extcoef*15))/(extcoef*15), digits = 0),
-         TRUE ~ round((par - par*exp(-0.08*15))/(0.08*15), digits = 0)))
+         round((par - par*exp(-extcoef*20))/(extcoef*20), digits = 0),
+         TRUE ~ round((par - par*exp(-0.08*20))/(0.08*20), digits = 0)))
 # multiplier = "(extcoef*3)" should be depth of water column
 
 range(dat_full$datetime_PST) # May through October/April through August
@@ -249,9 +249,9 @@ ggplot(data = dat_full, aes(x = datetime_PST, y = do)) +
 
 # Export datasets.
 write.table(x = dat_full, 
-            file = "data_working/BW15Inputs.txt", 
+            file = "data_working/BW20Inputs.txt", 
             row.names = TRUE)
 write_csv(x = dat_full, 
-          file = "data_working/BW15Inputs.csv")
+          file = "data_working/BW20Inputs.csv")
 
 # End of script.
