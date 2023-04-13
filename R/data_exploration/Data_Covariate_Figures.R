@@ -295,4 +295,60 @@ gb20 <- read_csv("data_working/GB20Inputs.csv")
 #        height = 40,
 #        units = "cm")
 
+#### Time-series ####
+
+# BW 3m
+# DO
+(fig_8a <- ggplot(bwns1, aes(x = datetime_PST, y = do)) +
+   geom_line(color = "#69B9FA") +
+   labs(x = "Date",
+        y = "Dissolved Oxygen (mg/L)") +
+   theme_bw() +
+   theme(text = element_text(size = 20)))
+
+# Temperature
+(fig_8b <- ggplot(bwns1, aes(x = datetime_PST, y = wtemp)) +
+    geom_line(color = "#4CA49E") +
+    labs(x = "Date",
+         y = "Temperature (C)") +
+    theme_bw() +
+    theme(text = element_text(size = 20)))
+
+# Light
+bwns1_daily <- bwns1 %>%
+  mutate(month = month(datetime_PST),
+         day = day(datetime_PST)) %>%
+  group_by(year, month, day) %>%
+  summarize(par_d = mean(par),
+            wind_d = mean(wspeed)) %>%
+  ungroup() %>%
+  mutate(date = make_date(year, month, day))
+
+(fig_8c <- ggplot(bwns1_daily %>%
+                    filter(date > as.Date(as.character("2022-05-24"))), 
+                           aes(x = date, y = par_d)) +
+    geom_line(color = "#FFAA00") +
+    labs(x = "Date",
+         y = "Incoming Light (PAR)") +
+    theme_bw() +
+    theme(text = element_text(size = 20)))
+
+# Wind
+(fig_8d <- ggplot(bwns1_daily, aes(x = date, y = wind_d)) +
+    geom_line(color = "#3793EC") +
+    labs(x = "Date",
+         y = "Windspeed (m/s)") +
+    theme_bw() +
+    theme(text = element_text(size = 20)))
+
+(fig8 <- fig_8a + fig_8b + fig_8c + fig_8d +
+    plot_annotation(title = "BW 3m", tag_levels = "A") +
+    plot_layout(nrow = 4))
+
+ggsave(fig8,
+       filename = "figures/BW3m_TS_Covar_041323.jpg",
+       width = 20,
+       height = 40,
+       units = "cm")
+
 # End of script.
