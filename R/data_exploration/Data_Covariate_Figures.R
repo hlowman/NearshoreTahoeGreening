@@ -304,7 +304,7 @@ gb20 <- read_csv("data_working/GB20Inputs.csv")
    labs(x = "Date",
         y = "Dissolved Oxygen (mg/L)") +
    theme_bw() +
-   theme(text = element_text(size = 20)))
+   theme(text = element_text(size = 24)))
 
 # Temperature
 (fig_8b <- ggplot(bwns1, aes(x = datetime_PST, y = wtemp)) +
@@ -312,7 +312,7 @@ gb20 <- read_csv("data_working/GB20Inputs.csv")
     labs(x = "Date",
          y = "Temperature (C)") +
     theme_bw() +
-    theme(text = element_text(size = 20)))
+    theme(text = element_text(size = 24)))
 
 # Light
 bwns1_daily <- bwns1 %>%
@@ -331,7 +331,7 @@ bwns1_daily <- bwns1 %>%
     labs(x = "Date",
          y = "Incoming Light (PAR)") +
     theme_bw() +
-    theme(text = element_text(size = 20)))
+    theme(text = element_text(size = 24)))
 
 # Wind
 (fig_8d <- ggplot(bwns1_daily, aes(x = date, y = wind_d)) +
@@ -339,7 +339,7 @@ bwns1_daily <- bwns1 %>%
     labs(x = "Date",
          y = "Windspeed (m/s)") +
     theme_bw() +
-    theme(text = element_text(size = 20)))
+    theme(text = element_text(size = 24)))
 
 (fig8 <- fig_8a + fig_8b + fig_8c + fig_8d +
     plot_annotation(title = "BW 3m", tag_levels = "A") +
@@ -347,7 +347,7 @@ bwns1_daily <- bwns1 %>%
 
 ggsave(fig8,
        filename = "figures/BW3m_TS_Covar_041323.jpg",
-       width = 20,
+       width = 40,
        height = 40,
        units = "cm")
 
