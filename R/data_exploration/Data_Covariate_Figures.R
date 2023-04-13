@@ -301,18 +301,21 @@ gb20 <- read_csv("data_working/GB20Inputs.csv")
 # DO
 (fig_8a <- ggplot(bwns1, aes(x = datetime_PST, y = do)) +
    geom_line(color = "#69B9FA") +
-   labs(x = "Date",
-        y = "Dissolved Oxygen (mg/L)") +
+   ylim(c(6.5,10)) +
+   labs(y = "Dissolved Oxygen (mg/L)") +
    theme_bw() +
-   theme(text = element_text(size = 24)))
+   theme(axis.title.x = element_blank(),
+         text = element_text(size = 30)))
 
 # Temperature
 (fig_8b <- ggplot(bwns1, aes(x = datetime_PST, y = wtemp)) +
     geom_line(color = "#4CA49E") +
+    ylim(c(4,22)) +
     labs(x = "Date",
          y = "Temperature (C)") +
     theme_bw() +
-    theme(text = element_text(size = 24)))
+    theme(axis.title.x = element_blank(),
+          text = element_text(size = 30)))
 
 # Light
 bwns1_daily <- bwns1 %>%
@@ -331,7 +334,8 @@ bwns1_daily <- bwns1 %>%
     labs(x = "Date",
          y = "Incoming Light (PAR)") +
     theme_bw() +
-    theme(text = element_text(size = 24)))
+    theme(axis.title.x = element_blank(),
+          text = element_text(size = 30)))
 
 # Wind
 (fig_8d <- ggplot(bwns1_daily, aes(x = date, y = wind_d)) +
@@ -339,7 +343,7 @@ bwns1_daily <- bwns1 %>%
     labs(x = "Date",
          y = "Windspeed (m/s)") +
     theme_bw() +
-    theme(text = element_text(size = 24)))
+    theme(text = element_text(size = 30)))
 
 (fig8 <- fig_8a + fig_8b + fig_8c + fig_8d +
     plot_annotation(title = "BW 3m", tag_levels = "A") +
@@ -351,23 +355,28 @@ bwns1_daily <- bwns1 %>%
 #        height = 40,
 #        units = "cm")
 
-
 # BW 20m
 # DO
 (fig_9a <- ggplot(bw20, aes(x = datetime_PST, y = do)) +
     geom_line(color = "#69B9FA") +
+    ylim(c(6.5,10)) +
     labs(x = "Date",
          y = "Dissolved Oxygen (mg/L)") +
     theme_bw() +
-    theme(text = element_text(size = 24)))
+    theme(axis.title.y = element_blank(),
+          axis.title.x = element_blank(),
+          text = element_text(size = 30)))
 
 # Temperature
 (fig_9b <- ggplot(bw20, aes(x = datetime_PST, y = wtemp)) +
     geom_line(color = "#4CA49E") +
+    ylim(c(4,22)) +
     labs(x = "Date",
          y = "Temperature (C)") +
     theme_bw() +
-    theme(text = element_text(size = 24)))
+    theme(axis.title.y = element_blank(),
+          axis.title.x = element_blank(),
+          text = element_text(size = 30)))
 
 # Light
 bw20_daily <- bw20 %>%
@@ -385,7 +394,9 @@ bw20_daily <- bw20 %>%
     labs(x = "Date",
          y = "Incoming Light (PAR)") +
     theme_bw() +
-    theme(text = element_text(size = 24)))
+    theme(axis.title.y = element_blank(),
+          axis.title.x = element_blank(),
+          text = element_text(size = 30)))
 
 # Wind
 (fig_9d <- ggplot(bw20_daily, aes(x = date, y = wind_d)) +
@@ -393,7 +404,8 @@ bw20_daily <- bw20 %>%
     labs(x = "Date",
          y = "Windspeed (m/s)") +
     theme_bw() +
-    theme(text = element_text(size = 24)))
+    theme(axis.title.y = element_blank(),
+          text = element_text(size = 30)))
 
 (fig9 <- fig_9a + fig_9b + fig_9c + fig_9d +
     plot_annotation(title = "BW 20m", tag_levels = "A") +
