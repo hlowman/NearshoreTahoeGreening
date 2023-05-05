@@ -3,7 +3,7 @@
 ## Heili Lowman
 
 # The following script will read in compiled data and make some
-# exploratory plots ahead of the ASLO conference.
+# plots for inclusion in ASLO conference presentation slides.
 
 #### Setup ####
 
@@ -33,21 +33,28 @@ gb20 <- read_csv("data_working/GB20Inputs.csv")
 # Make preliminary paneled plots.
 
 ##### BWNS1 #####
-(fig_0a <- ggplot(bwns1, aes(x = par, y = o2_sat*100)) +
+(fig_0a <- ggplot(bwns1 %>%
+                    filter(datetime_PST < date("2022-08-01 00:00:00")), 
+                  aes(x = par, y = o2_sat*100)) +
    geom_point(color = "#E69512", alpha = 0.8) +
    labs(x = "Light",
         y = "% Saturation Dissolved Oxygen") +
    theme_bw())
 
-(fig_0b <- ggplot(bwns1, aes(x = wspeed, y = o2_sat*100)) +
+(fig_0b <- ggplot(bwns1 %>%
+                    filter(datetime_PST < date("2022-08-01 00:00:00")), 
+                           aes(x = wspeed, y = o2_sat*100)) +
     geom_point(color = "#0FB2D3", alpha = 0.8) +
     scale_x_log10() +
     labs(x = "Windspeed",
          y = "% Saturation Dissolved Oxygen") +
     theme_bw())
 
-(fig_0c <- ggplot(bwns1, aes(x = wtemp, y = o2_sat*100)) +
+(fig_0c <- ggplot(bwns1 %>%
+                    filter(datetime_PST < date("2022-08-01 00:00:00")), 
+                  aes(x = wtemp, y = o2_sat*100)) +
     geom_point(color = "#D3105C", alpha = 0.8) +
+    xlim(4, 21) +
     labs(x = "Water Temperature",
          y = "% Saturation Dissolved Oxygen") +
     theme_bw())
@@ -126,21 +133,28 @@ gb20 <- read_csv("data_working/GB20Inputs.csv")
 #        units = "cm")
 
 ##### BW20 #####
-(fig_3a <- ggplot(bw20, aes(x = par, y = o2_sat*100)) +
+(fig_3a <- ggplot(bw20 %>%
+                    filter(datetime_PST > date("2022-05-24 00:00:00")), 
+                  aes(x = par, y = o2_sat*100)) +
    geom_point(color = "#E69512", alpha = 0.8) +
    labs(x = "Light",
         y = "% Saturation Dissolved Oxygen") +
    theme_bw())
 
-(fig_3b <- ggplot(bw20, aes(x = wspeed, y = o2_sat*100)) +
+(fig_3b <- ggplot(bw20 %>%
+                    filter(datetime_PST > date("2022-05-24 00:00:00")), 
+                  aes(x = wspeed, y = o2_sat*100)) +
     geom_point(color = "#0FB2D3", alpha = 0.8) +
     scale_x_log10() +
     labs(x = "Windspeed",
          y = "% Saturation Dissolved Oxygen") +
     theme_bw())
 
-(fig_3c <- ggplot(bw20, aes(x = wtemp, y = o2_sat*100)) +
+(fig_3c <- ggplot(bw20 %>%
+                    filter(datetime_PST > date("2022-05-24 00:00:00")), 
+                  aes(x = wtemp, y = o2_sat*100)) +
     geom_point(color = "#D3105C", alpha = 0.8) +
+    xlim(4, 21) +
     labs(x = "Water Temperature",
          y = "% Saturation Dissolved Oxygen") +
     theme_bw())
@@ -152,6 +166,16 @@ gb20 <- read_csv("data_working/GB20Inputs.csv")
 #        filename = "figures/BW20_DO_Covar_032823.jpg",
 #        width = 30,
 #        height = 10,
+#        units = "cm")
+
+(fig0_3 <- fig_0a + fig_0b + fig_0c +
+    fig_3a + fig_3b + fig_3c +
+    plot_annotation(title = "BW", tag_levels = "A"))
+
+# ggsave(fig0_3,
+#        filename = "figures/BWNS1_20_DO_Covar_050523.jpg",
+#        width = 30,
+#        height = 20,
 #        units = "cm")
 
 ##### GBNS1 #####
