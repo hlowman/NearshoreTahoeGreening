@@ -37,6 +37,7 @@ gb20 <- read_csv("data_working/GB20Inputs.csv")
                     filter(datetime_PST < date("2022-08-01 00:00:00")), 
                   aes(x = par, y = o2_sat*100)) +
    geom_point(color = "#E69512", alpha = 0.8) +
+   ylim(85, 108) +
    labs(x = "Light",
         y = "% Saturation Dissolved Oxygen") +
    theme_bw())
@@ -46,6 +47,7 @@ gb20 <- read_csv("data_working/GB20Inputs.csv")
                            aes(x = wspeed, y = o2_sat*100)) +
     geom_point(color = "#0FB2D3", alpha = 0.8) +
     scale_x_log10() +
+    ylim(85, 108) +
     labs(x = "Windspeed",
          y = "% Saturation Dissolved Oxygen") +
     theme_bw())
@@ -55,6 +57,7 @@ gb20 <- read_csv("data_working/GB20Inputs.csv")
                   aes(x = wtemp, y = o2_sat*100)) +
     geom_point(color = "#D3105C", alpha = 0.8) +
     xlim(4, 21) +
+    ylim(85, 108) +
     labs(x = "Water Temperature",
          y = "% Saturation Dissolved Oxygen") +
     theme_bw())
@@ -137,6 +140,7 @@ gb20 <- read_csv("data_working/GB20Inputs.csv")
                     filter(datetime_PST > date("2022-05-24 00:00:00")), 
                   aes(x = par, y = o2_sat*100)) +
    geom_point(color = "#E69512", alpha = 0.8) +
+   ylim(85, 108) +
    labs(x = "Light",
         y = "% Saturation Dissolved Oxygen") +
    theme_bw())
@@ -145,6 +149,7 @@ gb20 <- read_csv("data_working/GB20Inputs.csv")
                     filter(datetime_PST > date("2022-05-24 00:00:00")), 
                   aes(x = wspeed, y = o2_sat*100)) +
     geom_point(color = "#0FB2D3", alpha = 0.8) +
+    ylim(85, 108) +
     scale_x_log10() +
     labs(x = "Windspeed",
          y = "% Saturation Dissolved Oxygen") +
@@ -155,6 +160,7 @@ gb20 <- read_csv("data_working/GB20Inputs.csv")
                   aes(x = wtemp, y = o2_sat*100)) +
     geom_point(color = "#D3105C", alpha = 0.8) +
     xlim(4, 21) +
+    ylim(85, 108) +
     labs(x = "Water Temperature",
          y = "% Saturation Dissolved Oxygen") +
     theme_bw())
