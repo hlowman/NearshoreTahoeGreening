@@ -196,7 +196,7 @@ bwns1_trim <- bwns1 %>%
 
 cor3 <- cor(bwns1_trim)
 
-corrplot(cor3) # strongest with light
+corrplot.mixed(cor3) # strongest with light r = 0.6
 
 bw20_trim <- bw20 %>%
   select(o2_sat, par, wspeed, wtemp) %>%
@@ -204,7 +204,7 @@ bw20_trim <- bw20 %>%
 
 cor20 <- cor(bw20_trim)
 
-corrplot(cor20) # strongest with temperature
+corrplot.mixed(cor20) # strongest with temperature r = 0.87
 
 ##### GBNS1 #####
 (fig_4a <- ggplot(gbns1, aes(x = par, y = o2_sat*100)) +
