@@ -163,4 +163,27 @@ ggsave(plot = p1,filename = "figures/GBNS1fit_2022_030123.png",
 ggsave(plot = p2,filename = "figures/GBNS1metab_2022_030123.png",
        width=8, height=4.5, dpi=300)
 
+# Plot time series of estimates
+(p3 <- ggplot(data = out3 %>% 
+                filter(name %in% c("GPP","ER")) %>%
+                mutate(name_f = factor(name, levels = c("GPP", "ER"))) %>%
+                mutate(date = parse_date_time(x = paste(2022, yday), orders = "yj")),
+              aes(date, middle, color = name_f))+
+    geom_hline(yintercept = 0, size = 0.3, color = "gray50")+
+    geom_ribbon(aes(ymin = lower, ymax = upper, fill = name_f),
+                linetype = 0, alpha = 0.2)+
+    geom_line(size = 2)+
+    scale_color_manual(values = c("#455D44","#845B3E")) +
+    scale_fill_manual(values = c("#455D44","#845B3E")) +
+    theme_bw() +
+    labs(y = expression(mmol~O[2]~m^-3~d^-1),
+         x = "Date",
+         color = "Process",
+         fill = "Process"))
+
+# Export figure.
+ggsave(plot = p3,
+       filename = "figures/GBNS1metab_2022_051023.png",
+       width = 8, height = 4.5, dpi=300)
+
 # End of script.
