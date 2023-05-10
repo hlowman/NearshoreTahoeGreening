@@ -175,6 +175,8 @@ ggsave(plot = p2,filename = "figures/BWNS1metab_2022_022223.png",
     scale_color_manual(values = c("#455D44","#845B3E")) +
     scale_fill_manual(values = c("#455D44","#845B3E")) +
     theme_bw() +
+    theme(text = element_text(size = 20)) +
+    ylim(-30, 30) +
     labs(y = expression(mmol~O[2]~m^-3~d^-1),
          x = "Date",
          color = "Process",
