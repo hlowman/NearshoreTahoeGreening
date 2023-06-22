@@ -32,9 +32,17 @@ str(dat_raw)
 # the mean starting concentration for each spike (NH4 & NO3) in both
 # kinds of lake water to account for any pre-existing concentrations of either.
 
-# Add columns with concentrations in ug-N/L
+# Edit concentration values to exclude values that have been flagged ("Y"), or
+# if they are below the limit of detection, set them at the limit of detection.
+# Ammonia - 0.002 mg N/L
+# Nitrate - 0.003 mg N/L
 dat_raw <- dat_raw %>%
-  mutate(Conc_µgNL = 1000*Conc_mgNL) %>%
+  mutate(Conc_mgNL_ed = case_when(Analyte == "NH3" & Conc_mgNL < 0.002 ~ 0.002,
+                               Analyte == "NO3" & Conc_mgNL < 0.003 ~ 0.003,
+                               Flag == "Y" ~ NA,
+                               TRUE ~ Conc_mgNL)) %>%
+  # And add columns with concentrations in ug-N/L
+  mutate(Conc_µgNL = 1000*Conc_mgNL_ed) %>%
   # If hours are blank, assign an incubation time of 6 hours.
   # Else, make hours of incubation time numeric.
   rowwise() %>%
@@ -42,12 +50,11 @@ dat_raw <- dat_raw %>%
                                             decimateTime(as.character(Actual_incubation_hrs)))) %>%
   ungroup()
 
+
 # Filter for only initial measurements of spikes in lake water.
 dat_raw_before <- dat_raw %>%
   filter(Location %in% c("BW", "GB")) %>%
-  filter(is.na(Vial_num) == TRUE) %>%
-# And remove any flagged values.
-  filter(Flag == "N")
+  filter(is.na(Vial_num) == TRUE)
 
 # Group by spike and calculated mean concentrations.
 dat_avg_before <- dat_raw_before %>%
@@ -81,14 +88,12 @@ dat_raw <- dat_raw %>%
 # To do so, we first calculate average uptake rates of lakewater.
 # Filter for only lake water.
 dat_raw_water <- dat_raw %>%
-  filter(Type == "water") %>%
-  # And remove any flagged values.
-  filter(Flag == "N")
+  filter(Type == "water")
 
 # Group by spike and calculated mean uptake rates.
 dat_avg_water <- dat_raw_water %>%
   group_by(Location, Analyte, Spike_µg_L) %>%
-  summarize(water_delta_Conc_µgNLhr = mean(delta_Conc_µgNLhr)) %>%
+  summarize(water_delta_Conc_µgNLhr = mean(delta_Conc_µgNLhr, na.rm = TRUE)) %>%
   ungroup()
 
 # Join with the larger dataset.
