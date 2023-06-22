@@ -71,6 +71,15 @@ dat_avg_before <- dat_raw_before %>%
 # In order to do this, we first append the dataset created above to the
 # larger dataset, creating essentially a new column with our mean "before"
 # concentrations.
+
+# But, one of the problems is that the SS and SH sites will get left out, so
+# we need to make a new column to facilitate joining.
+dat_raw <- dat_raw %>%
+  rename("Location2" = "Location") %>%
+  mutate("Location" = case_when(Location2 == "SS" ~ "BW",
+                                Location2 == "SH" ~ "GB",
+                                TRUE ~ Location2))
+
 dat_raw <- left_join(dat_raw, dat_avg_before, 
                      by = c("Location", "Analyte", "Spike_µg_L")) # Yay!
 
@@ -110,7 +119,8 @@ dat_raw <- dat_raw %>%
 # only include the sediment and biofilm uptake results.
 dat_tidy <- dat_raw %>%
   filter(Type %in% c("biofilm", "sediment")) %>%
-  select(Location, Depth, Analyte, Spike_µg_L, Type, Flag:net_delta_Conc_µgNLhr)
+  dplyr::select(Location2, Depth, Analyte, Spike_µg_L, Type, Flag:Actual_incubation_hrs,
+                before_mean_Conc_µgNL:net_delta_Conc_µgNLhr)
 
 # Export for use in Michaelis-Menten calculation script.
 saveRDS(dat_tidy, "data_working/N_May_Incubation_Uptake_Rates_062223.rds")
