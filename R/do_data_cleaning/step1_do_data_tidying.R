@@ -22,13 +22,12 @@ library(here)
 
 # Point working directory to the appropriate umbrella folder on the server.
 setwd("R:/Blaszczak_Lab/Ongoing Projects/Tahoe Data/Raw Data/raw_miniDOT")
-
-here()
+getwd()
 
 #### Load in DO data ####
 
 # Read in concatenated miniDOT data for a given instrument download.
-df <- read.delim("BWNS1/2021/7450-195441/BWNS120211015.txt",
+df <- read.delim("GBNS3/20211001/7450-224208/GBNS320211001miniDOT.txt",
                  sep = ',',
                  skip = 8)
 
@@ -48,12 +47,12 @@ colnames(df) <- c("Unix_Timestamp_second",
                   "Q")
 
 # Add descriptive metadata columns
-df$serial_miniDOT <- c("7450-195441") # Instrument serial number
+df$serial_miniDOT <- c("7450-224208") # Instrument serial number
 df$deploy <- c("2021-06-10") # Instrument deployment date
-df$retrieve <- c("2021-10-15") # Instrument retrieval date
-df$site <- c("BW") # Site identifier
+df$retrieve <- c("2021-10-01") # Instrument retrieval date
+df$site <- c("GB") # Site identifier
 df$location <- c("3m") # Sub-site location identifier by approx. water depth
-df$replicate <- c("NS1")
+df$replicate <- c("NS3")
 
 # Check data format
 str(df)
@@ -83,8 +82,11 @@ df <- df %>%
 
 #### Load in wiper data ####
 
+# If no wiper data present, see !Line 155! for code that can add in appropriate
+# columns as NAs.
+
 # Read in concatenated wiper data for a given instrument download (if available).
-wiper <- read.delim("BWNS1/2021/Wiper/5958-575108/BWNS120211015.txt",
+wiper <- read.delim("SSNS1/20211014/Wiper/5958-941908/SSNS120211014.txt",
                     sep = ',',
                     skip = 8)
 
@@ -100,16 +102,16 @@ colnames(wiper) <- c("Unix_Timestamp_second_wiper",
                   "Battery_Volt_wiper",
                   "Temperature_deg_C_wiper",
                   "Wipes_Completed",
-                  "Cal_Wipe_Time_second",
+                  #"Cal_Wipe_Time_second",
                   "Wipe_Time_second",
-                  "Start_Current_mA",
+                  "Forward_Start_Current_mA", #"Start_Current_mA",
                   "Average_Current_mA",
-                  "Peak_Current_mA",
+                  "Reverse_Start_Current_mA", #"Peak_Current_mA",
                   "Final_Current_mA",
                   "Source_Resistance_Ohm")
 
 # Add descriptive metadata columns
-wiper$serial_wiper <- c("5958-575108") # Instrument serial number
+wiper$serial_wiper <- c("5958-941908") # Instrument serial number
 
 # Check data format
 str(wiper)
@@ -136,7 +138,7 @@ wiper <- wiper %>%
          PT_hour = hour(PT_wiper)-1)
 
 # Setting the "hour" for the wipers to actually be the hour previous
-# since that is the data the wiper data actually pertains to.
+# since that is the data the wiper data would filter out/pertains to.
 
 # Join first by date, then by hour.
 # And check to be sure the full total of DO observations stays the same.
@@ -149,6 +151,26 @@ df_wiper <- df_wiper %>%
 
 # See here for more info re: the fill() function.
 # https://stackoverflow.com/questions/67960986/how-to-fill-the-gaps-with-values-present-in-each-column-in-a-dataframe-in-r
+
+# ONLY USE THE BELOW CODE IF THERE IS NO WIPER DATA:
+df$Unix_Timestamp_second_wiper <- NA
+df$UTC_Date_Time_wiper <- NA
+df$Pacific_Standard_Time_wiper <- NA
+df$Battery_Volt_wiper <- NA
+df$Temperature_deg_C_wiper <- NA
+df$Wipes_Completed <- NA
+df$Wipe_Time_second <- NA
+df$Forward_Start_Current_mA <- NA
+df$Average_Current_mA <- NA
+df$Reverse_Start_Current_mA <- NA
+df$Final_Current_mA <- NA
+df$Source_Resistance_Ohm <- NA
+df$serial_wiper <- NA
+df$PT_wiper <- NA
+df$PT_date <- NA
+df$PT_hour <- NA
+
+df_wiper <- df
 
 #### Flag 3 ####
 
@@ -171,25 +193,46 @@ ggplot(df_wiper %>%
   geom_point()
 
 # Export plot for future reference.
-ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/figures/do_data_cleaning/BWNS1_2021_090623.png",
+ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/figures/do_data_cleaning/GBNS3_2021_090623.png",
        width = 12, 
        height = 5)
 
 # Looking for indicators such as:
-# (1) increasing amplitude of DO fluctuations that holds
+# (1) increasing amplitude of DO fluctuations that seems unnaturally large
 # (2) dive photos that show biofouling
 
 # Site Notes
 # BWNS1 Oct 21 - Neither
+# BWNS2 Oct 21 - Neither
+# BWNS3 Oct 21 - Neither
+# SSNS1 Oct 21 - Neither
+# GBNS1 Oct 21 - Neither, but no wiper data
+# GBNS2 Oct 21 - (2) starting around Sept. 1, but no wiperd data
+# GBNS3 Oct 21 - Neither, but no wiper data
 
 # Flag data for removal based on suspected biofouling.
 df_wiper <- df_wiper %>%
-  mutate(Flag4 = case_when(#INSERT BIOFOULING DATE FILTER HERE,
+  mutate(Flag4 = case_when(#date(PT) >= ymd("2021-09-01") ~ "YES",
     TRUE ~ "NO"))
+
+# If flagging data for biofouling, examine data once more.
+ggplot(df_wiper %>%
+         mutate(flags = case_when(Flag1 == "YES" ~ "1",
+                                  Flag2 == "YES" ~ "2",
+                                  Flag3 == "YES" ~ "3",
+                                  Flag4 == "YES" ~ "4",
+                                  TRUE ~ "None")), 
+       aes(x = PT, y = Dissolved_O_mg_L, color = flags)) +
+  geom_point()
+
+# Replace plot for future reference.
+ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/figures/do_data_cleaning/GBNS2_2021_090623.png",
+       width = 12, 
+       height = 5)
 
 #### Export dataset ####
 
 # Export rds file into this project
-saveRDS(df_wiper, file = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/data_working/do_data_cleaning/flagged_BWNS1_090623.rds")
+saveRDS(df_wiper, file = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/data_working/do_data_cleaning/flagged_GBNS3_090623.rds")
 
 # End of script.
