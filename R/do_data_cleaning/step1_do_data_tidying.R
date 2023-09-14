@@ -27,7 +27,7 @@ getwd()
 #### Load in DO data ####
 
 # Read in concatenated miniDOT data for a given instrument download.
-df <- read.delim("GB15m/20220428/7450-686243/GB15m20220428.txt",
+df <- read.delim("GBNS2/20211001/7450-265933/GBNS220211001miniDOT.txt",
                  sep = ',',
                  skip = 8)
 # We've skipped the first 8 lines because these contain only metadata spit
@@ -65,12 +65,12 @@ colnames(df) <- c("Unix_Timestamp_second",
                   "Q")
 
 # Add descriptive metadata columns
-df$serial_miniDOT <- c("7450-686243") # Instrument serial number
-df$deploy <- c("2021-10-29") # Instrument deployment date
-df$retrieve <- c("2022-04-28") # Instrument retrieval date
+df$serial_miniDOT <- c("7450-265933") # Instrument serial number
+df$deploy <- c("2021-06-10") # Instrument deployment date
+df$retrieve <- c("2021-10-01") # Instrument retrieval date
 df$site <- c("GB") # Site identifier
-df$location <- c("15m") # Sub-site location identifier by approx. water depth
-df$replicate <- c("Pelagic") # "NS1" or "Pelagic/Benthic"
+df$location <- c("3m") # Sub-site location identifier by approx. water depth
+df$replicate <- c("NS2") # "NS1" or "Pelagic/Benthic"
 
 # Check data format
 str(df)
@@ -100,11 +100,11 @@ df <- df %>%
 
 #### Load in wiper data ####
 
-# If no wiper data present, see !Line 184! for code that can add in appropriate
+# If no wiper data present, see !Line 192! for code that can add in appropriate
 # columns as NAs.
 
 # Read in concatenated wiper data for a given instrument download (if available).
-wiper <- read.delim("GB15m/20220428/Wiper5958-464434/GB15m20220428.txt",
+wiper <- read.delim("GBNS2/20220523/wiper/5958-584575/GBNS220220523.txt",
                     sep = ',',
                     skip = 8)
 
@@ -131,7 +131,7 @@ colnames(wiper) <- c("Unix_Timestamp_second_wiper",
                   "Source_Resistance_Ohm")
 
 # Add descriptive metadata columns
-wiper$serial_wiper <- c("5958-464434") # Instrument serial number
+wiper$serial_wiper <- c("5958-584575") # Instrument serial number
 
 # Check data format
 str(wiper)
@@ -163,8 +163,10 @@ wiper <- wiper %>%
 # also had to add in this case_when statement, because it would not roll back
 # to the previous day when subtracting at midnight
 # note: the ifelse() function didn't play nice here, so forced to use case_when()
-  filter(PT_date_raw >= df$deploy[1])
+  filter(PT_date_raw >= df$deploy[1]) %>%
 # and remove wiper data prior to deployment
+  filter(PT_date_raw <= df$retrieve[1])
+# and remove wiper data after retrieval (in case record is longer)
 
 # Setting the "hour" for the wipers to actually be the hour previous
 # since that is the data the wiper data would filter out/pertains to.
@@ -172,6 +174,8 @@ wiper <- wiper %>%
 # Join first by date, then by hour.
 # And check to be sure the full total of DO observations stays the same.
 df_wiper <- full_join(df, wiper, by = c("PT_date", "PT_hour"))
+# It may not in certain circumstances, due to differential lengths of wiper
+# data, so be sure to double check this visually.
 
 # Now, to populate the remainder of the wiper data. 
 # Need to apply wiper data to 2 hours prior.
@@ -181,28 +185,32 @@ df_wiper <- df_wiper %>%
 # See here for more info re: the fill() function.
 # https://stackoverflow.com/questions/67960986/how-to-fill-the-gaps-with-values-present-in-each-column-in-a-dataframe-in-r
 
+# And if the datasets have some additional wiper data at the end, trim it.
+# df_wiper <- df_wiper %>%
+#   drop_na(Q)
+
 ## !!! !!! !!! CAUTION !!! !!! !!! ##
 
 # ONLY USE THE BELOW CODE IF THERE IS NO WIPER DATA:
 
-df$Unix_Timestamp_second_wiper <- NA
-df$UTC_Date_Time_wiper <- NA
-df$Pacific_Standard_Time_wiper <- NA
-df$Battery_Volt_wiper <- NA
-df$Temperature_deg_C_wiper <- NA
-df$Wipes_Completed <- NA
-df$Wipe_Time_second <- NA
-df$Forward_Start_Current_mA <- NA
-df$Average_Current_mA <- NA
-df$Reverse_Start_Current_mA <- NA
-df$Final_Current_mA <- NA
-df$Source_Resistance_Ohm <- NA
-df$serial_wiper <- NA
-df$PT_wiper <- NA
-df$PT_date <- NA
-df$PT_hour <- NA
+# df$Unix_Timestamp_second_wiper <- NA
+# df$UTC_Date_Time_wiper <- NA
+# df$Pacific_Standard_Time_wiper <- NA
+# df$Battery_Volt_wiper <- NA
+# df$Temperature_deg_C_wiper <- NA
+# df$Wipes_Completed <- NA
+# df$Wipe_Time_second <- NA
+# df$Forward_Start_Current_mA <- NA
+# df$Average_Current_mA <- NA
+# df$Reverse_Start_Current_mA <- NA
+# df$Final_Current_mA <- NA
+# df$Source_Resistance_Ohm <- NA
+# df$serial_wiper <- NA
+# df$PT_wiper <- NA
+# df$PT_date <- NA
+# df$PT_hour <- NA
 
-df_wiper <- df
+# df_wiper <- df
 
 #### Flag 3 ####
 
@@ -225,7 +233,7 @@ ggplot(df_wiper %>%
   geom_point()
 
 # Export plot for future reference.
-ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/figures/do_data_cleaning/GB15m_spring2022_091323.png",
+ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/figures/do_data_cleaning/GBNS2_spring2022_091423.png",
        width = 12, 
        height = 5)
 
@@ -239,7 +247,7 @@ ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/f
 # BWNS3 Oct 21 - Neither
 # SSNS1 Oct 21 - Neither
 # GBNS1 Oct 21 - Neither, but no wiper data
-# GBNS2 Oct 21 - (1) starting around Sept. 1, but no wiper data
+# GBNS2 Oct 21 - (1) starting around Sept. 1
 # GBNS3 Oct 21 - Neither, but no wiper data
 # BWNS1 May 22 - Neither
 # BWNS2 May 22 - Neither, but *** REVIEW WITH GROUP ***
@@ -253,7 +261,7 @@ ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/f
 
 # Flag data for removal based on suspected biofouling.
 df_wiper <- df_wiper %>%
-  mutate(Flag4 = case_when(#date(PT) >= ymd("2022-01-01") ~ "YES",
+  mutate(Flag4 = case_when(date(PT) >= ymd("2021-09-01") ~ "YES",
     TRUE ~ "NO"))
 
 # If flagging data for biofouling, examine data once more.
@@ -267,13 +275,13 @@ ggplot(df_wiper %>%
   geom_point()
 
 # Replace plot for future reference.
-ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/figures/do_data_cleaning/GBNS1_spring2022_091323.png",
+ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/figures/do_data_cleaning/GBNS2_2021_091423.png",
        width = 12, 
        height = 5)
 
 #### Export dataset ####
 
 # Export rds file into this project
-saveRDS(df_wiper, file = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/data_working/do_data_cleaning/flagged_GB15m_091323.rds")
+saveRDS(df_wiper, file = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/data_working/do_data_cleaning/flagged_GBNS2_091423.rds")
 
 # End of script.
