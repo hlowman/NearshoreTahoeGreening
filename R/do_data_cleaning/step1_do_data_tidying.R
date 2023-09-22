@@ -27,7 +27,7 @@ getwd()
 #### Load in DO data ####
 
 # Read in concatenated miniDOT data for a given instrument download.
-df <- read.delim("GB15m/20221018/7450-099447/GB15m20221018miniDOT.txt",
+df <- read.delim("GB20m/Benthic/20230204/7450-227604/GB20m20230204.txt",
                  sep = ',',
                  skip = 8)
 # We've skipped the first 8 lines because these contain only metadata spit
@@ -65,11 +65,11 @@ colnames(df) <- c("Unix_Timestamp_second",
                   "Q")
 
 # Add descriptive metadata columns
-df$serial_miniDOT <- c("7450-099447") # Instrument serial number
+df$serial_miniDOT <- c("7450-227604") # Instrument serial number
 df$deploy <- c("2022-07-14") # Instrument deployment date
-df$retrieve <- c("2022-10-18") # Instrument retrieval date
+df$retrieve <- c("2023-02-04") # Instrument retrieval date
 df$site <- c("GB") # Site identifier
-df$location <- c("15m") # Sub-site location identifier by approx. water depth
+df$location <- c("20m") # Sub-site location identifier by approx. water depth
 df$replicate <- c("Benthic") # "NS1" or "Pelagic/Benthic"
 
 # Check data format
@@ -104,7 +104,7 @@ df <- df %>%
 # columns as NAs.
 
 # Read in concatenated wiper data for a given instrument download (if available).
-wiper <- read.delim("GB15m/20230204/5958-521352/GB15m20230204.txt",
+wiper <- read.delim("GB20m/Benthic/20230204/5958-583295/GB20m20230204.txt",
                     sep = ',',
                     skip = 8)
 
@@ -131,7 +131,7 @@ colnames(wiper) <- c("Unix_Timestamp_second_wiper",
                   "Source_Resistance_Ohm")
 
 # Add descriptive metadata columns
-wiper$serial_wiper <- c("5958-521352") # Instrument serial number
+wiper$serial_wiper <- c("5958-583295") # Instrument serial number
 
 # Check data format
 str(wiper)
@@ -235,7 +235,7 @@ ggplot(df_wiper %>%
   geom_point()
 
 # Export plot for future reference.
-ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/figures/do_data_cleaning/GB15m_fall2022_092223.png",
+ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/figures/do_data_cleaning/GB20b_winter2023_092223.png",
        width = 12, 
        height = 5)
 
@@ -249,7 +249,7 @@ ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/f
 # BWNS3 Oct 21 - Neither
 # SSNS1 Oct 21 - Neither
 # GBNS1 Oct 21 - Neither, but no wiper data
-# GBNS2 Oct 21 - (1) starting around Sept. 1
+# GBNS2 Oct 21 - (1) starting around Sept. 1, no wiper data
 # GBNS3 Oct 21 - Neither, but no wiper data
 # BWNS1 May 22 - Neither
 # BWNS2 May 22 - Neither, but *** REVIEW WITH GROUP ***
@@ -269,17 +269,20 @@ ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/f
 # BWNS1 Oct 22 - Neither (no photos)
 # BWNS3 Oct 22 - Neither (no photos)
 # SSNS1 Oct 22 - (1) starting around Jul. 14
-# GBNS1 Oct 22 - Neither, but no wiper data or photos
+# GBNS1 Oct 22 - Neither (no photos)
 # GBNS2 Oct 22 - Neither, but no wiper data or photos
 # GBNS3 Oct 22 - Neither, but no wiper data or photos (looked similar enough
 # to other GBNS data so ruled not biofouled)
 # GB10m Oct 22 - Neither, but no wiper data or photos
 # GB15m Oct 22 - Neither (no photos)
-# GB20m Oct 22 - Neither, but no wiper data or photos
+# GB20mb Oct 22 - Using GB20mb from Feb 23 instead since has full wiper record
 # BW10m Oct 22 - Neither (photos look clean in Sept.)
 # BW15m Oct 22 - Neither, but *** REVIEW WITH GROUP ***
 # BW20mp Oct 22 - Neither (photos look clean in Sept.)
 # BW20mb Oct 22 - Neither, but no wiper data so *** REVIEW WITH GROUP ***
+# GBNS1 Feb 23 - Looks like may have fallen over (based on wipers)
+# GB20mp Feb 23 - Neither, although *slightly* green in photos
+# GB20mb Feb 23 - Neither, although *slightly* green in photos
 
 # Flag data for removal based on suspected biofouling.
 df_wiper <- df_wiper %>%
@@ -304,6 +307,6 @@ ggplot(df_wiper %>%
 #### Export dataset ####
 
 # Export rds file into this project
-saveRDS(df_wiper, file = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/data_working/do_data_cleaning/flagged_GB15m_092223.rds")
+saveRDS(df_wiper, file = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/data_working/do_data_cleaning/flagged_GB20mb_092223.rds")
 
 # End of script.
