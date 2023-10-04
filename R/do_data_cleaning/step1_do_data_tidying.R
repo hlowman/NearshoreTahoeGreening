@@ -27,7 +27,7 @@ getwd()
 #### Load in DO data ####
 
 # Read in concatenated miniDOT data for a given instrument download.
-df <- read.delim("SSNS1/20220324/7450-265933/SSNS120220324.txt",
+df <- read.delim("SHNS3/20230907/7450-099447/Cat.txt",
                  sep = ',',
                  skip = 8)
 # We've skipped the first 8 lines because these contain only metadata spit
@@ -35,7 +35,7 @@ df <- read.delim("SSNS1/20220324/7450-265933/SSNS120220324.txt",
 
 # If the concatenated file is corrupted, use the following code to manually
 # read in all files in a given folder.
-dlist <- list.files(path = "SSNS1/20220324/7450-265933",
+dlist <- list.files(path = "SHNS3/20230907/7450-099447",
                  pattern = "*Z.txt",
                  full.names = T)
 
@@ -65,12 +65,12 @@ colnames(df) <- c("Unix_Timestamp_second",
                   "Q")
 
 # Add descriptive metadata columns
-df$serial_miniDOT <- c("7450-265933") # Instrument serial number
-df$deploy <- c("2021-10-15") # Instrument deployment date
-df$retrieve <- c("2022-03-24") # Instrument retrieval date
-df$site <- c("SS") # Site identifier
+df$serial_miniDOT <- c("7450-099447") # Instrument serial number
+df$deploy <- c("2023-02-04") # Instrument deployment date
+df$retrieve <- c("2023-09-07") # Instrument retrieval date
+df$site <- c("SH") # Site identifier
 df$location <- c("3m") # Sub-site location identifier by approx. water depth
-df$replicate <- c("NS1") # "NS1" or "Pelagic/Benthic"
+df$replicate <- c("NS3") # "NS1" or "Pelagic/Benthic"
 
 # Check data format
 str(df)
@@ -104,12 +104,30 @@ df <- df %>%
 # columns as NAs.
 
 # Read in concatenated wiper data for a given instrument download (if available).
-wiper <- read.delim("SSNS1/20220324/5958-619736/SSNS120220324.txt",
+wiper <- read.delim("SHNS3/20230907/wiper/5958-583295/5958-583295/Cat.txt",
                     sep = ',',
                     skip = 8)
 
 # We've skipped the first 8 lines because these contain only metadata spit
 # out by the instrument.
+
+# If the concatenated file is corrupted, use the following code to manually
+# read in all files in a given folder.
+# wlist <- list.files(path = "GB10m/20230906/wiper/5958-570998",
+#                  pattern = "*Z.txt",
+#                  full.names = T)
+# 
+# wiper <- do.call("rbind", lapply(wlist, FUN = function(file) {
+#   read.table(file, skip = 5, sep=",") %>%
+#     mutate(filename = file) %>%
+#     mutate(folder = str_split_fixed(filename, pattern = "/", n = 5)) %>%
+#     mutate(date = str_split_fixed(folder[,5], pattern = " ", n = 2)) %>%
+#     mutate(Date = ymd(date[,1])) } ) )
+# 
+# wiper <- wiper %>%
+#   mutate(UTC = as_datetime(V1),
+#          PST = with_tz(UTC, tzone = "US/Pacific")) %>%
+#   select(V1, UTC, PST, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11)
 
 #### Tidy wiper data ####
 
@@ -120,18 +138,18 @@ colnames(wiper) <- c("Unix_Timestamp_second_wiper",
                   "Battery_Volt_wiper",
                   "Temperature_deg_C_wiper",
                   "Wipes_Completed",
-                  #"Cal_Wipe_Time_second",
+                  "Cal_Wipe_Time_second",
                   "Wipe_Time_second",
-                  "Forward_Start_Current_mA", 
-                  #"Start_Current_mA",
+                  #"Forward_Start_Current_mA", 
+                  "Start_Current_mA",
                   "Average_Current_mA",
-                  "Reverse_Start_Current_mA", 
-                  #"Peak_Current_mA",
+                  #"Reverse_Start_Current_mA", 
+                  "Peak_Current_mA",
                   "Final_Current_mA",
                   "Source_Resistance_Ohm")
 
 # Add descriptive metadata columns
-wiper$serial_wiper <- c("5958-619736") # Instrument serial number
+wiper$serial_wiper <- c("5958-583295") # Instrument serial number
 
 # Check data format
 str(wiper)
@@ -163,9 +181,9 @@ wiper <- wiper %>%
 # also had to add in this case_when statement, because it would not roll back
 # to the previous day when subtracting at midnight
 # note: the ifelse() function didn't play nice here, so forced to use case_when()
-  filter(PT_date_raw >= df$deploy[1]) %>%
+  filter(as_date(PT_wiper) >= as_date(df$deploy[1])) %>%
 # and remove wiper data prior to deployment
-  filter(PT_date_raw <= df$retrieve[1])
+  filter(as_date(PT_wiper) <= as_date(df$retrieve[1]))
 # and remove wiper data after retrieval (in case record is longer)
 
 # Setting the "hour" for the wipers to actually be the hour previous
@@ -238,7 +256,7 @@ ggplot(df_wiper %>%
   geom_point()
 
 # Export plot for future reference.
-ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/figures/do_data_cleaning/SSNS1_spring2022_092723.png",
+ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/figures/do_data_cleaning/SHNS3_fall2023_100423.png",
        width = 12, 
        height = 5)
 
@@ -298,10 +316,29 @@ ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/f
 # BW15m Jun 23 - Neither (no photos)
 # BW20mp Jun 23 - Neither, but no wiper data or photos
 # SSNS2 Jun 23 - Neither
+# BWNS1 Sep 23 - (1) and (2) Evidence of fouling in June 23, 
+# looking alright in Aug/Sep
+# BWNS2 Sep 23 - Neither, looks fine in June and Aug photos
+# BWNS3 Sep 23 - Neither, looks fine in June and Aug photos
+# BW10m Sep 23 - No wiper data or photos, but amplitude looks more physically
+# than biologically mediated
+# SSNS1 Sep 23 - EEK this whole record looks bad
+# (1) in May 23 but looks ok in photos (maybe post-cleaning?)
+# SSNS2 Sep 23 - Neither, looks fine in summer 2023 photos
+# GBNS1 Sep 23 - Neither, looks fine in summer 2023 photos
+# GBNS2 Sep 23 - Neither, looks fine in summer 2023 photos
+# GBNS3 Sep 23 - Neither, fell over but was righted in June,
+# looks fine in remaining photos
+# GB10m Sep 23 - Neither, no photos but seems fine
+# SHNS1 Sep 23 - Neither, looks fine in summer 2023 photos
+# SHNS2 Sep 23 - Neither, looks fine in summer 2023 photos
+# SHNS3 Sep 23 - (1)/(2) buried when found in May 2023 but remainder of summer
+# 2023 photos look alright
 
 # Flag data for removal based on suspected biofouling.
 df_wiper <- df_wiper %>%
-  mutate(Flag4 = case_when(date(PT) >= ymd("2022-02-25") ~ "YES",
+  mutate(Flag4 = case_when(date(PT) >= ymd("2023-02-21") &
+                             date(PT) < ymd("2023-05-26") ~ "YES",
     TRUE ~ "NO"))
 
 # If flagging data for biofouling, examine data once more.
@@ -315,13 +352,13 @@ ggplot(df_wiper %>%
   geom_point()
 
 # Replace plot for future reference.
-# ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/figures/do_data_cleaning/SSNS1_spring2022_092723.png",
-#        width = 12,
-#        height = 5)
+ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/figures/do_data_cleaning/SHNS3_fall2023_100423.png",
+       width = 12,
+       height = 5)
 
 #### Export dataset ####
 
 # Export rds file into this project
-saveRDS(df_wiper, file = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/data_working/do_data_cleaning/flagged_SSNS1_092723.rds")
+saveRDS(df_wiper, file = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/data_working/do_data_cleaning/flagged_SHNS3_100423.rds")
 
 # End of script.
