@@ -27,7 +27,7 @@ getwd()
 #### Load in DO data ####
 
 # Read in concatenated miniDOT data for a given instrument download.
-df <- read.delim("SHNS3/20230907/7450-099447/Cat.txt",
+df <- read.delim("GBNS3/20230525/7450-193411/Cat.txt",
                  sep = ',',
                  skip = 8)
 # We've skipped the first 8 lines because these contain only metadata spit
@@ -35,22 +35,22 @@ df <- read.delim("SHNS3/20230907/7450-099447/Cat.txt",
 
 # If the concatenated file is corrupted, use the following code to manually
 # read in all files in a given folder.
-dlist <- list.files(path = "SHNS3/20230907/7450-099447",
-                 pattern = "*Z.txt",
-                 full.names = T)
-
-df <- do.call("rbind", lapply(dlist, FUN = function(file) {
-  read.table(file, skip = 3, sep=",") %>%
-    mutate(filename = file) %>%
-    mutate(folder = str_split_fixed(filename, pattern = "/", n = 4)) %>%
-    mutate(date = str_split_fixed(folder[,4], pattern = " ", n = 2)) %>%
-    mutate(Date = ymd(date[,1])) } ) )
-
-df <- df %>%
-  mutate(UTC = as_datetime(V1),
-         PST = with_tz(UTC, tzone = "US/Pacific"),
-         DOSat = NA) %>%
-  select(V1, UTC, PST, V2, V3, V4, DOSat, V5)
+# dlist <- list.files(path = "SHNS3/20230907/7450-099447",
+#                  pattern = "*Z.txt",
+#                  full.names = T)
+# 
+# df <- do.call("rbind", lapply(dlist, FUN = function(file) {
+#   read.table(file, skip = 3, sep=",") %>%
+#     mutate(filename = file) %>%
+#     mutate(folder = str_split_fixed(filename, pattern = "/", n = 4)) %>%
+#     mutate(date = str_split_fixed(folder[,4], pattern = " ", n = 2)) %>%
+#     mutate(Date = ymd(date[,1])) } ) )
+# 
+# df <- df %>%
+#   mutate(UTC = as_datetime(V1),
+#          PST = with_tz(UTC, tzone = "US/Pacific"),
+#          DOSat = NA) %>%
+#   select(V1, UTC, PST, V2, V3, V4, DOSat, V5)
 
 #### Tidy DO data ####
 
@@ -65,10 +65,10 @@ colnames(df) <- c("Unix_Timestamp_second",
                   "Q")
 
 # Add descriptive metadata columns
-df$serial_miniDOT <- c("7450-099447") # Instrument serial number
-df$deploy <- c("2023-02-04") # Instrument deployment date
-df$retrieve <- c("2023-09-07") # Instrument retrieval date
-df$site <- c("SH") # Site identifier
+df$serial_miniDOT <- c("7450-193411") # Instrument serial number
+df$deploy <- c("2022-10-18") # Instrument deployment date
+df$retrieve <- c("2023-05-25") # Instrument retrieval date
+df$site <- c("GB") # Site identifier
 df$location <- c("3m") # Sub-site location identifier by approx. water depth
 df$replicate <- c("NS3") # "NS1" or "Pelagic/Benthic"
 
@@ -104,7 +104,7 @@ df <- df %>%
 # columns as NAs.
 
 # Read in concatenated wiper data for a given instrument download (if available).
-wiper <- read.delim("SHNS3/20230907/wiper/5958-583295/5958-583295/Cat.txt",
+wiper <- read.delim("GBNS3/20230907/wiper/5958-464434/Cat.txt",
                     sep = ',',
                     skip = 8)
 
@@ -149,7 +149,7 @@ colnames(wiper) <- c("Unix_Timestamp_second_wiper",
                   "Source_Resistance_Ohm")
 
 # Add descriptive metadata columns
-wiper$serial_wiper <- c("5958-583295") # Instrument serial number
+wiper$serial_wiper <- c("5958-464434") # Instrument serial number
 
 # Check data format
 str(wiper)
@@ -198,7 +198,9 @@ df_wiper <- full_join(df, wiper, by = c("PT_date", "PT_hour"))
 # And if the datasets have some additional wiper data at the end, 
 # sometimes due to deployment discrepancies or DST, trim it.
 df_wiper <- df_wiper %>%
-  drop_na(Q)
+  drop_na(Q) %>%
+  # and filter earlier dates when it may have been deployed elsewhere
+  filter(as_date(PT_date) > as_date(deploy))
 
 # Now, to populate the remainder of the wiper data. 
 # Need to apply wiper data to hours prior.
@@ -256,7 +258,7 @@ ggplot(df_wiper %>%
   geom_point()
 
 # Export plot for future reference.
-ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/figures/do_data_cleaning/SHNS3_fall2023_100423.png",
+ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/figures/do_data_cleaning/GBNS3_spring2023_092723.png",
        width = 12, 
        height = 5)
 
@@ -273,8 +275,8 @@ ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/f
 # GBNS2 Oct 21 - (1) starting around Sept. 1, no wiper data
 # GBNS3 Oct 21 - Neither, but no wiper data
 # BWNS1 May 22 - Neither
-# BWNS2 May 22 - Neither, but *** REVIEW WITH GROUP ***
-# BWNS3 May 22 - Neither, but *** REVIEW WITH GROUP *** based on wiper flags
+# BWNS2 May 22 - Neither
+# BWNS3 May 22 - Neither
 # BW20m Mar 22 - Neither, although *slightly* green in photos
 # SSNS1 Mar 22 - (2) & (1) starting around Feb. 25 (already wiper flagged)
 # GBNS1 May 22 - (1) starting around Jan. 1 (already wiper flagged)
@@ -284,21 +286,21 @@ ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/f
 # BW10m Jul 22 - Neither (no photos)
 # BW15m Jul 22 - Neither (no photos)
 # BW20m Jul 22 - Neither (no photos) - wiper data in 10/23 pelagic folder
-# GBNS3 Jul 22 - Neither, but *** REVIEW WITH GROUP ***
+# GBNS3 Jul 22 - Neither
 # GB10m Jul 22 - Neither (no photos)
-# GB15m Jul 22 - Neither, but no wiper data or photos
+# GB15m Jul 22 - Neither, but no photos
 # BWNS1 Oct 22 - Neither (no photos)
 # BWNS3 Oct 22 - Neither (no photos)
 # SSNS1 Oct 22 - (1) starting around Jul. 14
 # GBNS1 Oct 22 - Neither (no photos)
 # GBNS2 Oct 22 - Neither, but no wiper data or photos
-# GBNS3 Oct 22 - Neither, but no wiper data or photos (looked similar enough
+# GBNS3 Oct 22 - Neither, but no photos (looked similar enough
 # to other GBNS data so ruled not biofouled)
 # GB10m Oct 22 - Neither, but no wiper data or photos
 # GB15m Oct 22 - Using GB15m from Feb 23 instead since has full record
 # GB20mb Oct 22 - Using GB20mb from Feb 23 instead since has full wiper record
 # BW10m Oct 22 - Neither (photos look clean in Sept.)
-# BW15m Oct 22 - Neither, but *** REVIEW WITH GROUP ***
+# BW15m Oct 22 - Neither
 # BW20mp Oct 22 - Neither (photos look clean in Sept.)
 # BW20mb Oct 22 - Neither, but no wiper data so *** REVIEW WITH GROUP ***
 # GBNS1 Feb 23 - Looks like may have fallen over (based on wipers)
@@ -307,12 +309,12 @@ ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/f
 # GB20mb Feb 23 - Neither, although *slightly* green in photos
 # GBNS1 May 23 - (1) starting around May 7 (already wiper flagged)
 # GBNS2 May 23 - (1) starting around March 15 (no wiper data but likely due to NS1)
-# GBNS3 May 23 - (1) starting around March 15 (no wiper data but likely due to NS1)
+# GBNS3 May 23 - (1) starting around March 15
 # SHNS1 May 23 - (1) Starting around Feb 21 (maybe was buried ?)
-# SHNS2 May 23 - (1) Starting around May 1 (maybe also fell over ?)
-# SHNS3 May 23 - (1) Starting around May 1 (not quite as extreme as NS2)
+# SHNS2 May 23 - (1) Starting around May 1
+# SHNS3 May 23 - (2) buried in May 23 photo
 # BWNS2 Jun 23 - Neither, looks fine in photos
-# BWNS3 Jun 23 - (1) starting around Mar 15, no wiper data
+# BWNS3 Jun 23 - (1) starting around Mar 15
 # BW15m Jun 23 - Neither (no photos)
 # BW20mp Jun 23 - Neither, but no wiper data or photos
 # SSNS2 Jun 23 - Neither
@@ -332,13 +334,11 @@ ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/f
 # GB10m Sep 23 - Neither, no photos but seems fine
 # SHNS1 Sep 23 - Neither, looks fine in summer 2023 photos
 # SHNS2 Sep 23 - Neither, looks fine in summer 2023 photos
-# SHNS3 Sep 23 - (1)/(2) buried when found in May 2023 but remainder of summer
-# 2023 photos look alright
+# SHNS3 Sep 23 - Neither, looks fine in summer 2023 photos
 
 # Flag data for removal based on suspected biofouling.
 df_wiper <- df_wiper %>%
-  mutate(Flag4 = case_when(date(PT) >= ymd("2023-02-21") &
-                             date(PT) < ymd("2023-05-26") ~ "YES",
+  mutate(Flag4 = case_when(#date(PT) >= ymd("2023-03-15") ~ "YES",
     TRUE ~ "NO"))
 
 # If flagging data for biofouling, examine data once more.
@@ -352,13 +352,13 @@ ggplot(df_wiper %>%
   geom_point()
 
 # Replace plot for future reference.
-ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/figures/do_data_cleaning/SHNS3_fall2023_100423.png",
+ggsave(filename = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/figures/do_data_cleaning/GBNS3_spring2023_092723.png",
        width = 12,
        height = 5)
 
 #### Export dataset ####
 
 # Export rds file into this project
-saveRDS(df_wiper, file = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/data_working/do_data_cleaning/flagged_SHNS3_100423.rds")
+saveRDS(df_wiper, file = "//tsclient/C/Users/hlowman/Documents/NearshoreTahoeGreening/data_working/do_data_cleaning/flagged_GBNS3_092723.rds")
 
 # End of script.
