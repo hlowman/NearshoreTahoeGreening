@@ -12,10 +12,12 @@ library(tidyverse)
 library(data.table)
 library(here)
 library(patchwork)
+library(MARSS)
 
 #### Load Data ####
 
-dat <- readRDS("data_working/do_sat_aggregated_102523.rds")
+dat <- readRDS("data_working/do_sat_aggregated_110223.rds")
+weather_long <- readRDS("data_working/weather_aggregated_long_110223.rds")
 
 #### Remove Flagged Data ####
 
@@ -311,5 +313,117 @@ dat_clean <- dat %>%
 #        height = 15,
 #        units = "cm"
 # )
+
+# End of script.
+
+
+#### MARSS 2022 ####
+
+# This initial set of MARSS analyses will examine how DO varies with depth,
+# and factor in biological (light) and physical (wind) drivers.
+
+##### Data prep #####
+# To prep the data for analysis, I am first going to filter for the 
+# appropriate dates.
+dat_2022 <- dat_clean %>%
+  filter(site %in% c("BW", "GB")) %>%
+  filter(Pacific_Standard_Time > 
+           ymd_hms("2022-03-01 00:00:00")) %>%
+  filter(Pacific_Standard_Time <
+           ymd_hms("2023-02-28 23:59:59")) %>%
+  # and then select columns I want
+  select(Pacific_Standard_Time, shore, site, location, replicate, 
+         percDOsat)
+
+# And I will aggregate to hourly measurements.
+dat_2022_hourly <- dat_2022 %>%
+  mutate(Year = year(Pacific_Standard_Time),
+         Month = month(Pacific_Standard_Time),
+         Day = day(Pacific_Standard_Time),
+         Hour = hour(Pacific_Standard_Time)) %>%
+  group_by(shore, site, location, replicate,
+           Year, Month, Day, Hour) %>%
+  summarize(mean_percDOsat = mean(percDOsat, na.rm = TRUE)) %>%
+  ungroup() %>%
+  # make a new date column
+  mutate(Minute = 0,
+         Second = 0) %>%
+  mutate(Date = make_datetime(Year, Month, Day, 
+                              Hour, Minute, Second))
+
+# Quick plot to see coverage.
+ggplot(dat_2022_hourly, aes(x = Date, y = location)) +
+  geom_line(aes(color = location)) +
+  facet_grid(.~site) +
+  theme_bw()
+
+# And need to do the same with weather but doing separately so as not to
+# lose any measurements (since MARSS requires all covariate data be present).
+weather_2022 <- weather_long %>%
+  filter(Date_TimePST > 
+           ymd_hms("2022-03-01 00:00:00")) %>%
+  filter(Date_TimePST <
+           ymd_hms("2023-02-28 23:59:59")) %>%
+  # and then select columns I want
+  select(Date_TimePST, shore, site, location, replicate,
+         solar_radiation_set_1, wind_speed_set_1)
+
+# And I will aggregate to hourly measurements.
+weather_2022_hourly <- weather_2022 %>%
+  mutate(Year = year(Date_TimePST),
+         Month = month(Date_TimePST),
+         Day = day(Date_TimePST),
+         Hour = hour(Date_TimePST)) %>%
+  group_by(shore, site, location, replicate,
+           Year, Month, Day, Hour) %>%
+  summarize(mean_solar = mean(solar_radiation_set_1, na.rm = TRUE),
+            mean_windspeed = mean(wind_speed_set_1, na.rm = TRUE)) %>%
+  ungroup() %>%
+  # make a new date column
+  mutate(Minute = 0,
+         Second = 0) %>%
+  mutate(Date = make_datetime(Year, Month, Day, 
+                              Hour, Minute, Second))
+
+# Quick plot to see coverage.
+ggplot(weather_2022_hourly, aes(x = Date, y = location)) +
+  geom_line(aes(color = location)) +
+  facet_grid(.~site) +
+  theme_bw()
+
+# And join the DO data to the weather data.
+dat_all_2022 <- left_join(weather_2022_hourly, dat_2022_hourly,
+                          by = c("shore", "site", "location",
+                                 "replicate", "Date"))
+
+# Now to start manipulating the dataframe into matrix format.
+# first need to add unique sitenames
+dat_gb22 <- dat_all_2022 %>%
+  mutate(site_name = paste(site, location, replicate)) %>%
+  filter(site == "GB") %>%
+  # need to add index numbers to make each row "unique" otherwise the
+  # next step throws an error
+  mutate(index = rep(seq(1,8743), 9)) %>%
+  # pivot wider for MARSS format
+  select(
+    site_name, index, 
+    mean_percDOsat, 
+    mean_solar, mean_windspeed) %>% 
+  pivot_wider(
+    names_from = site_name, 
+    values_from = c(mean_percDOsat, 
+                    mean_solar, mean_windspeed))
+
+# indicate column #s of response and predictor vars
+names(dat_gb22)
+resp_cols = c(2:10)
+cov_cols = c(11:28)
+
+# log and scale transform response var
+dat_gb22_scale = dat_gb22
+dat_gb22_scale[,resp_cols] = scale(dat_gb22_scale[,resp_cols])
+
+# Pull out only response var
+dat_dep <- t(dat_gb22_scale[,c(resp_cols)])
 
 # End of script.

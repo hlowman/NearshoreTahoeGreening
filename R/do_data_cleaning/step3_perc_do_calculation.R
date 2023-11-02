@@ -30,11 +30,11 @@ gb_weather <- read_csv("data_raw/SynopticDownloads/F9917.2023-10-01_tidy.csv")
 gb_weather$shore <- "E"
 gb_trim <- gb_weather %>%
   mutate(Date_TimePST = with_tz(Date_Time, tzone = "America/Los_Angeles")) %>%
-  select(Station_ID, Date_TimePST, pressure_set_1d, 
+  select(Station_ID, Date_TimePST, solar_radiation_set_1, pressure_set_1d, 
          wind_speed_set_1, wind_direction_set_1, shore)
 
 # Import West Shore weather data from Synoptic.
-# Source: Synoptic Station D9413 (Homewood)
+# Source: Synoptic Station D9413 & HMDC1 (Homewood)
 # NOTE: TIME IN UTC.
 # Excess rows of metadata trimmed.
 bw_weather <- read_csv("data_raw/SynopticDownloads/D9413.2023-10-01_tidy.csv")
@@ -42,12 +42,35 @@ bw_weather$shore <- "W"
 bw_trim <- bw_weather %>%
   mutate(Date_TimePST = with_tz(Date_Time, tzone = "America/Los_Angeles")) %>%
   select(Station_ID, Date_TimePST, pressure_set_1d, 
+         wind_speed_set_1, wind_direction_set_1, shore) %>%
+# Create additional date/timestamp columns to join by since data is collected
+  # at different intervals between the two datasets.
+  mutate(Year = year(Date_TimePST),
+         Month = month(Date_TimePST),
+         Day = day(Date_TimePST),
+         Hour = hour(Date_TimePST))
+
+bw_solar <- read_csv("data_raw/SynopticDownloads/HMDC1.2023-10-31_tidy.csv")
+bw_solar_trim <- bw_solar %>%
+  mutate(Date_TimePST= with_tz(Date_Time, tzone = "America/Los_Angeles")) %>%
+  select(Date_TimePST, solar_radiation_set_1) %>%
+  mutate(Year = year(Date_TimePST),
+         Month = month(Date_TimePST),
+         Day = day(Date_TimePST),
+         Hour = hour(Date_TimePST))
+
+bw_both <- left_join(bw_trim, bw_solar_trim, by = c("Year", "Month", "Day", "Hour"),
+                     multiple = "all")
+
+bw_both_trim <- bw_both %>%
+  rename(Date_TimePST = Date_TimePST.x) %>%
+  select(Station_ID, Date_TimePST, solar_radiation_set_1, pressure_set_1d, 
          wind_speed_set_1, wind_direction_set_1, shore)
 
 #### Combine DO and weather datasets ####
 
 # Bind weather data
-both_weather <- rbind(bw_trim, gb_trim)
+both_weather <- rbind(bw_both_trim, gb_trim)
 
 # Need to first convert bp to mm Hg.
 both_weather <- both_weather %>%
@@ -60,7 +83,8 @@ weather_15 <- both_weather %>%
   summarize(meanP_Pascal = mean(pressure_set_1d, na.rm = TRUE),
             meanP_mmHg = mean(pressure_mm_Hg, na.rm = TRUE),
             meanWspeed = mean(wind_speed_set_1, na.rm = TRUE),
-            meanWdirect = mean(wind_direction_set_1, na.rm = TRUE)) %>%
+            meanWdirect = mean(wind_direction_set_1, na.rm = TRUE),
+            meanSolar = mean(solar_radiation_set_1, na.rm = TRUE)) %>%
   ungroup()
 
 # And make matching timestamps in the DO data with which we can bind the two.
@@ -76,7 +100,7 @@ do_weather_dat <- left_join(do_dat, weather_15, by = c("shore", "round15"))
 # choose to backfill the missing observations for now so that we can
 # properly caculate % DO saturation for all of our data.
 do_weather_dat <- do_weather_dat %>%
-  fill(meanP_Pascal:meanWdirect, .direction = "up")
+  fill(meanP_Pascal:meanSolar, .direction = "up")
 
 #### Calculate % DO Saturation ####
 
@@ -122,6 +146,6 @@ do_weather_sat_dat <- do_weather_sat_dat %>%
   mutate(percDOsat = (Dissolved_O_mg_L/DOsat)*100)
 
 # Export data.
-saveRDS(do_weather_sat_dat, "data_working/do_sat_aggregated_102523.rds")
+saveRDS(do_weather_sat_dat, "data_working/do_sat_aggregated_110223.rds")
 
 # End of script.
