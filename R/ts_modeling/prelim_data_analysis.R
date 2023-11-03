@@ -414,16 +414,185 @@ dat_gb22 <- dat_all_2022 %>%
     values_from = c(mean_percDOsat, 
                     mean_solar, mean_windspeed))
 
-# indicate column #s of response and predictor vars
-names(dat_gb22)
-resp_cols = c(2:10)
-cov_cols = c(11:28)
+# Ok, but since I'm interested in different states, I should only
+# have one set of covariates that applies to ALL SITES.
+dat_gb22_trim = dat_gb22[,c(1:11,20)]
 
-# log and scale transform response var
-dat_gb22_scale = dat_gb22
+# indicate column #s of response and predictor vars
+names(dat_gb22_trim)
+resp_cols = c(2:10)
+cov_cols = c(11:12)
+
+# scale transform response var
+dat_gb22_scale <- dat_gb22_trim
 dat_gb22_scale[,resp_cols] = scale(dat_gb22_scale[,resp_cols])
 
 # Pull out only response var
 dat_dep <- t(dat_gb22_scale[,c(resp_cols)])
+
+# Make covariate inputs
+dat_cov <- dat_gb22_scale[,c(cov_cols)]
+# scale and transpose
+dat_cov <- t(scale(dat_cov))
+row.names(dat_cov)
+# check for nas, nans, or infs after scaling (none allowed)
+sum(is.nan(dat_cov)) #0
+sum(is.na(dat_cov)) #0
+sum(is.infinite(dat_cov)) #0
+# check for cols with all zeros. this can cause model convergence issues
+any(colSums(dat_cov)==0) # FALSE
+
+# make C matrix
+CC <- matrix(list( 
+  # solar light by location & depth
+  "solar",
+  "solar",
+  "solar",
+  "solar",
+  "solar",
+  "solar",
+  "solar",
+  "solar",
+  "solar",
+  # wind by location & depth
+  "wind",
+  "wind",
+  "wind",
+  "wind",
+  "wind",
+  "wind",
+  "wind",
+  "wind",
+  "wind"), 9, 2)
+
+# Model setup for MARSS 
+
+mod_list <- list(
+  ### inputs to process model ###
+  B = "diagonal and unequal",
+  U = "zero",
+  C = CC, 
+  c = dat_cov,
+  Q = "diagonal and unequal", # proc. error covariance matrix
+  ### inputs to observation model ###
+  Z = factor(c("10B","10P","15B",
+               "15P","20B","20P",
+               "3NS1","3NS2","3NS3")), # 9 state
+  A = "zero",
+  D = "zero" ,
+  d = "zero",
+  R = "diagonal and equal", # obs. error covariance matrix
+  ### initial conditions ###
+  tinitx = 0,
+  V0 = "zero"
+)
+
+# Fit MARSS model
+
+# fit BFGS with priors - started 2:43pm - 3:25pm
+kemfit <- MARSS(y = dat_dep, model = mod_list,
+                control = list(maxit = 100, allow.degen = TRUE, 
+                               trace = 1, safe = TRUE), fit = TRUE)
+
+fit_gb22_9state <- MARSS(y = dat_dep, model = mod_list,
+             control = list(maxit = 5000), method = "BFGS", inits = kemfit$par)
+
+# export model fit
+# saveRDS(fit_gb22_9state, 
+#         file = "data_model_outputs/marss_fit_gb22_9state_mBFGS_110323.rds")
+
+# DIAGNOSES 
+## check for hidden errors
+# some don't appear in output in console
+# this should print all of them out, those displayed and those hidden
+fit_gb22_9state[["errors"]]
+# NULL
+
+### Compare to null model ###
+# make sure this matches the fitted model in all ways besides the inclusion of C and c
+mod_list_null <- list(
+  ### inputs to process model ###
+  B = "diagonal and unequal",
+  U = "zero",
+  #C = CC, 
+  #c = dat_cov,
+  Q = "diagonal and unequal", # proc. error covariance matrix
+  ### inputs to observation model ###
+  Z = factor(c("10B","10P","15B",
+               "15P","20B","20P",
+               "3NS1","3NS2","3NS3")), # 9 state
+  A = "zero",
+  D = "zero" ,
+  d = "zero",
+  R = "diagonal and equal", # obs. error covariance matrix
+  ### initial conditions ###
+  tinitx = 0,
+  V0 = "zero"
+)
+
+null.kemfit <- MARSS(y = dat_dep, model = mod_list_null,
+                     control = list(maxit= 100, allow.degen=TRUE, 
+                                    trace=1), fit=TRUE) # default method = "EM"
+
+null.fit_gb22_9state <- MARSS(y = dat_dep, model = mod_list_null,
+                  control = list(maxit = 5000), method = "BFGS", 
+                  inits=null.kemfit$par)
+
+MARSSaic(fit_gb22_9state) # AICc -26019.79
+MARSSaic(null.fit_gb22_9state) # AICc -24739.65
+
+### **** Autoplot diagnoses: VIEW AND RESPOND TO Qs BELOW **** ###
+autoplot.marssMLE(fit_gb22_9state)
+
+# Plots 1 (xtT) & 2 (fitted.ytT): Do fitted values seem reasonable? Yes
+
+# Plot 3 (model.resids.ytt1): Do resids have temporal patterns?  No
+# Do 95% of resids fall withing the CIs? Seems to although density makes
+# it a bit hard to discern
+
+# Plot 4 (std.model.resids.ytT): Do resids have temporal patterns?  No
+# Do 95% of resids fall withing the CIs? Yes
+
+# Plot 5 (std.state.resids.xtT): Any outliers? No
+
+# Plots 6 & 7 (qqplot.std.model.resids.ytt1: Are resids normal (straight lines)?
+# Kind of curvy - need to ask Alex about this
+
+# Plot 8 (acf.std.model.resids.ytt1): Do resids have temporal autocorrelation?
+# 24 hour lag in nearshore sites - OOOOOOO
+
+##### Plot Results #####
+# For 95th percentile credible intervals.
+gb22_9state_est95 <- MARSSparamCIs(fit_gb22_9state, alpha = 0.05)
+
+# Format confidence intervals into dataframes
+gb22_9state_CI95 = data.frame(
+  "Est." = gb22_9state_est95$par$U,
+  "Lower" = gb22_9state_est95$par.lowCI$U,
+  "Upper" = gb22_9state_est95$par.upCI$U)
+gb22_9state_CI95$Parameter = rownames(gb22_9state_CI95)
+gb22_9state_CI95[,1:3] = round(gb22_9state_CI95[,1:3], 3)
+gb22_9state_CI95$Model = "9 state"
+
+# Plot results
+(SpCond_fig <- ggplot(gb22_9state_CI95, aes(x = Parameter, y = Est.)) + 
+    # coloring by both percentiles but using 99th perc. error bars to be most conservative
+    geom_errorbar(aes(ymin = Lower, ymax = Upper),
+                  position=position_dodge(width = 0.5), width = 0) +
+    geom_point(position = position_dodge(width = 0.5), 
+               alpha = 0.8, size = 8) + 
+    theme_bw()+
+    geom_hline(aes(yintercept = 0), linetype = "dashed") +
+    coord_flip(ylim = c(-1, 1)) + 
+    labs(y = "Effect Size", 
+         x = "Covariates"))
+
+# Export plot.
+# ggsave(("MARSS_110323.png"),
+#        path = "figures",
+#        width = 30,
+#        height = 20,
+#        units = "cm"
+# )
 
 # End of script.
