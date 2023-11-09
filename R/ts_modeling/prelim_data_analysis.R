@@ -13,6 +13,7 @@ library(data.table)
 library(here)
 library(patchwork)
 library(MARSS)
+library(forecast)
 
 #### Load Data ####
 
@@ -50,6 +51,8 @@ dat_clean <- dat %>%
 # DO
 (fig_bw_do22 <- ggplot(dat_clean %>%
                        filter(site %in% c("BW")) %>%
+                       # remove pelagic data for display
+                       filter(replicate %in% c("Benthic", "NS1", "NS2", "NS3")) %>%
                        filter(Pacific_Standard_Time > 
                                 ymd_hms("2022-03-01 00:00:00")) %>%
                        filter(Pacific_Standard_Time <
@@ -75,6 +78,8 @@ dat_clean <- dat %>%
 # Temperature
 (fig_bw_t22 <- ggplot(dat_clean %>%
                        filter(site %in% c("BW")) %>%
+                       # remove pelagic data for display
+                       filter(replicate %in% c("Benthic", "NS1", "NS2", "NS3")) %>%
                        filter(Pacific_Standard_Time > 
                                 ymd_hms("2022-03-01 00:00:00")) %>%
                        filter(Pacific_Standard_Time <
@@ -101,7 +106,7 @@ dat_clean <- dat %>%
 # Combine the two and export.
 (fig_bw22 <- fig_bw_do22 / fig_bw_t22)
 
-# ggsave("figures/2022_data_bw_102523.png",
+# ggsave("figures/2022_data_bw_110923.png",
 #        width = 20,
 #        height = 20,
 #        units = "cm"
@@ -111,6 +116,8 @@ dat_clean <- dat %>%
 # DO
 (fig_gb_do22 <- ggplot(dat_clean %>%
                          filter(site %in% c("GB")) %>%
+                         # remove pelagic data for display
+                         filter(replicate %in% c("Benthic", "NS1", "NS2", "NS3")) %>%
                          filter(Pacific_Standard_Time > 
                                   ymd_hms("2022-03-01 00:00:00")) %>%
                          filter(Pacific_Standard_Time <
@@ -133,9 +140,12 @@ dat_clean <- dat %>%
    theme_bw() +
    theme(legend.position = "none") +
    facet_grid(location~.))
+
 # Temperature
 (fig_gb_t22 <- ggplot(dat_clean %>%
                         filter(site %in% c("GB")) %>%
+                        # remove pelagic data for display
+                        filter(replicate %in% c("Benthic", "NS1", "NS2", "NS3")) %>%
                         filter(Pacific_Standard_Time > 
                                  ymd_hms("2022-03-01 00:00:00")) %>%
                         filter(Pacific_Standard_Time <
@@ -162,7 +172,7 @@ dat_clean <- dat %>%
 # Combine the two and export.
 (fig_gb22 <- fig_gb_do22 / fig_gb_t22)
 
-# ggsave("figures/2022_data_gb_102523.png",
+# ggsave("figures/2022_data_gb_110923.png",
 #        width = 20,
 #        height = 20,
 #        units = "cm"
@@ -592,6 +602,220 @@ gb22_9state_CI95$Model = "9 state"
 #        path = "figures",
 #        width = 30,
 #        height = 20,
+#        units = "cm"
+# )
+
+#### Covariate Plots 2022 ####
+
+# Plot covariates themselves.
+(fig_light22 <- ggplot(dat_all_2022 %>%
+                         mutate(date = date(Date)) %>%
+                         group_by(shore, date) %>%
+                         summarize(dailyLm = mean(mean_solar, na.rm = TRUE),
+                                   dailyLc = sum(mean_solar, na.rm = TRUE)) %>%
+                         ungroup() %>%
+                         mutate(shore = factor(shore, levels = c("W", "E"))), 
+                       aes(x = date, y = dailyLm)) +
+   geom_point(color = "#F2B705") +
+   labs(x = "Date",
+        y = "Mean Daily Light (W/m2)") +
+   theme_bw() +
+   facet_grid(.~shore))
+
+(fig_wind22 <- ggplot(dat_all_2022 %>%
+                        mutate(date = date(Date)) %>%
+                        group_by(shore, date) %>%
+                        summarize(dailyWs = mean(mean_windspeed, na.rm = TRUE)) %>%
+                        ungroup() %>%
+                        mutate(shore = factor(shore, levels = c("W", "E"))), 
+                      aes(x = date, y = dailyWs, group = month(date))) +
+    geom_point(color = "#c39ca4") +
+    labs(x = "Date",
+         y = "Mean Daily Windspeed (m/s)") +
+    theme_bw() +
+    facet_grid(.~shore))
+
+(fig_meteo22 <- fig_light22 / fig_wind22)
+
+# Export figure.
+ggsave("figures/2022_light_wind_110923.png",
+       width = 20,
+       height = 12,
+       units = "cm"
+)
+
+# First going to plot DO by light, paneled by shore and water depth (similar to initial plots above).
+(fig_light_do22 <- ggplot(dat_all_2022 %>%
+                         # filter for only daylight hours
+                         filter(hour(Date) < 18) %>% # before 6pm
+                           filter(hour(Date) > 6) %>% # and after 6am
+                         # removing any pelagic measures from here
+                         filter(replicate %in% c("Benthic", "NS1", "NS2", "NS3")) %>%
+                         # and smoosh down to three levels for coloration
+                         mutate(replicate = factor(case_when(replicate %in% c("Benthic", "NS1") ~ "NS1",
+                                                             replicate %in% c("Pelagic", "NS2") ~ "NS2",
+                                                             TRUE ~ "NS3"),
+                                              levels = c("NS1", "NS2", "NS3"))) %>%
+                         # and re-order water depths
+                         mutate(location = factor(location,
+                                                  levels = c("20m", "15m",
+                                                             "10m", "3m"))),
+                       aes(x = mean_solar, y = mean_percDOsat, color = replicate)) +
+   geom_point(alpha = 0.7) +
+   scale_color_manual(values = c("#F2B705","#F28705","#D95204")) +
+   labs(x = "Light (W/m2)",
+        y = "DO (% Saturation)") +
+   theme_bw() +
+   theme(legend.position = "none") +
+   facet_grid(site~location))
+
+# Export figure.
+# ggsave("figures/2022_do_light_110923.png",
+#        width = 18,
+#        height = 9,
+#        units = "cm"
+# )
+
+# Next going to plot DO by wind, paneled by shore and water depth (similar to initial plots above).
+(fig_wind_do22 <- ggplot(dat_all_2022 %>%
+                            # removing any pelagic measures from here
+                            filter(replicate %in% c("Benthic", "NS1", "NS2", "NS3")) %>%
+                            # and smoosh down to three levels for coloration
+                            mutate(replicate = factor(case_when(replicate %in% c("Benthic", "NS1") ~ "NS1",
+                                                                replicate %in% c("Pelagic", "NS2") ~ "NS2",
+                                                                TRUE ~ "NS3"),
+                                                      levels = c("NS1", "NS2", "NS3"))) %>%
+                            # and re-order water depths
+                            mutate(location = factor(location,
+                                                     levels = c("20m", "15m",
+                                                                "10m", "3m"))),
+                          aes(x = mean_windspeed, y = mean_percDOsat, color = replicate)) +
+    geom_point(alpha = 0.7) +
+    scale_color_manual(values = c("#c39ca4","#713d3f","#381f21")) +
+    labs(x = "Windspeed (m/s)",
+         y = "DO (% Saturation)") +
+    theme_bw() +
+    theme(legend.position = "none") +
+    facet_grid(site~location))
+
+# Export figure.
+# ggsave("figures/2022_do_wind_110923.png",
+#        width = 18,
+#        height = 9,
+#        units = "cm"
+# )
+
+#### Autocorrelation Plots 2022 ####
+
+##### BW #####
+
+dat_bw_3m_NS1 <- dat_all_2022 %>%
+  filter(site == "BW",
+         location == "3m",
+         replicate == "NS1")
+
+forecast::ggtsdisplay(dat_bw_3m_NS1$mean_percDOsat, lag.max = 100)
+
+# ggsave("figures/2022_bw3mNS1_pacf_110923.png",
+#        width = 15,
+#        height = 9,
+#        units = "cm"
+# )
+
+dat_bw_3m_NS2 <- dat_all_2022 %>%
+  filter(site == "BW",
+         location == "3m",
+         replicate == "NS2")
+
+forecast::ggtsdisplay(dat_bw_3m_NS2$mean_percDOsat, lag.max = 100)
+
+dat_bw_3m_NS3 <- dat_all_2022 %>%
+  filter(site == "BW",
+         location == "3m",
+         replicate == "NS3")
+
+forecast::ggtsdisplay(dat_bw_3m_NS3$mean_percDOsat, lag.max = 100)
+
+dat_bw_10m <- dat_all_2022 %>%
+  filter(site == "BW",
+         location == "10m",
+         replicate == "Benthic")
+
+forecast::ggtsdisplay(dat_bw_10m$mean_percDOsat, lag.max = 100)
+
+dat_bw_15m <- dat_all_2022 %>%
+  filter(site == "BW",
+         location == "15m",
+         replicate == "Benthic")
+
+forecast::ggtsdisplay(dat_bw_15m$mean_percDOsat, lag.max = 100)
+
+dat_bw_20m <- dat_all_2022 %>%
+  filter(site == "BW",
+         location == "20m",
+         replicate == "Benthic")
+
+forecast::ggtsdisplay(dat_bw_20m$mean_percDOsat, lag.max = 100)
+
+# ggsave("figures/2022_bw20m_pacf_110923.png",
+#        width = 15,
+#        height = 9,
+#        units = "cm"
+# )
+
+##### GB #####
+
+dat_gb_3m_NS1 <- dat_all_2022 %>%
+  filter(site == "GB",
+         location == "3m",
+         replicate == "NS1")
+
+forecast::ggtsdisplay(dat_gb_3m_NS1$mean_percDOsat, lag.max = 100)
+
+# ggsave("figures/2022_gb3mNS1_pacf_110923.png",
+#        width = 15,
+#        height = 9,
+#        units = "cm"
+# )
+
+dat_gb_3m_NS2 <- dat_all_2022 %>%
+  filter(site == "GB",
+         location == "3m",
+         replicate == "NS2")
+
+forecast::ggtsdisplay(dat_gb_3m_NS2$mean_percDOsat, lag.max = 100)
+
+dat_gb_3m_NS3 <- dat_all_2022 %>%
+  filter(site == "GB",
+         location == "3m",
+         replicate == "NS3")
+
+forecast::ggtsdisplay(dat_gb_3m_NS3$mean_percDOsat, lag.max = 100)
+
+dat_gb_10m <- dat_all_2022 %>%
+  filter(site == "GB",
+         location == "10m",
+         replicate == "Benthic")
+
+forecast::ggtsdisplay(dat_gb_10m$mean_percDOsat, lag.max = 100)
+
+dat_gb_15m <- dat_all_2022 %>%
+  filter(site == "GB",
+         location == "15m",
+         replicate == "Benthic")
+
+forecast::ggtsdisplay(dat_gb_15m$mean_percDOsat, lag.max = 100)
+
+dat_gb_20m <- dat_all_2022 %>%
+  filter(site == "GB",
+         location == "20m",
+         replicate == "Benthic")
+
+forecast::ggtsdisplay(dat_gb_20m$mean_percDOsat, lag.max = 100)
+
+# ggsave("figures/2022_gb20m_pacf_110923.png",
+#        width = 15,
+#        height = 9,
 #        units = "cm"
 # )
 
