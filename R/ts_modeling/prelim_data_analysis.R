@@ -317,7 +317,7 @@ dat_clean <- dat %>%
 # End of script.
 
 
-#### MARSS 2022 ####
+#### MARSS GB 2022 w/ light ####
 
 # This initial set of MARSS analyses will examine how DO varies with depth,
 # and factor in biological (light) and physical (wind) drivers.
@@ -327,6 +327,7 @@ dat_clean <- dat %>%
 # appropriate dates.
 dat_2022 <- dat_clean %>%
   filter(site %in% c("BW", "GB")) %>%
+  filter(replicate %in% c("Benthic", "NS1", "NS2", "NS3")) %>%
   filter(Pacific_Standard_Time > 
            ymd_hms("2022-03-01 00:00:00")) %>%
   filter(Pacific_Standard_Time <
@@ -360,6 +361,7 @@ ggplot(dat_2022_hourly, aes(x = Date, y = location)) +
 # And need to do the same with weather but doing separately so as not to
 # lose any measurements (since MARSS requires all covariate data be present).
 weather_2022 <- weather_long %>%
+  filter(replicate %in% c("Benthic", "NS1", "NS2", "NS3")) %>%
   filter(Date_TimePST > 
            ymd_hms("2022-03-01 00:00:00")) %>%
   filter(Date_TimePST <
@@ -396,6 +398,8 @@ dat_all_2022 <- left_join(weather_2022_hourly, dat_2022_hourly,
                           by = c("shore", "site", "location",
                                  "replicate", "Date"))
 
+##### Model fit ####
+
 # Now to start manipulating the dataframe into matrix format.
 # first need to add unique sitenames
 dat_gb22 <- dat_all_2022 %>%
@@ -403,7 +407,7 @@ dat_gb22 <- dat_all_2022 %>%
   filter(site == "GB") %>%
   # need to add index numbers to make each row "unique" otherwise the
   # next step throws an error
-  mutate(index = rep(seq(1,8743), 9)) %>%
+  mutate(index = rep(seq(1,8743), 6)) %>%
   # pivot wider for MARSS format
   select(
     site_name, index, 
@@ -416,12 +420,14 @@ dat_gb22 <- dat_all_2022 %>%
 
 # Ok, but since I'm interested in different states, I should only
 # have one set of covariates that applies to ALL SITES.
-dat_gb22_trim = dat_gb22[,c(1:11,20)]
+# And for this first test - to avoid craz matrices - I'll be looking
+# at only light.
+dat_gb22_trim = dat_gb22[,c(1:8)]
 
 # indicate column #s of response and predictor vars
 names(dat_gb22_trim)
-resp_cols = c(2:10)
-cov_cols = c(11:12)
+resp_cols = c(2:7)
+cov_cols = c(8)
 
 # scale transform response var
 dat_gb22_scale <- dat_gb22_trim
@@ -442,28 +448,15 @@ sum(is.infinite(dat_cov)) #0
 # check for cols with all zeros. this can cause model convergence issues
 any(colSums(dat_cov)==0) # FALSE
 
-# make C matrix
+# make C matrix for 
 CC <- matrix(list( 
-  # solar light by location & depth
-  "solar",
-  "solar",
-  "solar",
-  "solar",
-  "solar",
-  "solar",
-  "solar",
-  "solar",
-  "solar",
-  # wind by location & depth
-  "wind",
-  "wind",
-  "wind",
-  "wind",
-  "wind",
-  "wind",
-  "wind",
-  "wind",
-  "wind"), 9, 2)
+  # 6 state model
+  "10m Benthic",
+  "15m Benthic",
+  "20m Benthic",
+  "3m NS1",
+  "3m NS2",
+  "3m NS3"), 6, 1)
 
 # Model setup for MARSS 
 
@@ -475,9 +468,7 @@ mod_list <- list(
   c = dat_cov,
   Q = "diagonal and unequal", # proc. error covariance matrix
   ### inputs to observation model ###
-  Z = factor(c("10B","10P","15B",
-               "15P","20B","20P",
-               "3NS1","3NS2","3NS3")), # 9 state
+  Z = "identity", # default - 6 state
   A = "zero",
   D = "zero" ,
   d = "zero",
@@ -489,23 +480,24 @@ mod_list <- list(
 
 # Fit MARSS model
 
-# fit BFGS with priors - started 2:43pm - 3:25pm
+# fit BFGS with priors - started 10:19am - 10:35am
 kemfit <- MARSS(y = dat_dep, model = mod_list,
                 control = list(maxit = 100, allow.degen = TRUE, 
                                trace = 1, safe = TRUE), fit = TRUE)
 
-fit_gb22_9state <- MARSS(y = dat_dep, model = mod_list,
+# use kemfit to inform MARSS fit - started 10:35am - 10:42am
+fit_gb22_6state <- MARSS(y = dat_dep, model = mod_list,
              control = list(maxit = 5000), method = "BFGS", inits = kemfit$par)
 
 # export model fit
-# saveRDS(fit_gb22_9state, 
-#         file = "data_model_outputs/marss_fit_gb22_9state_mBFGS_110323.rds")
+# saveRDS(fit_gb22_6state,
+#         file = "data_model_outputs/marss_fit_gb22_6state_mBFGS_110923.rds")
 
 # DIAGNOSES 
 ## check for hidden errors
 # some don't appear in output in console
 # this should print all of them out, those displayed and those hidden
-fit_gb22_9state[["errors"]]
+fit_gb22_6state[["errors"]]
 # NULL
 
 ### Compare to null model ###
@@ -518,9 +510,7 @@ mod_list_null <- list(
   #c = dat_cov,
   Q = "diagonal and unequal", # proc. error covariance matrix
   ### inputs to observation model ###
-  Z = factor(c("10B","10P","15B",
-               "15P","20B","20P",
-               "3NS1","3NS2","3NS3")), # 9 state
+  Z = "identity", # 6 state
   A = "zero",
   D = "zero" ,
   d = "zero",
@@ -530,19 +520,21 @@ mod_list_null <- list(
   V0 = "zero"
 )
 
+# 10:43am - 10:53 am
 null.kemfit <- MARSS(y = dat_dep, model = mod_list_null,
                      control = list(maxit= 100, allow.degen=TRUE, 
                                     trace=1), fit=TRUE) # default method = "EM"
 
-null.fit_gb22_9state <- MARSS(y = dat_dep, model = mod_list_null,
+# 10:55am - 10:57am
+null.fit_gb22_6state <- MARSS(y = dat_dep, model = mod_list_null,
                   control = list(maxit = 5000), method = "BFGS", 
                   inits=null.kemfit$par)
 
-MARSSaic(fit_gb22_9state) # AICc -26019.79
-MARSSaic(null.fit_gb22_9state) # AICc -24739.65
+MARSSaic(fit_gb22_6state) # AICc -12824.72
+MARSSaic(null.fit_gb22_6state) # AICc -10797.7 
 
 ### **** Autoplot diagnoses: VIEW AND RESPOND TO Qs BELOW **** ###
-autoplot.marssMLE(fit_gb22_9state)
+autoplot.marssMLE(fit_gb22_6state)
 
 # Plots 1 (xtT) & 2 (fitted.ytT): Do fitted values seem reasonable? Yes
 
@@ -563,19 +555,21 @@ autoplot.marssMLE(fit_gb22_9state)
 
 ##### Plot Results #####
 # For 95th percentile credible intervals.
-gb22_9state_est95 <- MARSSparamCIs(fit_gb22_9state, alpha = 0.05)
+gb22_6state_est95 <- MARSSparamCIs(fit_gb22_6state, alpha = 0.05)
+
+# Unable to calculate CIs, so this likely means the model is a poor fit.
 
 # Format confidence intervals into dataframes
-gb22_9state_CI95 = data.frame(
-  "Est." = gb22_9state_est95$par$U,
-  "Lower" = gb22_9state_est95$par.lowCI$U,
-  "Upper" = gb22_9state_est95$par.upCI$U)
-gb22_9state_CI95$Parameter = rownames(gb22_9state_CI95)
-gb22_9state_CI95[,1:3] = round(gb22_9state_CI95[,1:3], 3)
-gb22_9state_CI95$Model = "9 state"
+gb22_6state_CI95 = data.frame(
+  "Est." = gb22_6state_est95$par$U,
+  "Lower" = gb22_6state_est95$par.lowCI$U,
+  "Upper" = gb22_6state_est95$par.upCI$U)
+gb22_6state_CI95$Parameter = rownames(gb22_6state_CI95)
+gb22_6state_CI95[,1:3] = round(gb22_6state_CI95[,1:3], 3)
+gb22_6state_CI95$Model = "6 state"
 
 # Plot results
-(SpCond_fig <- ggplot(gb22_9state_CI95, aes(x = Parameter, y = Est.)) + 
+(gb_light_fig <- ggplot(gb22_6state_CI95, aes(x = Parameter, y = Est.)) + 
     # coloring by both percentiles but using 99th perc. error bars to be most conservative
     geom_errorbar(aes(ymin = Lower, ymax = Upper),
                   position=position_dodge(width = 0.5), width = 0) +
@@ -588,11 +582,157 @@ gb22_9state_CI95$Model = "9 state"
          x = "Covariates"))
 
 # Export plot.
-# ggsave(("MARSS_110323.png"),
+# ggsave(("MARSS_gb_light_110923.png"),
 #        path = "figures",
-#        width = 30,
-#        height = 20,
+#        width = 10,
+#        height = 10,
 #        units = "cm"
 # )
+
+#### MARSS 2022 no covar. ####
+
+# Since the introduction of a covariate (above) yielded poor results,
+# I will next investigate the spatial structure of the full dataset.
+
+# Guided by approach in Chapter 9 of MARSS User Guide
+# https://cran.r-project.org/web/packages/MARSS/vignettes/UserGuide.pdf
+
+# H1 12 sites all behaving differently - 12 states
+# H2 Water depths on certain sides behave similarly - 8 state
+# H3 Water depths behave similarly - 4 state
+# H4 Sides of the lake behave similarly - 2 state
+# H5 All sites behave similarly - 1 state
+
+# Will assume independent process errors with same variance (Q)
+
+##### Data prep #####
+
+# Use dat_all_2022
+
+##### Model fit ##### 
+
+# Now to start manipulating the dataframe into matrix format.
+gb <- as.data.frame(rep(seq(1,8743), 6)) %>%
+  rename(index = `rep(seq(1, 8743), 6)`)
+bw <- as.data.frame(rep(seq(1,7850), 6)) %>%
+  rename(index = `rep(seq(1, 7850), 6)`)
+
+index_all <- rbind(gb, bw)
+
+# first need to add unique sitenames
+dat_all_2022_wide <- dat_all_2022 %>%
+  mutate(site_name = paste(site, location, replicate)) %>%
+  # need to add index numbers to make each row "unique" otherwise the
+  # next step throws an error
+  mutate(index = index_all) %>%
+  # pivot wider for MARSS format
+  select(site_name, index,
+    mean_percDOsat) %>% 
+  pivot_wider(
+    names_from = site_name, 
+    values_from = c(mean_percDOsat))
+
+# indicate column #s of response and predictor vars
+names(dat_all_2022_wide)
+resp_cols = c(2:13)
+
+# scale transform response var
+dat_22_scale <- dat_all_2022_wide
+dat_22_scale[,resp_cols] = scale(dat_22_scale[,resp_cols])
+
+# Pull out only response var
+dat_dep <- t(dat_22_scale[,c(resp_cols)])
+
+# Model setup for MARSS 
+
+# Different Z matrix construction
+# H1 12 state
+Z1 <- factor(c("east10m", "east15m", "east20m", "east3m1", "east3m2", "east3m3",
+               "west10m", "west15m", "west20m", "west3m1", "west3m2", "west3m3"))
+
+# H2 8 state
+Z2 <- factor(c("east10m", "east15m", "east20m", "east3m", "east3m", "east3m",
+               "west10m", "west15m", "west20m", "west3m", "west3m", "west3m"))
+
+# H3 4 state
+Z3 <- factor(c("10m", "15m", "20m", "3m", "3m", "3m",
+               "10m", "15m", "20m", "3m", "3m", "3m"))
+
+# H4 2 state
+Z4 <- factor(c("east", "east", "east", "east", "east", "east",
+               "west", "west", "west", "west", "west", "west"))
+
+# H5 1 state
+Z5 <- factor(rep("lake", 12))
+
+# Combine them all
+Z.models <- list(Z1, Z2, Z3, Z4, Z5)
+names(Z.models) <- c("site", "shore+depth", "depth", "shore", "lake")
+
+mod_list <- list(
+  ### inputs to process model ###
+  B = "identity",
+  U = "unequal",
+  Q = "unconstrained", # proc. error covariance matrix
+  ### inputs to observation model ###
+  A = "scaling",
+  R = "diagonal and equal", # obs. error covariance matrix
+  ### initial conditions ###
+  tinitx = 0,
+  x0 = "unequal",
+  V0 = "zero"
+)
+
+# Fit MARSS model
+
+# Q diagonal and equal 12:06pm - 2:55pm
+# Q unconstrained 3:17pm - 8:31?pm
+out.tab <- NULL
+fits <- list()
+for (i in 1:length(Z.models)) {
+  
+  fit.model <- c(list(Z = Z.models[[i]]), mod_list)
+  
+  fit <- MARSS(y = dat_dep, 
+               model = fit.model,
+               silent = TRUE,
+               control = list(maxit = 1000))
+  
+  out <- data.frame(
+    H = names(Z.models) [i], Q = "unconstrained", U = "unequal",
+    logLik = fit$logLik, AICc = fit$AICc, num.param = fit$num.params,
+    m = length(unique(Z.models[[i]])),
+    num.iter = fit$numIter, converged = !fit$convergence,
+    stringsAsFactors = FALSE)
+  
+  out.tab <- rbind(out.tab, out)
+  
+  fits <- c(fits, list(fit))
+  
+}
+
+# export model fit
+# saveRDS(fits,
+#         file = "data_model_outputs/marss_fit_22_allstates_Quncon_110923.rds")
+
+# Evaluate model fits using AICc and AIC weights
+# Sort fits based on AICc
+min.AICc <- order(out.tab$AICc)
+out.tab.1 <- out.tab[min.AICc,]
+
+# Add the delta AICc values
+out.tab.1 <- cbind(out.tab.1,
+                   delta.AICc = out.tab.1$AICc - out.tab.1$AICc[1])
+
+# Add the relative likelihood (- delta AICc/2)
+out.tab.1 <- cbind(out.tab.1,
+                   rel.like = exp(-1 * out.tab.1$delta.AICc / 2))
+
+# Add AIC weight (relative likelihood / sum of all relative likelihoods)
+out.tab.1 <- cbind(out.tab.1,
+                   AIC.weight = out.tab.1$rel.like/sum(out.tab.1$rel.like))
+
+# Examine model weights
+out.tab.1
 
 # End of script.
