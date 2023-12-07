@@ -1037,22 +1037,29 @@ forecast::ggtsdisplay(dat_gb_20m$mean_percDOsat, lag.max = 100)
 
 dat_amp <- dat_clean %>% # using the full cleaned dataset from above
   mutate(date = date(Pacific_Standard_Time)) %>% # create a date only column
-  group_by(site, location, replicate, deploy, retrieve, date) %>% # group by day
+  group_by(site, location, replicate, date) %>% # group by day
   summarize(temp_max = max(Temperature_deg_C, na.rm = TRUE),
             temp_min = min(Temperature_deg_C, na.rm = TRUE),
             temp_amp = max(Temperature_deg_C, na.rm = TRUE) - 
               min(Temperature_deg_C, na.rm = TRUE),
-            light_max = max(meanSolar, na.rm = TRUE),
-            light_min = min(meanSolar, na.rm = TRUE),
-            light_cum = sum(meanSolar, na.rm = TRUE),
-            wind_max = max(meanWspeed, na.rm = TRUE),
-            wind_min = min(meanWspeed, na.rm = TRUE),
-            wind_mean = mean(meanWspeed, na.rm = TRUE),
             percDOsat_max = max(percDOsat, na.rm = TRUE),
             percDOsat_min = min(percDOsat, na.rm = TRUE),
             percDOsat_amp = max(percDOsat, na.rm = TRUE) - 
               min(percDOsat, na.rm = TRUE)) %>% # calculate the daily amplitudes
+  ungroup() %>%
+  mutate(shore = case_when(site %in% c("GB", "SH") ~ "E",
+                           site %in% c("BW", "SS") ~ "W"))
+
+# need to go back to raw sub 15minute timestep data
+# bc the aggregated data in dat was giving me some weird values
+dat_cov <- weather_long %>%
+  mutate(date = date(Date_TimePST)) %>%
+  group_by(shore, date) %>%
+  summarize(light_mean = mean(solar_radiation_set_1, na.rm = TRUE),
+            wind_mean = mean(wind_speed_set_1, na.rm = TRUE)) %>%
   ungroup()
+
+dat_amp <- left_join(dat_amp, dat_cov, by = c("shore", "date"))
 
 ##### Plots #####
 
@@ -1124,11 +1131,11 @@ dat_amp_BW22 <- dat_amp %>%
 
 # DO vs. light amplitude
 
-(fig_bw_do_light_cum22 <- ggplot(dat_amp_BW22, aes(x = light_cum, y = percDOsat_amp,
+(fig_bw_do_light_mean22 <- ggplot(dat_amp_BW22, aes(x = light_mean, y = percDOsat_amp,
                                                    color = replicate)) +
     geom_point(alpha = 0.75) +
     scale_color_manual(values = c("#F2B705","#F28705","#D95204")) +
-    xlab(expression(paste("Cumulative Daily Light (W/", m^{2}, ")"))) +
+    xlab(expression(paste("Mean Daily Light (W/", m^{2}, ")"))) +
     ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
     theme_bw() +
     theme(legend.position = "none") +
@@ -1148,12 +1155,12 @@ dat_amp_BW22 <- dat_amp %>%
 
 # Combine covariate figures
 (fig_bw_do_covar_amp22 <- fig_bw_do_temp_amp22 |
-    fig_bw_do_light_cum22 |
+    fig_bw_do_light_mean22 |
     fig_bw_do_wind_mean22)
 
 # ggsave("figures/2022_data_bw_covar_amp_120723.png",
-#        width = 15,
-#        height = 10,
+#        width = 20,
+#        height = 15,
 #        units = "cm"
 # )
 
@@ -1222,11 +1229,11 @@ dat_amp_GB22 <- dat_amp %>%
 
 # DO vs. light amplitude
 
-(fig_gb_do_light_cum22 <- ggplot(dat_amp_GB22, aes(x = light_cum, y = percDOsat_amp,
+(fig_gb_do_light_mean22 <- ggplot(dat_amp_GB22, aes(x = light_mean, y = percDOsat_amp,
                                     color = replicate)) +
     geom_point(alpha = 0.75) +
     scale_color_manual(values = c("#F2B705","#F28705","#D95204")) +
-    xlab(expression(paste("Cumulative Daily Light (W/", m^{2}, ")"))) +
+    xlab(expression(paste("Mean Daily Light (W/", m^{2}, ")"))) +
     ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
     theme_bw() +
     theme(legend.position = "none") +
@@ -1246,12 +1253,12 @@ dat_amp_GB22 <- dat_amp %>%
 
 # Combine covariate figures
 (fig_gb_do_covar_amp22 <- fig_gb_do_temp_amp22 |
-  fig_gb_do_light_cum22 |
+  fig_gb_do_light_mean22 |
   fig_gb_do_wind_mean22)
 
 # ggsave("figures/2022_data_gb_covar_amp_120723.png",
-#        width = 15,
-#        height = 10,
+#        width = 20,
+#        height = 15,
 #        units = "cm"
 # )
 
