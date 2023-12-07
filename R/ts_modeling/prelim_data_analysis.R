@@ -617,20 +617,25 @@ gb22_6state_CI95$Model = "6 state"
 
 ##### Data prep #####
 
-# Use dat_all_2022
+# Use dat_all_2022 but filter down to stratification period only
+# May 27 - November 23, 2022
+
+dat_strat_2022 <- dat_all_2022 %>%
+  filter(Date > ymd_hms("2022-05-27 00:00:00")) %>%
+  filter(Date < ymd_hms("2022-11-23 24:00:00"))
 
 ##### Model fit ##### 
 
 # Now to start manipulating the dataframe into matrix format.
-gb <- as.data.frame(rep(seq(1,8743), 6)) %>%
-  rename(index = `rep(seq(1, 8743), 6)`)
-bw <- as.data.frame(rep(seq(1,7850), 6)) %>%
-  rename(index = `rep(seq(1, 7850), 6)`)
+gb <- as.data.frame(rep(seq(1,4338), 6)) %>%
+  rename(index = `rep(seq(1, 4338), 6)`)
+bw <- as.data.frame(rep(seq(1,3751), 6)) %>%
+  rename(index = `rep(seq(1, 3751), 6)`)
 
 index_all <- rbind(gb, bw)
 
 # first need to add unique sitenames
-dat_all_2022_wide <- dat_all_2022 %>%
+dat_strat_2022_wide <- dat_strat_2022 %>%
   mutate(site_name = paste(site, location, replicate)) %>%
   # need to add index numbers to make each row "unique" otherwise the
   # next step throws an error
@@ -643,11 +648,11 @@ dat_all_2022_wide <- dat_all_2022 %>%
     values_from = c(mean_percDOsat))
 
 # indicate column #s of response and predictor vars
-names(dat_all_2022_wide)
+names(dat_strat_2022_wide)
 resp_cols = c(2:13)
 
 # scale transform response var
-dat_22_scale <- dat_all_2022_wide
+dat_22_scale <- dat_strat_2022_wide
 dat_22_scale[,resp_cols] = scale(dat_22_scale[,resp_cols])
 
 # Pull out only response var
@@ -695,8 +700,7 @@ mod_list <- list(
 
 # Fit MARSS model
 
-# Q diagonal and equal 12:06pm - 2:55pm
-# Q unconstrained 3:17pm - 8:31?pm
+# Q unconstrained 2:57pm - ?pm
 out.tab <- NULL
 fits <- list()
 for (i in 1:length(Z.models)) {
@@ -723,7 +727,7 @@ for (i in 1:length(Z.models)) {
 
 # export model fit
 # saveRDS(fits,
-#         file = "data_model_outputs/marss_fit_22_allstates_Quncon_110923.rds")
+#         file = "data_model_outputs/marss_fit_strat22_allstates_Quncon_113023.rds")
 
 # Evaluate model fits using AICc and AIC weights
 # Sort fits based on AICc
@@ -744,6 +748,14 @@ out.tab.1 <- cbind(out.tab.1,
 
 # Examine model weights
 out.tab.1
+
+# Results of stratified period 2022 MARSS fit
+# H             Q       U     logLik      AICc num.param  m num.iter converged delta.AICc
+# 1        site unconstrained unequal  -2963.003  6132.526       103 12     1000     FALSE       0.00
+# 2 shore+depth unconstrained unequal -17064.600 34243.360        57  8     1000     FALSE   28110.83
+# 4       shore unconstrained unequal -35167.908 70371.833        18  2      101      TRUE   64239.31
+# 3       depth unconstrained unequal -36427.503 72909.043        27  4      362      TRUE   66776.52
+# 5        lake unconstrained unequal -41635.280 83300.572        15  1       80      TRUE   77168.05
 
 #### Covariate Plots 2022 ####
 
@@ -956,6 +968,419 @@ forecast::ggtsdisplay(dat_gb_20m$mean_percDOsat, lag.max = 100)
 # ggsave("figures/2022_gb20m_pacf_110923.png",
 #        width = 15,
 #        height = 9,
+#        units = "cm"
+# )
+
+#### DO Amplitude ####
+
+# Rather than using the raw data, I'll instead be investigating using
+# daily DO amplitude as a response variable.
+
+dat_amp <- dat_clean %>% # using the full cleaned dataset from above
+  mutate(date = date(Pacific_Standard_Time)) %>% # create a date only column
+  group_by(site, location, replicate, deploy, retrieve, date) %>% # group by day
+  summarize(temp_max = max(Temperature_deg_C, na.rm = TRUE),
+            temp_min = min(Temperature_deg_C, na.rm = TRUE),
+            temp_amp = max(Temperature_deg_C, na.rm = TRUE) - 
+              min(Temperature_deg_C, na.rm = TRUE),
+            light_max = max(meanSolar, na.rm = TRUE),
+            light_min = min(meanSolar, na.rm = TRUE),
+            light_amp = max(meanSolar, na.rm = TRUE) - 
+              min(meanSolar, na.rm = TRUE),
+            wind_max = max(meanWspeed, na.rm = TRUE),
+            wind_min = min(meanWspeed, na.rm = TRUE),
+            wind_amp = max(meanWspeed, na.rm = TRUE) - 
+              min(meanWspeed, na.rm = TRUE),
+            percDOsat_max = max(percDOsat, na.rm = TRUE),
+            percDOsat_min = min(percDOsat, na.rm = TRUE),
+            percDOsat_amp = max(percDOsat, na.rm = TRUE) - 
+              min(percDOsat, na.rm = TRUE)) %>% # calculate the daily amplitudes
+  ungroup()
+
+##### Plots #####
+
+###### BW 2022 ######
+
+# Make dataset for plotting.
+dat_amp_BW22 <- dat_amp %>%
+  filter(site %in% c("BW")) %>%
+  # remove pelagic data for display
+  filter(replicate %in% c("Benthic", "NS1", 
+                          "NS2", "NS3")) %>%
+  filter(date > ymd("2022-03-01")) %>%
+  filter(date < ymd("2023-02-28")) %>%
+  mutate(location = factor(location,
+                           levels = c("20m", "15m",
+                                      "10m", "3m")),
+         # new group for better coloration
+         replicate = factor(case_when(replicate %in% 
+                                        c("Benthic", "NS1") ~ "NS1",
+                                      replicate %in% 
+                                        c("Pelagic", "NS2") ~ "NS2",
+                                      TRUE ~ "NS3"),
+                            levels = c("NS1", "NS2", 
+                                       "NS3")))
+# DO amplitude
+(fig_bw_do_amp22 <- ggplot(dat_amp_BW22, aes(x = date, y = percDOsat_amp,
+                           group = month(date), color = replicate)) +
+   geom_point(alpha = 0.75) +
+   scale_color_manual(values = c("#3B7D6E","#4CA49E","#7AC9B7")) +
+   labs(x = "Date",
+        y = "Daily DO (% Saturation) Amplitude") +
+   theme_bw() +
+   theme(legend.position = "none") +
+   facet_grid(location~.))
+
+# Temperature amplitude
+(fig_bw_t_amp22 <- ggplot(dat_amp_BW22, aes(x = date, 
+                          y = temp_amp, color = replicate)) +
+    geom_point(alpha = 0.75) +
+    scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
+    labs(x = "Date",
+         y = "Daily Temperature (C) Amplitude") +
+    theme_bw() +
+    theme(legend.position = "none") +
+    facet_grid(location~.))
+
+# Combine the two ts plots and export.
+(fig_bw_amp22 <- fig_bw_do_amp22 / fig_bw_t_amp22)
+
+# ggsave("figures/2022_data_bw_amp_120723.png",
+#        width = 20,
+#        height = 20,
+#        units = "cm"
+# )
+
+# DO vs. temp amplitude
+(fig_bw_do_temp_amp22 <- ggplot(dat_amp_BW22, aes(x = temp_amp, y = percDOsat_amp,
+                                                  color = replicate)) +
+    geom_point(alpha = 0.75) +
+    scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
+    xlab(expression(paste({Delta}," Daily Temperature (", ~degree, "C)"))) +
+    ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
+    theme_bw() +
+    theme(legend.position = "none") +
+    facet_grid(location~.))
+
+# DO vs. light amplitude
+
+(fig_bw_do_light_amp22 <- ggplot(dat_amp_BW22, aes(x = light_amp, y = percDOsat_amp,
+                                                   color = replicate)) +
+    geom_point(alpha = 0.75) +
+    scale_color_manual(values = c("#F2B705","#F28705","#D95204")) +
+    xlab(expression(paste({Delta}," Daily Light (W/", m^{2}, ")"))) +
+    ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
+    theme_bw() +
+    theme(legend.position = "none") +
+    facet_grid(location~.))
+
+# DO vs. wind amplitude
+
+(fig_bw_do_wind_amp22 <- ggplot(dat_amp_BW22, aes(x = wind_amp, y = percDOsat_amp,
+                                                  color = replicate)) +
+    geom_point(alpha = 0.75) +
+    scale_color_manual(values = c("#c39ca4","#713d3f","#381f21")) +
+    xlab(expression(paste({Delta}," Daily Windspeed (m/s)"))) +
+    ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
+    theme_bw() +
+    theme(legend.position = "none") +
+    facet_grid(location~.))
+
+# Combine covariate figures
+(fig_bw_do_covar_amp22 <- fig_bw_do_temp_amp22 |
+    fig_bw_do_light_amp22 |
+    fig_bw_do_wind_amp22)
+
+# ggsave("figures/2022_data_bw_covar_amp_120723.png",
+#        width = 15,
+#        height = 10,
+#        units = "cm"
+# )
+
+###### GB 2022 ######
+
+# Make dataset for plotting
+dat_amp_GB22 <- dat_amp %>%
+  filter(site %in% c("GB")) %>%
+  # remove pelagic data for display
+  filter(replicate %in% c("Benthic", "NS1", "NS2", "NS3")) %>%
+  filter(date > ymd("2022-03-01")) %>%
+  filter(date < ymd("2023-02-28")) %>%
+  mutate(location = factor(location,
+                           levels = c("20m", "15m",
+                                      "10m", "3m")),
+         replicate = factor(case_when(replicate %in% c("Benthic",
+                                                       "NS1") ~ "NS1",
+                                      replicate %in% c("Pelagic",
+                                                       "NS2") ~ "NS2",
+                                      TRUE ~ "NS3"),
+                            levels = c("NS1", "NS2", "NS3")))
+# DO Amplitude
+(fig_gb_do_amp22 <- ggplot(dat_amp_GB22, aes(x = date, y = percDOsat_amp,
+                           color = replicate)) +
+   geom_point(alpha = 0.75) +
+   scale_color_manual(values = c("#3B7D6E","#4CA49E","#7AC9B7")) +
+   labs(x = "Date",
+        y = "Daily DO (% Saturation) Amplitude") +
+   theme_bw() +
+   theme(legend.position = "none") +
+   facet_grid(location~.))
+
+# Temperature Amplitude
+(fig_gb_t_amp22 <- ggplot(dat_amp_GB22, aes(x = date, y = temp_amp,
+                          color = replicate)) +
+    geom_point(alpha = 0.75) +
+    scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
+    labs(x = "Date",
+         y = "Daily Temperature (C) Amplitude") +
+    theme_bw() +
+    theme(legend.position = "none") +
+    facet_grid(location~.))
+
+# Combine the two and export.
+(fig_gb_amp22 <- fig_gb_do_amp22 / fig_gb_t_amp22)
+
+# ggsave("figures/2022_data_gb_amp_120723.png",
+#        width = 20,
+#        height = 20,
+#        units = "cm"
+# )
+
+# DO vs. temp amplitude
+(fig_gb_do_temp_amp22 <- ggplot(dat_amp_GB22, aes(x = temp_amp, y = percDOsat_amp,
+                                    color = replicate)) +
+    geom_point(alpha = 0.75) +
+    scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
+    xlab(expression(paste({Delta}," Daily Temperature (", ~degree, "C)"))) +
+    ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
+    theme_bw() +
+    theme(legend.position = "none") +
+    facet_grid(location~.))
+
+# DO vs. light amplitude
+
+(fig_gb_do_light_amp22 <- ggplot(dat_amp_GB22, aes(x = light_amp, y = percDOsat_amp,
+                                    color = replicate)) +
+    geom_point(alpha = 0.75) +
+    scale_color_manual(values = c("#F2B705","#F28705","#D95204")) +
+    xlab(expression(paste({Delta}," Daily Light (W/", m^{2}, ")"))) +
+    ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
+    theme_bw() +
+    theme(legend.position = "none") +
+    facet_grid(location~.))
+
+# DO vs. wind amplitude
+
+(fig_gb_do_wind_amp22 <- ggplot(dat_amp_GB22, aes(x = wind_amp, y = percDOsat_amp,
+                                                   color = replicate)) +
+    geom_point(alpha = 0.75) +
+    scale_color_manual(values = c("#c39ca4","#713d3f","#381f21")) +
+    xlab(expression(paste({Delta}," Daily Windspeed (m/s)"))) +
+    ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
+    theme_bw() +
+    theme(legend.position = "none") +
+    facet_grid(location~.))
+
+# Combine covariate figures
+(fig_gb_do_covar_amp22 <- fig_gb_do_temp_amp22 |
+  fig_gb_do_light_amp22 |
+  fig_gb_do_wind_amp22)
+
+# ggsave("figures/2022_data_gb_covar_amp_120723.png",
+#        width = 15,
+#        height = 10,
+#        units = "cm"
+# )
+
+###### BW 2023 ######
+
+# Make dataset for plotting.
+dat_amp_BW23 <- dat_amp %>%
+  filter(site %in% c("BW", "SS")) %>%
+  filter(location %in% c("10m", "3m")) %>%
+  filter(date > ymd("2023-05-01")) %>%
+  filter(date < ymd("2023-09-30")) %>%
+  mutate(location = factor(case_when(site == "BW" &
+                                       location == "3m" ~ "3m (near)",
+                                     site == "SS" &
+                                       location == "3m" ~ "3m (far)",
+                                     TRUE ~ "10m"),
+                           levels = c("10m", 
+                                      "3m (near)", 
+                                      "3m (far)")),
+         replicate = factor(case_when(replicate %in% c("Benthic", "NS1") ~ "NS1",
+                                      replicate %in% c("NS2") ~ "NS2",
+                                      TRUE ~ "NS3"),
+                            levels = c("NS1", "NS2", "NS3")))
+
+# DO amplitude
+(fig_bw_do_amp23 <- ggplot(dat_amp_BW23, aes(x = date, 
+                           y = percDOsat_amp, color = replicate)) +
+   geom_point(alpha = 0.75) +
+   scale_color_manual(values = c("#3B7D6E","#4CA49E","#7AC9B7")) +
+   labs(x = "Date",
+        y = "DO (% Saturation)") +
+   theme_bw() +
+   theme(legend.position = "none") +
+   facet_grid(location~.))
+
+# Temperature amplitude
+(fig_bw_t_amp23 <- ggplot(dat_amp_BW23, aes(x = date, 
+                          y = temp_amp, color = replicate)) +
+    geom_point(alpha = 0.75) +
+    scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
+    labs(x = "Date",
+         y = "Daily Temperature (C) Amplitude") +
+    theme_bw() +
+    theme(legend.position = "none") +
+    facet_grid(location~.))
+
+# Combine the two ts plots and export.
+(fig_bw_amp23 <- fig_bw_do_amp23 / fig_bw_t_amp23)
+
+# ggsave("figures/2023_data_bw_amp_120723.png",
+#        width = 20,
+#        height = 20,
+#        units = "cm"
+# )
+
+# DO vs. temp amplitude
+(fig_bw_do_temp_amp23 <- ggplot(dat_amp_BW23, aes(x = temp_amp, y = percDOsat_amp,
+                                                  color = replicate)) +
+    geom_point(alpha = 0.75) +
+    scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
+    xlab(expression(paste({Delta}," Daily Temperature (", ~degree, "C)"))) +
+    ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
+    theme_bw() +
+    theme(legend.position = "none") +
+    facet_grid(location~.))
+
+# DO vs. light amplitude
+
+(fig_bw_do_light_amp23 <- ggplot(dat_amp_BW23, aes(x = light_amp, y = percDOsat_amp,
+                                                   color = replicate)) +
+    geom_point(alpha = 0.75) +
+    scale_color_manual(values = c("#F2B705","#F28705","#D95204")) +
+    xlab(expression(paste({Delta}," Daily Light (W/", m^{2}, ")"))) +
+    ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
+    theme_bw() +
+    theme(legend.position = "none") +
+    facet_grid(location~.))
+
+# DO vs. wind amplitude
+
+(fig_bw_do_wind_amp23 <- ggplot(dat_amp_BW23, aes(x = wind_amp, y = percDOsat_amp,
+                                                  color = replicate)) +
+    geom_point(alpha = 0.75) +
+    scale_color_manual(values = c("#c39ca4","#713d3f","#381f21")) +
+    xlab(expression(paste({Delta}," Daily Windspeed (m/s)"))) +
+    ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
+    theme_bw() +
+    theme(legend.position = "none") +
+    facet_grid(location~.))
+
+# Combine covariate figures
+(fig_bw_do_covar_amp23 <- fig_bw_do_temp_amp23 |
+    fig_bw_do_light_amp23 |
+    fig_bw_do_wind_amp23)
+
+# ggsave("figures/2023_data_bw_covar_amp_120723.png",
+#        width = 15,
+#        height = 10,
+#        units = "cm"
+# )
+
+###### GB 2023 ######
+
+# Make dataset for plotting.
+dat_amp_GB23 <- dat_amp %>%
+  filter(site %in% c("GB", "SH")) %>%
+  filter(location %in% c("10m", "3m")) %>%
+  filter(date > ymd("2023-05-01")) %>%
+  filter(date < ymd("2023-09-30")) %>%
+  mutate(location = factor(case_when(site == "GB" & location == "3m" ~ "3m (near)",
+                                     site == "SH" & location == "3m" ~ "3m (far)",
+                                     TRUE ~ "10m"),
+                           levels = c("10m", "3m (near)", "3m (far)")),
+         replicate = factor(case_when(replicate %in% c("Benthic", "NS1") ~ "NS1",
+                                      replicate %in% c("NS2") ~ "NS2",
+                                      TRUE ~ "NS3"),
+                           levels = c("NS1", "NS2", "NS3")))
+
+# DO amplitude
+(fig_gb_do_amp23 <- ggplot(dat_amp_GB23, aes(x = date, 
+                                             y = percDOsat_amp, color = replicate)) +
+    geom_point(alpha = 0.75) +
+    scale_color_manual(values = c("#3B7D6E","#4CA49E","#7AC9B7")) +
+    labs(x = "Date",
+         y = "DO (% Saturation)") +
+    theme_bw() +
+    theme(legend.position = "none") +
+    facet_grid(location~.))
+
+# Temperature amplitude
+(fig_gb_t_amp23 <- ggplot(dat_amp_GB23, aes(x = date, 
+                                            y = temp_amp, color = replicate)) +
+    geom_point(alpha = 0.75) +
+    scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
+    labs(x = "Date",
+         y = "Daily Temperature (C) Amplitude") +
+    theme_bw() +
+    theme(legend.position = "none") +
+    facet_grid(location~.))
+
+# Combine the two ts plots and export.
+(fig_gb_amp23 <- fig_gb_do_amp23 / fig_gb_t_amp23)
+
+# ggsave("figures/2023_data_gb_amp_120723.png",
+#        width = 20,
+#        height = 20,
+#        units = "cm"
+# )
+
+# DO vs. temp amplitude
+(fig_gb_do_temp_amp23 <- ggplot(dat_amp_GB23, aes(x = temp_amp, y = percDOsat_amp,
+                                                  color = replicate)) +
+    geom_point(alpha = 0.75) +
+    scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
+    xlab(expression(paste({Delta}," Daily Temperature (", ~degree, "C)"))) +
+    ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
+    theme_bw() +
+    theme(legend.position = "none") +
+    facet_grid(location~.))
+
+# DO vs. light amplitude
+
+(fig_gb_do_light_amp23 <- ggplot(dat_amp_GB23, aes(x = light_amp, y = percDOsat_amp,
+                                                   color = replicate)) +
+    geom_point(alpha = 0.75) +
+    scale_color_manual(values = c("#F2B705","#F28705","#D95204")) +
+    xlab(expression(paste({Delta}," Daily Light (W/", m^{2}, ")"))) +
+    ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
+    theme_bw() +
+    theme(legend.position = "none") +
+    facet_grid(location~.))
+
+# DO vs. wind amplitude
+
+(fig_gb_do_wind_amp23 <- ggplot(dat_amp_GB23, aes(x = wind_amp, y = percDOsat_amp,
+                                                  color = replicate)) +
+    geom_point(alpha = 0.75) +
+    scale_color_manual(values = c("#c39ca4","#713d3f","#381f21")) +
+    xlab(expression(paste({Delta}," Daily Windspeed (m/s)"))) +
+    ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
+    theme_bw() +
+    theme(legend.position = "none") +
+    facet_grid(location~.))
+
+# Combine covariate figures
+(fig_gb_do_covar_amp23 <- fig_gb_do_temp_amp23 |
+    fig_gb_do_light_amp23 |
+    fig_gb_do_wind_amp23)
+
+# ggsave("figures/2023_data_gb_covar_amp_120723.png",
+#        width = 15,
+#        height = 10,
 #        units = "cm"
 # )
 
