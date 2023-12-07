@@ -759,6 +759,14 @@ out.tab.1
 
 #### Covariate Plots 2022 ####
 
+# Making a new column to split into seasons.
+dat_all_2022 <- dat_all_2022 %>%
+  mutate(season = factor(case_when(Date < ymd_hms("2022-05-27 00:00:00") ~ "Spring",
+                            Date >= ymd_hms("2022-05-27 00:00:00") &
+                              Date < ymd_hms("2022-11-23 00:00:00") ~ "Summer/Fall",
+                            Date >= ymd_hms("2022-11-23 00:00:00") ~ "Winter"),
+                         levels = c("Spring", "Summer/Fall", "Winter")))
+
 # Plot covariates themselves.
 (fig_light22 <- ggplot(dat_all_2022 %>%
                          mutate(date = date(Date)) %>%
@@ -790,14 +798,15 @@ out.tab.1
 (fig_meteo22 <- fig_light22 / fig_wind22)
 
 # Export figure.
-ggsave("figures/2022_light_wind_110923.png",
-       width = 20,
-       height = 12,
-       units = "cm"
-)
+# ggsave("figures/2022_light_wind_110923.png",
+#        width = 20,
+#        height = 12,
+#        units = "cm"
+# )
 
 # First going to plot DO by light, paneled by shore and water depth (similar to initial plots above).
-(fig_light_do22 <- ggplot(dat_all_2022 %>%
+(fig_light_do22_bw <- ggplot(dat_all_2022 %>%
+                            filter(site == "BW") %>%
                          # filter for only daylight hours
                          filter(hour(Date) < 18) %>% # before 6pm
                            filter(hour(Date) > 6) %>% # and after 6am
@@ -810,8 +819,8 @@ ggsave("figures/2022_light_wind_110923.png",
                                               levels = c("NS1", "NS2", "NS3"))) %>%
                          # and re-order water depths
                          mutate(location = factor(location,
-                                                  levels = c("20m", "15m",
-                                                             "10m", "3m"))),
+                                                  levels = c("3m", "10m",
+                                                             "15m", "20m"))),
                        aes(x = mean_solar, y = mean_percDOsat, color = replicate)) +
    geom_point(alpha = 0.7) +
    scale_color_manual(values = c("#F2B705","#F28705","#D95204")) +
@@ -819,17 +828,50 @@ ggsave("figures/2022_light_wind_110923.png",
         y = "DO (% Saturation)") +
    theme_bw() +
    theme(legend.position = "none") +
-   facet_grid(site~location))
+   facet_grid(location~season))
 
 # Export figure.
-# ggsave("figures/2022_do_light_110923.png",
-#        width = 18,
-#        height = 9,
+# ggsave("figures/2022_do_light_bw_112023.png",
+#        width = 12,
+#        height = 10,
+#        units = "cm"
+# )
+
+(fig_light_do22_gb <- ggplot(dat_all_2022 %>%
+                               filter(site == "GB") %>%
+                               # filter for only daylight hours
+                               filter(hour(Date) < 18) %>% # before 6pm
+                               filter(hour(Date) > 6) %>% # and after 6am
+                               # removing any pelagic measures from here
+                               filter(replicate %in% c("Benthic", "NS1", "NS2", "NS3")) %>%
+                               # and smoosh down to three levels for coloration
+                               mutate(replicate = factor(case_when(replicate %in% c("Benthic", "NS1") ~ "NS1",
+                                                                   replicate %in% c("Pelagic", "NS2") ~ "NS2",
+                                                                   TRUE ~ "NS3"),
+                                                         levels = c("NS1", "NS2", "NS3"))) %>%
+                               # and re-order water depths
+                               mutate(location = factor(location,
+                                                        levels = c("3m", "10m",
+                                                                   "15m", "20m"))),
+                             aes(x = mean_solar, y = mean_percDOsat, color = replicate)) +
+    geom_point(alpha = 0.7) +
+    scale_color_manual(values = c("#F2B705","#F28705","#D95204")) +
+    labs(x = "Light (W/m2)",
+         y = "DO (% Saturation)") +
+    theme_bw() +
+    theme(legend.position = "none") +
+    facet_grid(location~season))
+
+# Export figure.
+# ggsave("figures/2022_do_light_gb_112023.png",
+#        width = 12,
+#        height = 10,
 #        units = "cm"
 # )
 
 # Next going to plot DO by wind, paneled by shore and water depth (similar to initial plots above).
-(fig_wind_do22 <- ggplot(dat_all_2022 %>%
+(fig_wind_do22_bw <- ggplot(dat_all_2022 %>%
+                           filter(site == "BW") %>%
                             # removing any pelagic measures from here
                             filter(replicate %in% c("Benthic", "NS1", "NS2", "NS3")) %>%
                             # and smoosh down to three levels for coloration
@@ -839,8 +881,8 @@ ggsave("figures/2022_light_wind_110923.png",
                                                       levels = c("NS1", "NS2", "NS3"))) %>%
                             # and re-order water depths
                             mutate(location = factor(location,
-                                                     levels = c("20m", "15m",
-                                                                "10m", "3m"))),
+                                                     levels = c("3m", "10m",
+                                                                "15m", "20m"))),
                           aes(x = mean_windspeed, y = mean_percDOsat, color = replicate)) +
     geom_point(alpha = 0.7) +
     scale_color_manual(values = c("#c39ca4","#713d3f","#381f21")) +
@@ -848,12 +890,41 @@ ggsave("figures/2022_light_wind_110923.png",
          y = "DO (% Saturation)") +
     theme_bw() +
     theme(legend.position = "none") +
-    facet_grid(site~location))
+    facet_grid(location~season))
 
 # Export figure.
-# ggsave("figures/2022_do_wind_110923.png",
-#        width = 18,
-#        height = 9,
+# ggsave("figures/2022_do_wind_bw_112023.png",
+#        width = 12,
+#        height = 10,
+#        units = "cm"
+# )
+
+(fig_wind_do22_gb <- ggplot(dat_all_2022 %>%
+                              filter(site == "GB") %>%
+                              # removing any pelagic measures from here
+                              filter(replicate %in% c("Benthic", "NS1", "NS2", "NS3")) %>%
+                              # and smoosh down to three levels for coloration
+                              mutate(replicate = factor(case_when(replicate %in% c("Benthic", "NS1") ~ "NS1",
+                                                                  replicate %in% c("Pelagic", "NS2") ~ "NS2",
+                                                                  TRUE ~ "NS3"),
+                                                        levels = c("NS1", "NS2", "NS3"))) %>%
+                              # and re-order water depths
+                              mutate(location = factor(location,
+                                                       levels = c("3m", "10m",
+                                                                  "15m", "20m"))),
+                            aes(x = mean_windspeed, y = mean_percDOsat, color = replicate)) +
+    geom_point(alpha = 0.7) +
+    scale_color_manual(values = c("#c39ca4","#713d3f","#381f21")) +
+    labs(x = "Windspeed (m/s)",
+         y = "DO (% Saturation)") +
+    theme_bw() +
+    theme(legend.position = "none") +
+    facet_grid(location~season))
+
+# Export figure.
+# ggsave("figures/2022_do_wind_gb_112023.png",
+#        width = 12,
+#        height = 10,
 #        units = "cm"
 # )
 
