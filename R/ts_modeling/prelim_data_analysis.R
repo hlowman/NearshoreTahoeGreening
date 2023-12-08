@@ -1231,7 +1231,7 @@ dat_amp_GB22 <- dat_amp %>%
 dat_amp_BW23 <- dat_amp %>%
   filter(site %in% c("BW", "SS")) %>%
   filter(location %in% c("10m", "3m")) %>%
-  filter(date > ymd("2023-05-01")) %>%
+  filter(date > ymd("2023-05-25")) %>%
   filter(date < ymd("2023-09-30")) %>%
   mutate(location_f = factor(case_when(site == "BW" &
                                        location == "3m" ~ "nearshore near stream",
@@ -1329,7 +1329,7 @@ dat_amp_BW23 <- dat_amp %>%
 dat_amp_GB23 <- dat_amp %>%
   filter(site %in% c("GB", "SH")) %>%
   filter(location %in% c("10m", "3m")) %>%
-  filter(date > ymd("2023-05-01")) %>%
+  filter(date > ymd("2023-05-25")) %>%
   filter(date < ymd("2023-09-30")) %>%
   mutate(location_f = factor(case_when(site == "GB" & location == "3m" ~ "nearshore near stream",
                                      site == "SH" & location == "3m" ~ "nearshore far from stream",
@@ -1365,102 +1365,9 @@ dat_amp_GB23 <- dat_amp %>%
 # Combine the two ts plots and export.
 (fig_gb_amp23 <- fig_gb_do_amp23 / fig_gb_t_amp23)
 
-# Make dataset for plotting.
-dat_amp_BW22 <- dat_amp %>%
-  filter(site %in% c("BW")) %>%
-  # remove pelagic data for display
-  filter(replicate %in% c("Benthic", "NS1", 
-                          "NS2", "NS3")) %>%
-  filter(date > ymd("2022-03-01")) %>%
-  filter(date < ymd("2023-02-28")) %>%
-  mutate(location_f = factor(case_when(location == "20m" ~ "deep littoral",
-                                       location == "15m" ~ "mid-depth littoral",
-                                       location == "10m" ~ "shallow littoral",
-                                       location == "3m" ~ "nearshore"),
-                             levels = c("nearshore", "shallow littoral",
-                                        "mid-depth littoral", "deep littoral")),
-         # new group for better coloration
-         replicate = factor(case_when(replicate %in% 
-                                        c("Benthic", "NS1") ~ "NS1",
-                                      replicate %in% 
-                                        c("Pelagic", "NS2") ~ "NS2",
-                                      TRUE ~ "NS3"),
-                            levels = c("NS1", "NS2", 
-                                       "NS3")))
-# DO amplitude
-(fig_bw_do_amp22 <- ggplot(dat_amp_BW22, aes(x = date, y = percDOsat_amp,
-                           group = month(date), color = replicate)) +
-   geom_point(alpha = 0.75) +
-   scale_color_manual(values = c("#3B7D6E","#4CA49E","#7AC9B7")) +
-   labs(x = "Date",
-        y = "Daily DO (% Saturation) Amplitude") +
-   theme_bw() +
-   theme(legend.position = "none") +
-   facet_grid(location_f~.))
-
-# Temperature amplitude
-(fig_bw_t_amp22 <- ggplot(dat_amp_BW22, aes(x = date, 
-                          y = temp_amp, color = replicate)) +
-    geom_point(alpha = 0.75) +
-    scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
-    labs(x = "Date",
-         y = "Daily Temperature (C) Amplitude") +
-    theme_bw() +
-    theme(legend.position = "none") +
-    facet_grid(location_f~.))
-
-# Combine the two ts plots and export.
-(fig_bw_amp22 <- fig_bw_do_amp22 / fig_bw_t_amp22)
-
-# ggsave("figures/2022_data_bw_amp_120723.png",
-#        width = 20,
+# ggsave("figures/2023_data_gb_amp_120823.png",
+#        width = 15,
 #        height = 20,
-#        units = "cm"
-# )
-
-# DO vs. temp amplitude
-(fig_bw_do_temp_amp22 <- ggplot(dat_amp_BW22, aes(x = temp_amp, y = percDOsat_amp,
-                                                  color = replicate)) +
-    geom_point(alpha = 0.75) +
-    scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
-    xlab(expression(paste({Delta}," Daily Temperature (", ~degree, "C)"))) +
-    ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
-    theme_bw() +
-    theme(legend.position = "none") +
-    facet_grid(location_f~.))
-
-# DO vs. light amplitude
-
-(fig_bw_do_light_mean22 <- ggplot(dat_amp_BW22, aes(x = light_mean, y = percDOsat_amp,
-                                                   color = replicate)) +
-    geom_point(alpha = 0.75) +
-    scale_color_manual(values = c("#F2B705","#F28705","#D95204")) +
-    xlab(expression(paste("Mean Daily Light (W/", m^{2}, ")"))) +
-    ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
-    theme_bw() +
-    theme(legend.position = "none") +
-    facet_grid(location_f~.))
-
-# DO vs. wind amplitude
-
-(fig_bw_do_wind_mean22 <- ggplot(dat_amp_BW22, aes(x = wind_mean, y = percDOsat_amp,
-                                                  color = replicate)) +
-    geom_point(alpha = 0.75) +
-    scale_color_manual(values = c("#c39ca4","#713d3f","#381f21")) +
-    xlab(expression(paste("Mean Daily Windspeed (m/s)"))) +
-    ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
-    theme_bw() +
-    theme(legend.position = "none") +
-    facet_grid(location_f~.))
-
-# Combine covariate figures
-(fig_bw_do_covar_amp22 <- fig_bw_do_temp_amp22 |
-    fig_bw_do_light_mean22 |
-    fig_bw_do_wind_mean22)
-
-# ggsave("figures/2022_data_bw_covar_amp_120723.png",
-#        width = 20,
-#        height = 15,
 #        units = "cm"
 # )
 
@@ -1476,7 +1383,6 @@ dat_amp_BW22 <- dat_amp %>%
     facet_grid(location_f~.))
 
 # DO vs. mean light
-
 (fig_gb_do_light_mean23 <- ggplot(dat_amp_GB23, aes(x = light_mean, y = percDOsat_amp,
                                                    color = replicate)) +
     geom_point(alpha = 0.75) +
@@ -1488,7 +1394,6 @@ dat_amp_BW22 <- dat_amp %>%
     facet_grid(location_f~.))
 
 # DO vs. mean windspeed
-
 (fig_gb_do_wind_mean23 <- ggplot(dat_amp_GB23, aes(x = wind_mean, y = percDOsat_amp,
                                                   color = replicate)) +
     geom_point(alpha = 0.75) +
@@ -1503,7 +1408,7 @@ dat_amp_BW22 <- dat_amp %>%
 (fig_gb_do_covar_amp23 <- fig_gb_do_temp_amp23 |
     fig_gb_do_light_mean23 |
     fig_gb_do_wind_mean23)
-
+# 
 # ggsave("figures/2023_data_gb_covar_amp_120823.png",
 #        width = 20,
 #        height = 15,
