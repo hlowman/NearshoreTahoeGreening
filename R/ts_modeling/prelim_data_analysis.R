@@ -45,6 +45,11 @@ dat_clean <- dat %>%
 
 # 1162968 records remaining, so 24% of records removed.
 
+# Deployment dates
+dat_deploy <- dat %>%
+  select(site, location, replicate, deploy, retrieve) %>%
+  unique()
+
 #### Initial Plots ####
 
 ##### BW 2022 #####
@@ -68,11 +73,6 @@ dat_clean_BW22 <- dat_clean %>%
                                       replicate %in% c("Pelagic", "NS2") ~ "NS2",
                                       TRUE ~ "NS3"),
                             levels = c("NS1", "NS2", "NS3")))
-
-# Deployment dates
-dat_deploy_BW22 <- dat_clean_BW22 %>%
-  select(site, location, location_f, replicate, deploy, retrieve) %>%
-  unique()
   
 # DO
 (fig_bw_do22 <- ggplot(dat_clean_BW22, aes(x = Pacific_Standard_Time, 
@@ -167,29 +167,31 @@ dat_clean_GB22 <- dat_clean %>%
 # )
 
 ##### BW 2023 #####
+
+# Make plotting dataset
+dat_clean_BW23 <- dat_clean %>%
+  filter(site %in% c("BW", "SS")) %>%
+  filter(location %in% c("10m", "3m")) %>%
+  filter(Pacific_Standard_Time > 
+           ymd_hms("2023-05-25 00:00:00")) %>%
+  filter(Pacific_Standard_Time <
+           ymd_hms("2023-09-30 23:59:59")) %>%
+  mutate(location_f = factor(case_when(site == "BW" &
+                                       location == "3m" ~ "nearshore near stream",
+                                     site == "SS" &
+                                       location == "3m" ~ "nearshore far from stream",
+                                     TRUE ~ "shallow littoral"),
+                           levels = c("nearshore near stream", 
+                                      "nearshore far from stream", 
+                                      "shallow littoral")),
+         replicate = factor(case_when(replicate %in% c("Benthic", "NS1") ~ "NS1",
+                                      replicate %in% c("NS2") ~ "NS2",
+                                      TRUE ~ "NS3"),
+                            levels = c("NS1", "NS2", "NS3")))
+  
 # DO
-(fig_bw_do23 <- ggplot(dat_clean %>%
-                         filter(site %in% c("BW", "SS")) %>%
-                         filter(location %in% c("10m", "3m")) %>%
-                         filter(Pacific_Standard_Time > 
-                                  ymd_hms("2023-05-01 00:00:00")) %>%
-                         filter(Pacific_Standard_Time <
-                                  ymd_hms("2023-09-30 23:59:59")) %>%
-                         mutate(location = factor(case_when(site == "BW" &
-                                                              location == "3m" ~ "3m (near)",
-                                                            site == "SS" &
-                                                              location == "3m" ~ "3m (far)",
-                                                            TRUE ~ "10m"),
-                                                  levels = c("10m", 
-                                                             "3m (near)", 
-                                                             "3m (far)")),
-                                replicate = factor(case_when(replicate %in% c("Benthic", "NS1") ~ "NS1",
-                                                             replicate %in% c("NS2") ~ "NS2",
-                                                             TRUE ~ "NS3"),
-                                                   levels = c("NS1", "NS2", "NS3"))),
-                       aes(x = Pacific_Standard_Time, 
-                           y = percDOsat,
-                           group = month(Pacific_Standard_Time),
+(fig_bw_do23 <- ggplot(dat_clean_BW23, aes(x = Pacific_Standard_Time, 
+                           y = percDOsat, group = month(Pacific_Standard_Time),
                            color = replicate)) +
    geom_line() +
    scale_color_manual(values = c("#3B7D6E","#4CA49E","#7AC9B7")) +
@@ -197,30 +199,11 @@ dat_clean_GB22 <- dat_clean %>%
         y = "DO (% Saturation)") +
    theme_bw() +
    theme(legend.position = "none") +
-   facet_grid(location~.))
+   facet_grid(location_f~.))
+
 # Temperature
-(fig_bw_t23 <- ggplot(dat_clean %>%
-                        filter(site %in% c("BW", "SS")) %>%
-                        filter(location %in% c("10m", "3m")) %>%
-                        filter(Pacific_Standard_Time > 
-                                 ymd_hms("2023-05-01 00:00:00")) %>%
-                        filter(Pacific_Standard_Time <
-                                 ymd_hms("2023-09-30 23:59:59")) %>%
-                        mutate(location = factor(case_when(site == "BW" &
-                                                             location == "3m" ~ "3m (near)",
-                                                           site == "SS" &
-                                                             location == "3m" ~ "3m (far)",
-                                                           TRUE ~ "10m"),
-                                                 levels = c("10m", 
-                                                            "3m (near)", 
-                                                            "3m (far)")),
-                               replicate = factor(case_when(replicate %in% c("Benthic", "NS1") ~ "NS1",
-                                                            replicate %in% c("NS2") ~ "NS2",
-                                                            TRUE ~ "NS3"),
-                                                  levels = c("NS1", "NS2", "NS3"))),
-                      aes(x = Pacific_Standard_Time, 
-                          y = Temperature_deg_C,
-                          group = month(Pacific_Standard_Time),
+(fig_bw_t23 <- ggplot(dat_clean_BW23, aes(x = Pacific_Standard_Time, 
+                          y = Temperature_deg_C, group = month(Pacific_Standard_Time),
                           color = replicate)) +
     geom_line() +
     scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
@@ -228,41 +211,43 @@ dat_clean_GB22 <- dat_clean %>%
          y = "Temperature (C)") +
     theme_bw() +
     theme(legend.position = "none") +
-    facet_grid(location~.))
+    facet_grid(location_f~.))
 
 # Combine the two and export.
 (fig_bw23 <- fig_bw_do23 / fig_bw_t23)
 
-# ggsave("figures/2023_data_bw_102523.png",
+# ggsave("figures/2023_data_bw_120823.png",
 #        width = 20,
-#        height = 15,
+#        height = 20,
 #        units = "cm"
 # )
 
 ##### GB 2023 #####
+
+# Make plotting data.
+dat_clean_GB23 <- dat_clean %>%
+  filter(site %in% c("GB", "SH")) %>%
+  filter(location %in% c("10m", "3m")) %>%
+  filter(Pacific_Standard_Time > 
+           ymd_hms("2023-05-25 00:00:00")) %>%
+  filter(Pacific_Standard_Time <
+           ymd_hms("2023-09-30 23:59:59")) %>%
+  mutate(location_f = factor(case_when(site == "GB" &
+                                       location == "3m" ~ "nearshore near stream",
+                                     site == "SH" &
+                                       location == "3m" ~ "nearshore far from stream",
+                                     TRUE ~ "shallow littoral"),
+                           levels = c("nearshore near stream", 
+                                      "nearshore far from stream", 
+                                      "shallow littoral")),
+         replicate = factor(case_when(replicate %in% c("Benthic", "NS1") ~ "NS1",
+                                      replicate %in% c("NS2") ~ "NS2",
+                                      TRUE ~ "NS3"),
+                            levels = c("NS1", "NS2", "NS3")))
+
 # DO
-(fig_gb_do23 <- ggplot(dat_clean %>%
-                         filter(site %in% c("GB", "SH")) %>%
-                         filter(location %in% c("10m", "3m")) %>%
-                         filter(Pacific_Standard_Time > 
-                                  ymd_hms("2023-05-01 00:00:00")) %>%
-                         filter(Pacific_Standard_Time <
-                                  ymd_hms("2023-09-30 23:59:59")) %>%
-                         mutate(location = factor(case_when(site == "GB" &
-                                                              location == "3m" ~ "3m (near)",
-                                                            site == "SH" &
-                                                              location == "3m" ~ "3m (far)",
-                                                            TRUE ~ "10m"),
-                                                  levels = c("10m", 
-                                                             "3m (near)", 
-                                                             "3m (far)")),
-                                replicate = factor(case_when(replicate %in% c("Benthic", "NS1") ~ "NS1",
-                                                             replicate %in% c("NS2") ~ "NS2",
-                                                             TRUE ~ "NS3"),
-                                                   levels = c("NS1", "NS2", "NS3"))),
-                       aes(x = Pacific_Standard_Time, 
-                           y = percDOsat,
-                           group = month(Pacific_Standard_Time),
+(fig_gb_do23 <- ggplot(dat_clean_GB23, aes(x = Pacific_Standard_Time, 
+                           y = percDOsat, group = month(Pacific_Standard_Time),
                            color = replicate)) +
    geom_line() +
    scale_color_manual(values = c("#3B7D6E","#4CA49E","#7AC9B7")) +
@@ -270,30 +255,11 @@ dat_clean_GB22 <- dat_clean %>%
         y = "DO (% Saturation)") +
    theme_bw() +
    theme(legend.position = "none") +
-   facet_grid(location~.))
+   facet_grid(location_f~.))
+
 # Temperature
-(fig_gb_t23 <- ggplot(dat_clean %>%
-                        filter(site %in% c("GB", "SH")) %>%
-                        filter(location %in% c("10m", "3m")) %>%
-                        filter(Pacific_Standard_Time > 
-                                 ymd_hms("2023-05-01 00:00:00")) %>%
-                        filter(Pacific_Standard_Time <
-                                 ymd_hms("2023-09-30 23:59:59")) %>%
-                        mutate(location = factor(case_when(site == "GB" &
-                                                             location == "3m" ~ "3m (near)",
-                                                           site == "SH" &
-                                                             location == "3m" ~ "3m (far)",
-                                                           TRUE ~ "10m"),
-                                                 levels = c("10m", 
-                                                            "3m (near)", 
-                                                            "3m (far)")),
-                               replicate = factor(case_when(replicate %in% c("Benthic", "NS1") ~ "NS1",
-                                                            replicate %in% c("NS2") ~ "NS2",
-                                                            TRUE ~ "NS3"),
-                                                  levels = c("NS1", "NS2", "NS3"))),
-                      aes(x = Pacific_Standard_Time, 
-                          y = Temperature_deg_C,
-                          group = month(Pacific_Standard_Time),
+(fig_gb_t23 <- ggplot(dat_clean_GB23, aes(x = Pacific_Standard_Time, 
+                          y = Temperature_deg_C, group = month(Pacific_Standard_Time),
                           color = replicate)) +
     geom_line() +
     scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
@@ -301,19 +267,16 @@ dat_clean_GB22 <- dat_clean %>%
          y = "Temperature (C)") +
     theme_bw() +
     theme(legend.position = "none") +
-    facet_grid(location~.))
+    facet_grid(location_f~.))
 
 # Combine the two and export.
 (fig_gb23 <- fig_gb_do23 / fig_gb_t23)
 
-# ggsave("figures/2023_data_gb_102523.png",
+# ggsave("figures/2023_data_gb_120823.png",
 #        width = 20,
-#        height = 15,
+#        height = 20,
 #        units = "cm"
 # )
-
-# End of script.
-
 
 #### MARSS GB 2022 w/ light ####
 
@@ -1270,14 +1233,14 @@ dat_amp_BW23 <- dat_amp %>%
   filter(location %in% c("10m", "3m")) %>%
   filter(date > ymd("2023-05-01")) %>%
   filter(date < ymd("2023-09-30")) %>%
-  mutate(location = factor(case_when(site == "BW" &
-                                       location == "3m" ~ "3m (near)",
+  mutate(location_f = factor(case_when(site == "BW" &
+                                       location == "3m" ~ "nearshore near stream",
                                      site == "SS" &
-                                       location == "3m" ~ "3m (far)",
-                                     TRUE ~ "10m"),
-                           levels = c("10m", 
-                                      "3m (near)", 
-                                      "3m (far)")),
+                                       location == "3m" ~ "nearshore far from stream",
+                                     TRUE ~ "shallow littoral"),
+                           levels = c("nearshore near stream", 
+                                      "nearshore far from stream", 
+                                      "shallow littoral")),
          replicate = factor(case_when(replicate %in% c("Benthic", "NS1") ~ "NS1",
                                       replicate %in% c("NS2") ~ "NS2",
                                       TRUE ~ "NS3"),
@@ -1292,7 +1255,7 @@ dat_amp_BW23 <- dat_amp %>%
         y = "DO (% Saturation)") +
    theme_bw() +
    theme(legend.position = "none") +
-   facet_grid(location~.))
+   facet_grid(location_f~.))
 
 # Temperature amplitude
 (fig_bw_t_amp23 <- ggplot(dat_amp_BW23, aes(x = date, 
@@ -1303,13 +1266,13 @@ dat_amp_BW23 <- dat_amp %>%
          y = "Daily Temperature (C) Amplitude") +
     theme_bw() +
     theme(legend.position = "none") +
-    facet_grid(location~.))
+    facet_grid(location_f~.))
 
 # Combine the two ts plots and export.
 (fig_bw_amp23 <- fig_bw_do_amp23 / fig_bw_t_amp23)
 
-# ggsave("figures/2023_data_bw_amp_120723.png",
-#        width = 20,
+# ggsave("figures/2023_data_bw_amp_120823.png",
+#        width = 15,
 #        height = 20,
 #        units = "cm"
 # )
@@ -1323,40 +1286,40 @@ dat_amp_BW23 <- dat_amp %>%
     ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
     theme_bw() +
     theme(legend.position = "none") +
-    facet_grid(location~.))
+    facet_grid(location_f~.))
 
-# DO vs. light amplitude
+# DO vs. mean light
 
-(fig_bw_do_light_amp23 <- ggplot(dat_amp_BW23, aes(x = light_amp, y = percDOsat_amp,
+(fig_bw_do_light_mean23 <- ggplot(dat_amp_BW23, aes(x = light_mean, y = percDOsat_amp,
                                                    color = replicate)) +
     geom_point(alpha = 0.75) +
     scale_color_manual(values = c("#F2B705","#F28705","#D95204")) +
-    xlab(expression(paste({Delta}," Daily Light (W/", m^{2}, ")"))) +
+    xlab(expression(paste("Mean Daily Light (W/", m^{2}, ")"))) +
     ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
     theme_bw() +
     theme(legend.position = "none") +
-    facet_grid(location~.))
+    facet_grid(location_f~.))
 
-# DO vs. wind amplitude
+# DO vs. mean windspeed
 
-(fig_bw_do_wind_amp23 <- ggplot(dat_amp_BW23, aes(x = wind_amp, y = percDOsat_amp,
+(fig_bw_do_wind_mean23 <- ggplot(dat_amp_BW23, aes(x = wind_mean, y = percDOsat_amp,
                                                   color = replicate)) +
     geom_point(alpha = 0.75) +
     scale_color_manual(values = c("#c39ca4","#713d3f","#381f21")) +
-    xlab(expression(paste({Delta}," Daily Windspeed (m/s)"))) +
+    xlab(expression(paste("Mean Daily Windspeed (m/s)"))) +
     ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
     theme_bw() +
     theme(legend.position = "none") +
-    facet_grid(location~.))
+    facet_grid(location_f~.))
 
 # Combine covariate figures
 (fig_bw_do_covar_amp23 <- fig_bw_do_temp_amp23 |
-    fig_bw_do_light_amp23 |
-    fig_bw_do_wind_amp23)
+    fig_bw_do_light_mean23 |
+    fig_bw_do_wind_mean23)
 
-# ggsave("figures/2023_data_bw_covar_amp_120723.png",
-#        width = 15,
-#        height = 10,
+# ggsave("figures/2023_data_bw_covar_amp_120823.png",
+#        width = 20,
+#        height = 15,
 #        units = "cm"
 # )
 
@@ -1368,10 +1331,10 @@ dat_amp_GB23 <- dat_amp %>%
   filter(location %in% c("10m", "3m")) %>%
   filter(date > ymd("2023-05-01")) %>%
   filter(date < ymd("2023-09-30")) %>%
-  mutate(location = factor(case_when(site == "GB" & location == "3m" ~ "3m (near)",
-                                     site == "SH" & location == "3m" ~ "3m (far)",
-                                     TRUE ~ "10m"),
-                           levels = c("10m", "3m (near)", "3m (far)")),
+  mutate(location_f = factor(case_when(site == "GB" & location == "3m" ~ "nearshore near stream",
+                                     site == "SH" & location == "3m" ~ "nearshore far from stream",
+                                     TRUE ~ "shallow littoral"),
+                           levels = c("nearshore near stream", "nearshore far from stream", "shallow littoral")),
          replicate = factor(case_when(replicate %in% c("Benthic", "NS1") ~ "NS1",
                                       replicate %in% c("NS2") ~ "NS2",
                                       TRUE ~ "NS3"),
@@ -1386,7 +1349,7 @@ dat_amp_GB23 <- dat_amp %>%
          y = "DO (% Saturation)") +
     theme_bw() +
     theme(legend.position = "none") +
-    facet_grid(location~.))
+    facet_grid(location_f~.))
 
 # Temperature amplitude
 (fig_gb_t_amp23 <- ggplot(dat_amp_GB23, aes(x = date, 
@@ -1397,14 +1360,107 @@ dat_amp_GB23 <- dat_amp %>%
          y = "Daily Temperature (C) Amplitude") +
     theme_bw() +
     theme(legend.position = "none") +
-    facet_grid(location~.))
+    facet_grid(location_f~.))
 
 # Combine the two ts plots and export.
 (fig_gb_amp23 <- fig_gb_do_amp23 / fig_gb_t_amp23)
 
-# ggsave("figures/2023_data_gb_amp_120723.png",
+# Make dataset for plotting.
+dat_amp_BW22 <- dat_amp %>%
+  filter(site %in% c("BW")) %>%
+  # remove pelagic data for display
+  filter(replicate %in% c("Benthic", "NS1", 
+                          "NS2", "NS3")) %>%
+  filter(date > ymd("2022-03-01")) %>%
+  filter(date < ymd("2023-02-28")) %>%
+  mutate(location_f = factor(case_when(location == "20m" ~ "deep littoral",
+                                       location == "15m" ~ "mid-depth littoral",
+                                       location == "10m" ~ "shallow littoral",
+                                       location == "3m" ~ "nearshore"),
+                             levels = c("nearshore", "shallow littoral",
+                                        "mid-depth littoral", "deep littoral")),
+         # new group for better coloration
+         replicate = factor(case_when(replicate %in% 
+                                        c("Benthic", "NS1") ~ "NS1",
+                                      replicate %in% 
+                                        c("Pelagic", "NS2") ~ "NS2",
+                                      TRUE ~ "NS3"),
+                            levels = c("NS1", "NS2", 
+                                       "NS3")))
+# DO amplitude
+(fig_bw_do_amp22 <- ggplot(dat_amp_BW22, aes(x = date, y = percDOsat_amp,
+                           group = month(date), color = replicate)) +
+   geom_point(alpha = 0.75) +
+   scale_color_manual(values = c("#3B7D6E","#4CA49E","#7AC9B7")) +
+   labs(x = "Date",
+        y = "Daily DO (% Saturation) Amplitude") +
+   theme_bw() +
+   theme(legend.position = "none") +
+   facet_grid(location_f~.))
+
+# Temperature amplitude
+(fig_bw_t_amp22 <- ggplot(dat_amp_BW22, aes(x = date, 
+                          y = temp_amp, color = replicate)) +
+    geom_point(alpha = 0.75) +
+    scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
+    labs(x = "Date",
+         y = "Daily Temperature (C) Amplitude") +
+    theme_bw() +
+    theme(legend.position = "none") +
+    facet_grid(location_f~.))
+
+# Combine the two ts plots and export.
+(fig_bw_amp22 <- fig_bw_do_amp22 / fig_bw_t_amp22)
+
+# ggsave("figures/2022_data_bw_amp_120723.png",
 #        width = 20,
 #        height = 20,
+#        units = "cm"
+# )
+
+# DO vs. temp amplitude
+(fig_bw_do_temp_amp22 <- ggplot(dat_amp_BW22, aes(x = temp_amp, y = percDOsat_amp,
+                                                  color = replicate)) +
+    geom_point(alpha = 0.75) +
+    scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
+    xlab(expression(paste({Delta}," Daily Temperature (", ~degree, "C)"))) +
+    ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
+    theme_bw() +
+    theme(legend.position = "none") +
+    facet_grid(location_f~.))
+
+# DO vs. light amplitude
+
+(fig_bw_do_light_mean22 <- ggplot(dat_amp_BW22, aes(x = light_mean, y = percDOsat_amp,
+                                                   color = replicate)) +
+    geom_point(alpha = 0.75) +
+    scale_color_manual(values = c("#F2B705","#F28705","#D95204")) +
+    xlab(expression(paste("Mean Daily Light (W/", m^{2}, ")"))) +
+    ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
+    theme_bw() +
+    theme(legend.position = "none") +
+    facet_grid(location_f~.))
+
+# DO vs. wind amplitude
+
+(fig_bw_do_wind_mean22 <- ggplot(dat_amp_BW22, aes(x = wind_mean, y = percDOsat_amp,
+                                                  color = replicate)) +
+    geom_point(alpha = 0.75) +
+    scale_color_manual(values = c("#c39ca4","#713d3f","#381f21")) +
+    xlab(expression(paste("Mean Daily Windspeed (m/s)"))) +
+    ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
+    theme_bw() +
+    theme(legend.position = "none") +
+    facet_grid(location_f~.))
+
+# Combine covariate figures
+(fig_bw_do_covar_amp22 <- fig_bw_do_temp_amp22 |
+    fig_bw_do_light_mean22 |
+    fig_bw_do_wind_mean22)
+
+# ggsave("figures/2022_data_bw_covar_amp_120723.png",
+#        width = 20,
+#        height = 15,
 #        units = "cm"
 # )
 
@@ -1417,40 +1473,40 @@ dat_amp_GB23 <- dat_amp %>%
     ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
     theme_bw() +
     theme(legend.position = "none") +
-    facet_grid(location~.))
+    facet_grid(location_f~.))
 
-# DO vs. light amplitude
+# DO vs. mean light
 
-(fig_gb_do_light_amp23 <- ggplot(dat_amp_GB23, aes(x = light_amp, y = percDOsat_amp,
+(fig_gb_do_light_mean23 <- ggplot(dat_amp_GB23, aes(x = light_mean, y = percDOsat_amp,
                                                    color = replicate)) +
     geom_point(alpha = 0.75) +
     scale_color_manual(values = c("#F2B705","#F28705","#D95204")) +
-    xlab(expression(paste({Delta}," Daily Light (W/", m^{2}, ")"))) +
+    xlab(expression(paste("Mean Daily Light (W/", m^{2}, ")"))) +
     ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
     theme_bw() +
     theme(legend.position = "none") +
-    facet_grid(location~.))
+    facet_grid(location_f~.))
 
-# DO vs. wind amplitude
+# DO vs. mean windspeed
 
-(fig_gb_do_wind_amp23 <- ggplot(dat_amp_GB23, aes(x = wind_amp, y = percDOsat_amp,
+(fig_gb_do_wind_mean23 <- ggplot(dat_amp_GB23, aes(x = wind_mean, y = percDOsat_amp,
                                                   color = replicate)) +
     geom_point(alpha = 0.75) +
     scale_color_manual(values = c("#c39ca4","#713d3f","#381f21")) +
-    xlab(expression(paste({Delta}," Daily Windspeed (m/s)"))) +
+    xlab(expression(paste("Mean Daily Windspeed (m/s)"))) +
     ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
     theme_bw() +
     theme(legend.position = "none") +
-    facet_grid(location~.))
+    facet_grid(location_f~.))
 
 # Combine covariate figures
 (fig_gb_do_covar_amp23 <- fig_gb_do_temp_amp23 |
-    fig_gb_do_light_amp23 |
-    fig_gb_do_wind_amp23)
+    fig_gb_do_light_mean23 |
+    fig_gb_do_wind_mean23)
 
-# ggsave("figures/2023_data_gb_covar_amp_120723.png",
-#        width = 15,
-#        height = 10,
+# ggsave("figures/2023_data_gb_covar_amp_120823.png",
+#        width = 20,
+#        height = 15,
 #        units = "cm"
 # )
 
