@@ -18,7 +18,7 @@ library(here)
 
 #### Load Data ####
 
-# Some of this code has been copied from step2 script.
+# Some of this code has been copied from step3 script.
 
 # Import East Shore weather data from Synoptic.
 # Source: Synoptic Station F9917 (Glenbrook)
