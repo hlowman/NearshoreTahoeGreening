@@ -21,6 +21,31 @@ dat <- readRDS("data_working/do_sat_aggregated_110223.rds")
 weather_long <- readRDS("data_working/weather_aggregated_long_110223.rds")
 discharge <- readRDS("data_working/discharge_aggregated_121223.rds")
 
+#### Create Shiny app dataset ####
+dat_shiny <- dat %>%
+  # Filter out flagged data.
+  # For all flags marked "YES" I will remove those data.
+  filter(Flag1 == "NO",
+         Flag2 == "NO",
+         Flag3 == "NO",
+         Flag4 == "NO") %>%
+  # remove pelagic data for display
+  filter(replicate %in% c("Benthic", "NS1", "NS2", "NS3")) %>%
+  # add column with location names
+  mutate(location_f = factor(case_when(location == "20m" ~ "deep littoral",
+                                       location == "15m" ~ "mid-depth littoral",
+                                       location == "10m" ~ "shallow littoral",
+                                       location == "3m" ~ "nearshore"),
+                             levels = c("nearshore", "shallow littoral",
+                                        "mid-depth littoral", "deep littoral")),
+         # and column simply for coloration
+         replicate = factor(case_when(replicate %in% c("Benthic", "NS1") ~ "NS1",
+                                      replicate %in% c("Pelagic", "NS2") ~ "NS2",
+                                      TRUE ~ "NS3"),
+                            levels = c("NS1", "NS2", "NS3")))
+
+saveRDS(dat_shiny, "data_working/do_sat_shiny_010924.rds")
+
 #### Remove Flagged Data ####
 
 # First, need to calculate SD to remove outliers.
@@ -83,30 +108,32 @@ dat_clean_BW22 <- dat_clean %>%
                 geom_line() +
                 scale_color_manual(values = c("#3B7D6E","#4CA49E","#7AC9B7")) +
                 labs(x = "Date",
-                     y = "DO (% Saturation)") +
+                     y = "DO (% Saturation)",
+                     title = "Stage I - West Shore") +
                 theme_bw() +
-                theme(legend.position = "none") +
-                facet_grid(location_f~.))
+                facet_grid(location_f~.) +
+                theme(legend.position = "none",
+                      strip.text.y = element_blank()))
 
 # Temperature
-(fig_bw_t22 <- ggplot(dat_clean_BW22, aes(x = Pacific_Standard_Time, 
+(fig_bw_temp22 <- ggplot(dat_clean_BW22, aes(x = Pacific_Standard_Time, 
                          y = Temperature_deg_C,
                          group = month(Pacific_Standard_Time),
                          color = replicate)) +
     geom_line() +
     scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
     labs(x = "Date",
-         y = "Temperature (C)") +
+         y = "Temperature (°C)") +
     theme_bw() +
     theme(legend.position = "none") +
     facet_grid(location_f~.))
 
 # Combine the two and export.
-(fig_bw22 <- fig_bw_do22 / fig_bw_t22)
+(fig_bw22 <- fig_bw_do22 + fig_bw_temp22)
 
-# ggsave("figures/2022_data_bw_121223.png",
-#        width = 20,
-#        height = 20,
+# ggsave("figures/2022_data_bw_020124.png",
+#        width = 30,
+#        height = 12,
 #        units = "cm"
 # )
 
@@ -140,30 +167,32 @@ dat_clean_GB22 <- dat_clean %>%
    geom_line() +
    scale_color_manual(values = c("#3B7D6E","#4CA49E","#7AC9B7")) +
    labs(x = "Date",
-        y = "DO (% Saturation)") +
-   theme_bw() +
-   theme(legend.position = "none") +
-   facet_grid(location_f~.))
+        y = "DO (% Saturation)",
+        title = "Stage I - East Shore") +
+    theme_bw() +
+    facet_grid(location_f~.) +
+    theme(legend.position = "none",
+          strip.text.y = element_blank()))
 
 # Temperature
-(fig_gb_t22 <- ggplot(dat_clean_GB22, aes(x = Pacific_Standard_Time, 
+(fig_gb_temp22 <- ggplot(dat_clean_GB22, aes(x = Pacific_Standard_Time, 
                           y = Temperature_deg_C,
                           group = month(Pacific_Standard_Time),
                           color = replicate)) +
     geom_line() +
     scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
     labs(x = "Date",
-         y = "Temperature (C)") +
+         y = "Temperature (°C)") +
     theme_bw() +
     theme(legend.position = "none") +
     facet_grid(location_f~.))
 
 # Combine the two and export.
-(fig_gb22 <- fig_gb_do22 / fig_gb_t22)
+(fig_gb22 <- fig_gb_do22 + fig_gb_temp22)
 
-# ggsave("figures/2022_data_gb_121223.png",
-#        width = 20,
-#        height = 20,
+# ggsave("figures/2022_data_gb_020124.png",
+#        width = 30,
+#        height = 12,
 #        units = "cm"
 # )
 
@@ -174,7 +203,7 @@ dat_clean_BW23 <- dat_clean %>%
   filter(site %in% c("BW", "SS")) %>%
   filter(location %in% c("10m", "3m")) %>%
   filter(Pacific_Standard_Time > 
-           ymd_hms("2023-05-25 00:00:00")) %>%
+           ymd_hms("2023-03-01 00:00:00")) %>%
   filter(Pacific_Standard_Time <
            ymd_hms("2023-09-30 23:59:59")) %>%
   mutate(location_f = factor(case_when(site == "BW" &
@@ -191,35 +220,43 @@ dat_clean_BW23 <- dat_clean %>%
                             levels = c("NS1", "NS2", "NS3")))
   
 # DO
-(fig_bw_do23 <- ggplot(dat_clean_BW23, aes(x = Pacific_Standard_Time, 
-                           y = percDOsat, group = month(Pacific_Standard_Time),
+(fig_bw_do23 <- ggplot(dat_clean_BW23 %>%
+                         mutate(date = as_date(Pacific_Standard_Time)), 
+                           aes(x = date, 
+                           y = percDOsat, group = month(date),
                            color = replicate)) +
    geom_line() +
    scale_color_manual(values = c("#3B7D6E","#4CA49E","#7AC9B7")) +
+   scale_x_date(date_labels = "%b %Y") +
    labs(x = "Date",
-        y = "DO (% Saturation)") +
-   theme_bw() +
-   theme(legend.position = "none") +
-   facet_grid(location_f~.))
+        y = "DO (% Saturation)",
+        title = "Stage II - West Shore") +
+    theme_bw() +
+    facet_grid(location_f~.) +
+    theme(legend.position = "none",
+          strip.text.y = element_blank()))
 
 # Temperature
-(fig_bw_t23 <- ggplot(dat_clean_BW23, aes(x = Pacific_Standard_Time, 
-                          y = Temperature_deg_C, group = month(Pacific_Standard_Time),
+(fig_bw_temp23 <- ggplot(dat_clean_BW23 %>%
+                           mutate(date = as_date(Pacific_Standard_Time)), 
+                          aes(x = date, 
+                          y = Temperature_deg_C, group = month(date),
                           color = replicate)) +
     geom_line() +
     scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
+    scale_x_date(date_labels = "%b %Y") +
     labs(x = "Date",
-         y = "Temperature (C)") +
+         y = "Temperature (°C)") +
     theme_bw() +
     theme(legend.position = "none") +
     facet_grid(location_f~.))
 
 # Combine the two and export.
-(fig_bw23 <- fig_bw_do23 / fig_bw_t23)
+(fig_bw23 <- fig_bw_do23 + fig_bw_temp23)
 
-# ggsave("figures/2023_data_bw_121223.png",
-#        width = 20,
-#        height = 20,
+# ggsave("figures/2023_data_bw_020124.png",
+#        width = 18,
+#        height = 10,
 #        units = "cm"
 # )
 
@@ -230,7 +267,7 @@ dat_clean_GB23 <- dat_clean %>%
   filter(site %in% c("GB", "SH")) %>%
   filter(location %in% c("10m", "3m")) %>%
   filter(Pacific_Standard_Time > 
-           ymd_hms("2023-05-25 00:00:00")) %>%
+           ymd_hms("2023-03-01 00:00:00")) %>%
   filter(Pacific_Standard_Time <
            ymd_hms("2023-09-30 23:59:59")) %>%
   mutate(location_f = factor(case_when(site == "GB" &
@@ -247,35 +284,43 @@ dat_clean_GB23 <- dat_clean %>%
                             levels = c("NS1", "NS2", "NS3")))
 
 # DO
-(fig_gb_do23 <- ggplot(dat_clean_GB23, aes(x = Pacific_Standard_Time, 
-                           y = percDOsat, group = month(Pacific_Standard_Time),
+(fig_gb_do23 <- ggplot(dat_clean_GB23 %>%
+                         mutate(date = as_date(Pacific_Standard_Time)), 
+                           aes(x = date, 
+                           y = percDOsat, group = month(date),
                            color = replicate)) +
    geom_line() +
    scale_color_manual(values = c("#3B7D6E","#4CA49E","#7AC9B7")) +
+   scale_x_date(date_labels = "%b %Y") +
    labs(x = "Date",
-        y = "DO (% Saturation)") +
-   theme_bw() +
-   theme(legend.position = "none") +
-   facet_grid(location_f~.))
+        y = "DO (% Saturation)",
+        title = "Stage II - East Shore") +
+    theme_bw() +
+    facet_grid(location_f~.) +
+    theme(legend.position = "none",
+          strip.text.y = element_blank()))
 
 # Temperature
-(fig_gb_t23 <- ggplot(dat_clean_GB23, aes(x = Pacific_Standard_Time, 
-                          y = Temperature_deg_C, group = month(Pacific_Standard_Time),
+(fig_gb_temp23 <- ggplot(dat_clean_GB23 %>%
+                        mutate(date = as_date(Pacific_Standard_Time)), 
+                          aes(x = date, 
+                          y = Temperature_deg_C, group = month(date),
                           color = replicate)) +
     geom_line() +
+    scale_x_date(date_labels = "%b %Y") +
     scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
     labs(x = "Date",
-         y = "Temperature (C)") +
+         y = "Temperature (°C)") +
     theme_bw() +
     theme(legend.position = "none") +
     facet_grid(location_f~.))
 
 # Combine the two and export.
-(fig_gb23 <- fig_gb_do23 / fig_gb_t23)
+(fig_gb23 <- fig_gb_do23 + fig_gb_temp23)
 
-# ggsave("figures/2023_data_gb_121223.png",
-#        width = 20,
-#        height = 20,
+# ggsave("figures/2023_data_gb_020124.png",
+#        width = 18,
+#        height = 10,
 #        units = "cm"
 # )
 
