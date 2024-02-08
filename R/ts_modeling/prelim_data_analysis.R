@@ -1346,8 +1346,8 @@ dat_amp_GB22 <- dat_amp %>%
 (fig_gb_amp22 <- fig_gb_do_amp22 + fig_gb_t_amp22)
 
 # ggsave("figures/2022_data_gb_amp_020824.png",
-#        width = 28,
-#        height = 15,
+#        width = 30,
+#        height = 12,
 #        units = "cm"
 # )
 
@@ -1438,7 +1438,7 @@ dat_amp_GB22 <- dat_amp %>%
 dat_amp_BW23 <- dat_amp %>%
   filter(site %in% c("BW", "SS")) %>%
   filter(location %in% c("10m", "3m")) %>%
-  filter(date > ymd("2023-05-25")) %>%
+  filter(date > ymd("2023-03-01")) %>%
   filter(date < ymd("2023-09-30")) %>%
   mutate(location_f = factor(case_when(site == "BW" &
                                        location == "3m" ~ "n.s. near stream",
@@ -1458,29 +1458,33 @@ dat_amp_BW23 <- dat_amp %>%
                            y = percDOsat_amp, color = replicate)) +
    geom_point(alpha = 0.75) +
    scale_color_manual(values = c("#3B7D6E","#4CA49E","#7AC9B7")) +
-   labs(x = "Date") +
-   ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
+   scale_x_date(date_labels = "%b %Y") +
+   labs(x = "Date",
+        y = "Δ Daily DO (% Saturation)",
+        title = "Stage II - West Shore") +
    theme_bw() +
-   theme(legend.position = "none") +
+   theme(legend.position = "none",
+          strip.text.y = element_blank()) +
    facet_grid(location_f~.))
 
 # Temperature amplitude
 (fig_bw_t_amp23 <- ggplot(dat_amp_BW23, aes(x = date, 
                           y = temp_amp, color = replicate)) +
     geom_point(alpha = 0.75) +
+    scale_x_date(date_labels = "%b %Y") +
     scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
-    labs(x = "Date") +
-    ylab(expression(paste({Delta}," Daily Temperature (", ~degree*C,")"))) +
+    labs(x = "Date", 
+         y = "Δ Daily Temperature (°C)") +
     theme_bw() +
     theme(legend.position = "none") +
     facet_grid(location_f~.))
 
 # Combine the two ts plots and export.
-(fig_bw_amp23 <- fig_bw_do_amp23 / fig_bw_t_amp23)
+(fig_bw_amp23 <- fig_bw_do_amp23 + fig_bw_t_amp23)
 
-# ggsave("figures/2023_data_bw_amp_121223.png",
-#        width = 10,
-#        height = 20,
+# ggsave("figures/2023_data_bw_amp_020824.png",
+#        width = 18,
+#        height = 10,
 #        units = "cm"
 # )
 
@@ -1551,7 +1555,7 @@ dat_amp_BW23 <- dat_amp %>%
 dat_amp_GB23 <- dat_amp %>%
   filter(site %in% c("GB", "SH")) %>%
   filter(location %in% c("10m", "3m")) %>%
-  filter(date > ymd("2023-05-25")) %>%
+  filter(date > ymd("2023-03-01")) %>%
   filter(date < ymd("2023-09-30")) %>%
   mutate(location_f = factor(case_when(site == "GB" & location == "3m" ~ "n.s. near stream",
                                      site == "SH" & location == "3m" ~ "n.s. far stream",
@@ -1566,30 +1570,34 @@ dat_amp_GB23 <- dat_amp %>%
 (fig_gb_do_amp23 <- ggplot(dat_amp_GB23, aes(x = date, 
                                              y = percDOsat_amp, color = replicate)) +
     geom_point(alpha = 0.75) +
+    scale_x_date(date_labels = "%b %Y") +
     scale_color_manual(values = c("#3B7D6E","#4CA49E","#7AC9B7")) +
-    labs(x = "Date") +
-    ylab(expression(paste({Delta}," Daily DO (% Saturation)"))) +
+    labs(x = "Date",
+         y = "Δ Daily DO (% Saturation)",
+         title = "Stage II - East Shore") +
     theme_bw() +
-    theme(legend.position = "none") +
+    theme(legend.position = "none",
+          strip.text.y = element_blank()) +
     facet_grid(location_f~.))
 
 # Temperature amplitude
 (fig_gb_t_amp23 <- ggplot(dat_amp_GB23, aes(x = date, 
                                             y = temp_amp, color = replicate)) +
     geom_point(alpha = 0.75) +
+    scale_x_date(date_labels = "%b %Y") +
     scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
-    labs(x = "Date") +
-    ylab(expression(paste({Delta}," Daily Temperature (", ~degree*C,")"))) +
+    labs(x = "Date",
+         y = "Δ Daily Temperature (°C)") +
     theme_bw() +
     theme(legend.position = "none") +
     facet_grid(location_f~.))
 
 # Combine the two ts plots and export.
-(fig_gb_amp23 <- fig_gb_do_amp23 / fig_gb_t_amp23)
+(fig_gb_amp23 <- fig_gb_do_amp23 + fig_gb_t_amp23)
 
-# ggsave("figures/2023_data_gb_amp_121223.png",
-#        width = 10,
-#        height = 20,
+# ggsave("figures/2023_data_gb_amp_020824.png",
+#        width = 18,
+#        height = 10,
 #        units = "cm"
 # )
 
