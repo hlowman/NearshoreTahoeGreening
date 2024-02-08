@@ -1180,11 +1180,11 @@ dat_amp_BW22 <- dat_amp %>%
   filter(date > ymd("2022-03-01")) %>%
   filter(date < ymd("2023-02-28")) %>%
   mutate(location_f = factor(case_when(location == "20m" ~ "deep littoral",
-                                       location == "15m" ~ "mid-depth littoral",
-                                       location == "10m" ~ "shallow littoral",
+                                       location == "15m" ~ "mid-depth litt.",
+                                       location == "10m" ~ "shallow litt.",
                                        location == "3m" ~ "nearshore"),
-                             levels = c("nearshore", "shallow littoral",
-                                        "mid-depth littoral", "deep littoral")),
+                             levels = c("nearshore", "shallow litt.",
+                                        "mid-depth litt.", "deep littoral")),
          # new group for better coloration
          replicate = factor(case_when(replicate %in% 
                                         c("Benthic", "NS1") ~ "NS1",
@@ -1199,10 +1199,12 @@ dat_amp_BW22 <- dat_amp %>%
    geom_point(alpha = 0.75) +
    scale_color_manual(values = c("#3B7D6E","#4CA49E","#7AC9B7")) +
    labs(x = "Date",
-        y = "Daily DO (% Saturation) Amplitude") +
-   theme_bw() +
-   theme(legend.position = "none") +
-   facet_grid(location_f~.))
+        y = "Δ Daily DO (% Saturation)",
+        title = "Stage I - West Shore") +
+    theme_bw() +
+    facet_grid(location_f~.) +
+    theme(legend.position = "none",
+          strip.text.y = element_blank()))
 
 # Temperature amplitude
 (fig_bw_t_amp22 <- ggplot(dat_amp_BW22, aes(x = date, 
@@ -1210,17 +1212,17 @@ dat_amp_BW22 <- dat_amp %>%
     geom_point(alpha = 0.75) +
     scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
     labs(x = "Date",
-         y = "Daily Temperature (C) Amplitude") +
+         y = "Δ Daily Temperature (°C)") +
     theme_bw() +
     theme(legend.position = "none") +
     facet_grid(location_f~.))
 
 # Combine the two ts plots and export.
-(fig_bw_amp22 <- fig_bw_do_amp22 / fig_bw_t_amp22)
+(fig_bw_amp22 <- fig_bw_do_amp22 + fig_bw_t_amp22)
 
-# ggsave("figures/2022_data_bw_amp_120723.png",
-#        width = 20,
-#        height = 20,
+# ggsave("figures/2022_data_bw_amp_020824.png",
+#        width = 30,
+#        height = 12,
 #        units = "cm"
 # )
 
@@ -1305,11 +1307,11 @@ dat_amp_GB22 <- dat_amp %>%
   filter(date > ymd("2022-03-01")) %>%
   filter(date < ymd("2023-02-28")) %>%
   mutate(location_f = factor(case_when(location == "20m" ~ "deep littoral",
-                                       location == "15m" ~ "mid-depth littoral",
-                                       location == "10m" ~ "shallow littoral",
+                                       location == "15m" ~ "mid-depth litt.",
+                                       location == "10m" ~ "shallow litt.",
                                        location == "3m" ~ "nearshore"),
-                             levels = c("nearshore", "shallow littoral",
-                                        "mid-depth littoral", "deep littoral")),
+                             levels = c("nearshore", "shallow litt.",
+                                        "mid-depth litt.", "deep littoral")),
          replicate = factor(case_when(replicate %in% c("Benthic",
                                                        "NS1") ~ "NS1",
                                       replicate %in% c("Pelagic",
@@ -1322,10 +1324,12 @@ dat_amp_GB22 <- dat_amp %>%
    geom_point(alpha = 0.75) +
    scale_color_manual(values = c("#3B7D6E","#4CA49E","#7AC9B7")) +
    labs(x = "Date",
-        y = "Daily DO (% Saturation) Amplitude") +
-   theme_bw() +
-   theme(legend.position = "none") +
-   facet_grid(location_f~.))
+        y = "Δ Daily DO (% Saturation)",
+        title = "Stage I - East Shore") +
+    theme_bw() +
+    facet_grid(location_f~.) +
+    theme(legend.position = "none",
+          strip.text.y = element_blank()))
 
 # Temperature Amplitude
 (fig_gb_t_amp22 <- ggplot(dat_amp_GB22, aes(x = date, y = temp_amp,
@@ -1333,17 +1337,17 @@ dat_amp_GB22 <- dat_amp %>%
     geom_point(alpha = 0.75) +
     scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
     labs(x = "Date",
-         y = "Daily Temperature (C) Amplitude") +
+         y = "Δ Daily Temperature (°C)") +
     theme_bw() +
     theme(legend.position = "none") +
     facet_grid(location_f~.))
 
 # Combine the two and export.
-(fig_gb_amp22 <- fig_gb_do_amp22 / fig_gb_t_amp22)
+(fig_gb_amp22 <- fig_gb_do_amp22 + fig_gb_t_amp22)
 
-# ggsave("figures/2022_data_gb_amp_120723.png",
-#        width = 20,
-#        height = 20,
+# ggsave("figures/2022_data_gb_amp_020824.png",
+#        width = 28,
+#        height = 15,
 #        units = "cm"
 # )
 
