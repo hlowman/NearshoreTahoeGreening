@@ -83,8 +83,7 @@ plot(dtw(test_list$`1`$Dissolved_O_mg_L, test_list$`2`$Dissolved_O_mg_L, keep=TR
 
 #### Tidy Again ####
 
-# The clustered method requires normalized data, so let's pull each DO column
-# out and normalize.
+# Let's pull each DO column out.
 
 test_list_DO <- lapply(test_list, function(x) {x$Dissolved_O_mg_L})
 # Days with missing data already removed above.
@@ -110,7 +109,6 @@ test_dtw2 <- tsclust(test_list_DO,
                      k=2L, # 2 clusters
                      distance="dtw_basic", 
                      centroid="pam")
-# Took a few seconds.
 
 # Examine output.
 plot(test_dtw2)
@@ -165,5 +163,191 @@ cvi(test_dtw10)
 # Minimize DBstar
 # Maximize D
 # Minimize COP
+
+#### Tidy Yet Again ####
+
+# ok, so part of my oncern with this method is that it is so sensitive
+# that variation across sites might just get swamped by noise in the data.
+
+# so, let's take a look at some other sites for that same month.
+
+# ARGH - ok so I'm aggregating to the closest hour as well because the
+# data frequencies at different depths are different >_<
+
+# Let's start with 3m again.
+test_dat3 <- dat %>%
+  filter(site == "BW",
+         location == "3m",
+         replicate == "NS2",
+         Pacific_Standard_Time >= ymd("2022-04-01"),
+         Pacific_Standard_Time < ymd("2022-05-01"))
+
+# And need to assign indices to each day (4am-4am) to delineate each separate
+# ts to be compared.
+test_dat3 <- test_dat3 %>%
+  mutate(date = date(Pacific_Standard_Time),
+    hour = hour(Pacific_Standard_Time)) %>%
+  group_by(date, hour) %>%
+  summarize(DO_mg_L = mean(Dissolved_O_mg_L, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(index = 0)
+
+for(i in 2:nrow(test_dat3)){
+  # if the time is equal to 4am
+  if(test_dat3$hour[i] == 4){
+    # the index value is one greater than the hour before
+    test_dat3$index[i] = test_dat3$index[(i-1)] + 1
+    # if the time is any other hour,
+  } else {
+    # the index value is the same as the hour before
+    test_dat3$index[i] = test_dat3$index[(i-1)]
+  }
+}
+
+# And now 10m.
+test_dat10 <- dat %>%
+  filter(site == "BW",
+         location == "10m",
+         Pacific_Standard_Time >= ymd("2022-04-01"),
+         Pacific_Standard_Time < ymd("2022-05-01"))
+
+# And need to assign indices to each day (4am-4am) to delineate each separate
+# ts to be compared.
+test_dat10 <- test_dat10 %>%
+  mutate(date = date(Pacific_Standard_Time),
+         hour = hour(Pacific_Standard_Time)) %>%
+  group_by(date, hour) %>%
+  summarize(DO_mg_L = mean(Dissolved_O_mg_L, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(index = 100)
+
+for(i in 2:nrow(test_dat10)){
+  # if the time is equal to 4am
+  if(test_dat10$hour[i] == 4){
+    # the index value is one greater than the hour before
+    test_dat10$index[i] = test_dat10$index[(i-1)] + 1
+    # if the time is any other hour,
+  } else {
+    # the index value is the same as the hour before
+    test_dat10$index[i] = test_dat10$index[(i-1)]
+  }
+}
+
+# And now 20m.
+test_dat20 <- dat %>%
+  filter(site == "BW",
+         location == "20m",
+         Pacific_Standard_Time >= ymd("2022-04-01"),
+         Pacific_Standard_Time < ymd("2022-05-01"))
+
+# And need to assign indices to each day (4am-4am) to delineate each separate
+# ts to be compared.
+test_dat20 <- test_dat20 %>%
+  mutate(date = date(Pacific_Standard_Time),
+         hour = hour(Pacific_Standard_Time)) %>%
+  group_by(date, hour) %>%
+  summarize(DO_mg_L = mean(Dissolved_O_mg_L, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(index = 200)
+
+for(i in 2:nrow(test_dat20)){
+  # if the time is equal to 4am
+  if(test_dat20$hour[i] == 4){
+    # the index value is one greater than the hour before
+    test_dat20$index[i] = test_dat20$index[(i-1)] + 1
+    # if the time is any other hour,
+  } else {
+    # the index value is the same as the hour before
+    test_dat20$index[i] = test_dat20$index[(i-1)]
+  }
+}
+
+
+# Join all the datasets together.
+test_dat3 <- test_dat3 %>%
+  filter(index > 0)
+test_dat10 <- test_dat10 %>%
+  filter(index > 100)
+test_dat20 <- test_dat20 %>%
+  filter(index > 200)
+
+test_dat_depths <- rbind(test_dat3, test_dat10)
+test_dat_depths <- rbind(test_dat_depths, test_dat20)
+
+# And finally split the dataset by day.
+test_list_depths <- split(test_dat_depths, test_dat_depths$index)
+
+# And remove days with missing values.
+test_list_depths <- test_list_depths[-89]
+test_list_depths <- test_list_depths[-60]
+test_list_depths <- test_list_depths[-30]
+
+# And finally pull only the DO data.
+test_list_depths_DO <- lapply(test_list_depths, 
+                              function(x) {x$DO_mg_L})
+
+#### Clustered DTW (Depth) ####
+
+# Perform clustered DTW on the month of March across
+# 3m, 10m, and 20m water depths.
+test_dtw_depth4 <- tsclust(test_list_depths_DO, 
+                     type="partitional", 
+                     k=4L, # 4 clusters
+                     distance="dtw_basic", 
+                     centroid="pam")
+# Took no time.
+
+# Examine output.
+plot(test_dtw_depth4)
+
+test_dtw_depth2 <- tsclust(test_list_depths_DO, 
+                           type="partitional", 
+                           k=2L, # 2 clusters
+                           distance="dtw_basic", 
+                           centroid="pam")
+
+# Examine output.
+plot(test_dtw_depth2)
+
+test_dtw_depth8 <- tsclust(test_list_depths_DO, 
+                           type="partitional", 
+                           k=8L, # 8 clusters
+                           distance="dtw_basic", 
+                           centroid="pam")
+
+# Examine output.
+plot(test_dtw_depth8)
+
+# Examine cluster validity indices.
+cvi(test_dtw_depth2)
+cvi(test_dtw_depth4)
+cvi(test_dtw_depth8)
+
+# Based on values to minimize/maximize, it seems the 2 cluster approach is best.
+# So let's append the clusters to the original dataset.
+
+index <- unique(test_dat_depths$index)
+index <- index[-89]
+index <- index[-60]
+index <- index[-30]
+
+test_dat_clusters <- cbind(as.data.frame(index), 
+                           cluster = test_dtw_depth2@cluster)
+
+# Adding another column to id the depth.
+test_dat_clusters <- test_dat_clusters %>%
+  mutate(site = factor(case_when(index < 100 ~ "BW3m",
+                          index > 100 & index < 200 ~ "BW10m",
+                          index > 200 ~ "BW20m"),
+                       levels = c("BW3m", "BW10m", "BW20m"))) %>%
+  mutate(cluster_f = factor(cluster))
+
+ggplot(test_dat_clusters, aes(x = site)) +
+  geom_bar(aes(fill = cluster_f)) +
+  labs(x = "Site",
+       y = "Timeseries count (days)",
+       fill = "Cluster ID",
+       title = "Dynamic Time Warping in April 2023") +
+  theme_bw()
 
 # End of script.
