@@ -198,11 +198,11 @@ dat_clean_GB22 <- dat_clean %>%
 # Combine the two and export.
 (fig_gb22 <- fig_gb_do22 + fig_gb_temp22 + plot_annotation(tag_levels = 'A'))
 
-ggsave("figures/2022_data_gb_041524.png",
-       width = 30,
-       height = 12,
-       units = "cm"
-)
+# ggsave("figures/2022_data_gb_041524.png",
+#        width = 30,
+#        height = 12,
+#        units = "cm"
+# )
 
 ##### BW 2023 #####
 
@@ -215,17 +215,18 @@ dat_clean_BW23 <- dat_clean %>%
   filter(Pacific_Standard_Time <
            ymd_hms("2023-09-30 23:59:59")) %>%
   mutate(location_f = factor(case_when(site == "BW" &
-                                       location == "3m" ~ "n.s. near stream",
+                                       location == "3m" ~ "ns near stream",
                                      site == "SS" &
-                                       location == "3m" ~ "n.s. far stream",
+                                       location == "3m" ~ "ns far stream",
                                      TRUE ~ "shallow littoral"),
-                           levels = c("n.s. near stream", 
-                                      "n.s. far stream", 
+                           levels = c("ns near stream", 
+                                      "ns far stream", 
                                       "shallow littoral")),
-         replicate = factor(case_when(replicate %in% c("Benthic", "NS1") ~ "NS1",
+         replicate = factor(case_when(replicate %in% c("NS1") ~ "NS1",
                                       replicate %in% c("NS2") ~ "NS2",
-                                      TRUE ~ "NS3"),
-                            levels = c("NS1", "NS2", "NS3")))
+                                      replicate %in% c("NS3") ~ "NS3",
+                                      TRUE ~ "Littoral"),
+                            levels = c("NS1", "NS2", "NS3", "Littoral")))
   
 # DO
 (fig_bw_do23 <- ggplot(dat_clean_BW23 %>%
@@ -234,14 +235,15 @@ dat_clean_BW23 <- dat_clean %>%
                            y = percDOsat, group = month(date),
                            color = replicate)) +
    geom_line() +
-   scale_color_manual(values = c("#3B7D6E","#4CA49E","#7AC9B7")) +
+   scale_color_manual(values = c("#A8CBB8","#7AC9B7",
+                                 "#4CA49E","#3B7D6E")) +
    scale_x_date(date_labels = "%b %Y") +
    labs(x = "Date",
-        y = "DO (% Saturation)",
-        title = "Stage II - West Shore") +
+        y = "DO (% Saturation)") +
     theme_bw() +
     facet_grid(location_f~.) +
-    theme(legend.position = "none",
+    theme(legend.position = "bottom",
+          legend.title = element_blank(),
           strip.text.y = element_blank()))
 
 # Temperature
@@ -251,22 +253,24 @@ dat_clean_BW23 <- dat_clean %>%
                           y = Temperature_deg_C, group = month(date),
                           color = replicate)) +
     geom_line() +
-    scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
+    scale_color_manual(values = c("#69B9FA", "#59A3F8", 
+                                  "#4B8FF7", "#5A7ECB")) +
     scale_x_date(date_labels = "%b %Y") +
     labs(x = "Date",
          y = "Temperature (°C)") +
     theme_bw() +
-    theme(legend.position = "none") +
+    theme(legend.position = "bottom",
+          legend.title = element_blank()) +
     facet_grid(location_f~.))
 
 # Combine the two and export.
-(fig_bw23 <- fig_bw_do23 + fig_bw_temp23)
+(fig_bw23 <- fig_bw_do23 + fig_bw_temp23 + plot_annotation(tag_levels = 'A'))
 
-# ggsave("figures/2023_data_bw_020124.png",
-#        width = 18,
-#        height = 10,
-#        units = "cm"
-# )
+ggsave("figures/2023_data_bw_041524.png",
+       width = 18,
+       height = 10,
+       units = "cm"
+)
 
 ##### GB 2023 #####
 
@@ -279,17 +283,18 @@ dat_clean_GB23 <- dat_clean %>%
   filter(Pacific_Standard_Time <
            ymd_hms("2023-09-30 23:59:59")) %>%
   mutate(location_f = factor(case_when(site == "GB" &
-                                       location == "3m" ~ "n.s. near stream",
+                                       location == "3m" ~ "ns near stream",
                                      site == "SH" &
-                                       location == "3m" ~ "n.s. far stream",
+                                       location == "3m" ~ "ns far stream",
                                      TRUE ~ "shallow littoral"),
-                           levels = c("n.s. near stream", 
-                                      "n.s. far stream", 
+                           levels = c("ns near stream", 
+                                      "ns far stream", 
                                       "shallow littoral")),
-         replicate = factor(case_when(replicate %in% c("Benthic", "NS1") ~ "NS1",
+         replicate = factor(case_when(replicate %in% c("NS1") ~ "NS1",
                                       replicate %in% c("NS2") ~ "NS2",
-                                      TRUE ~ "NS3"),
-                            levels = c("NS1", "NS2", "NS3")))
+                                      replicate %in% c("NS3") ~ "NS3",
+                                      TRUE ~ "Littoral"),
+                            levels = c("NS1", "NS2", "NS3", "Littoral")))
 
 # DO
 (fig_gb_do23 <- ggplot(dat_clean_GB23 %>%
@@ -298,14 +303,15 @@ dat_clean_GB23 <- dat_clean %>%
                            y = percDOsat, group = month(date),
                            color = replicate)) +
    geom_line() +
-   scale_color_manual(values = c("#3B7D6E","#4CA49E","#7AC9B7")) +
+   scale_color_manual(values = c("#A8CBB8","#7AC9B7",
+                                 "#4CA49E","#3B7D6E")) +
    scale_x_date(date_labels = "%b %Y") +
    labs(x = "Date",
-        y = "DO (% Saturation)",
-        title = "Stage II - East Shore") +
+        y = "DO (% Saturation)") +
     theme_bw() +
     facet_grid(location_f~.) +
-    theme(legend.position = "none",
+    theme(legend.position = "bottom",
+          legend.title = element_blank(),
           strip.text.y = element_blank()))
 
 # Temperature
@@ -316,21 +322,23 @@ dat_clean_GB23 <- dat_clean %>%
                           color = replicate)) +
     geom_line() +
     scale_x_date(date_labels = "%b %Y") +
-    scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
+    scale_color_manual(values = c("#69B9FA", "#59A3F8", 
+                                  "#4B8FF7", "#5A7ECB")) +
     labs(x = "Date",
          y = "Temperature (°C)") +
     theme_bw() +
-    theme(legend.position = "none") +
+    theme(legend.position = "bottom",
+          legend.title = element_blank()) +
     facet_grid(location_f~.))
 
 # Combine the two and export.
-(fig_gb23 <- fig_gb_do23 + fig_gb_temp23)
+(fig_gb23 <- fig_gb_do23 + fig_gb_temp23 + plot_annotation(tag_levels = 'A'))
 
-# ggsave("figures/2023_data_gb_020124.png",
-#        width = 18,
-#        height = 10,
-#        units = "cm"
-# )
+ggsave("figures/2023_data_gb_041524.png",
+       width = 18,
+       height = 10,
+       units = "cm"
+)
 
 #### MARSS GB 2022 w/ light ####
 
