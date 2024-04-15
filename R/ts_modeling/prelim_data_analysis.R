@@ -44,7 +44,7 @@ dat_shiny <- dat %>%
                                       TRUE ~ "NS3"),
                             levels = c("NS1", "NS2", "NS3")))
 
-saveRDS(dat_shiny, "data_working/do_sat_shiny_010924.rds")
+# saveRDS(dat_shiny, "data_working/do_sat_shiny_010924.rds")
 
 #### Remove Flagged Data ####
 
@@ -69,7 +69,7 @@ dat_clean <- dat %>%
          Flag4 == "NO",
          Flag5 == "NO")
 
-# 1162968 records remaining, so 24% of records removed.
+# 1,162,968 records remaining, so 24% of records removed.
 
 # Deployment dates
 dat_deploy <- dat %>%
@@ -95,10 +95,11 @@ dat_clean_BW22 <- dat_clean %>%
                                        location == "3m" ~ "nearshore"),
                            levels = c("nearshore", "shallow litt.",
                                       "mid-depth litt.", "deep littoral")),
-         replicate = factor(case_when(replicate %in% c("Benthic", "NS1") ~ "NS1",
-                                      replicate %in% c("Pelagic", "NS2") ~ "NS2",
-                                      TRUE ~ "NS3"),
-                            levels = c("NS1", "NS2", "NS3")))
+         replicate = factor(case_when(replicate %in% c("NS1") ~ "NS1",
+                                      replicate %in% c("NS2") ~ "NS2",
+                                      replicate %in% c("NS3") ~ "NS3",
+                                      TRUE ~ "Littoral"),
+                            levels = c("NS1", "NS2", "NS3", "Littoral")))
   
 # DO
 (fig_bw_do22 <- ggplot(dat_clean_BW22, aes(x = Pacific_Standard_Time, 
@@ -106,13 +107,14 @@ dat_clean_BW22 <- dat_clean %>%
                                  group = month(Pacific_Standard_Time),
                                  color = replicate)) +
                 geom_line() +
-                scale_color_manual(values = c("#3B7D6E","#4CA49E","#7AC9B7")) +
+                scale_color_manual(values = c("#A8CBB8","#7AC9B7",
+                                              "#4CA49E","#3B7D6E")) +
                 labs(x = "Date",
-                     y = "DO (% Saturation)",
-                     title = "Stage I - West Shore") +
+                     y = "DO (% Saturation)") +
                 theme_bw() +
                 facet_grid(location_f~.) +
-                theme(legend.position = "none",
+                theme(legend.position = "bottom",
+                      legend.title = element_blank(),
                       strip.text.y = element_blank()))
 
 # Temperature
@@ -121,17 +123,19 @@ dat_clean_BW22 <- dat_clean %>%
                          group = month(Pacific_Standard_Time),
                          color = replicate)) +
     geom_line() +
-    scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
+    scale_color_manual(values = c("#69B9FA", "#59A3F8", 
+                                  "#4B8FF7", "#5A7ECB")) +
     labs(x = "Date",
          y = "Temperature (°C)") +
     theme_bw() +
-    theme(legend.position = "none") +
+    theme(legend.position = "bottom",
+          legend.title = element_blank()) +
     facet_grid(location_f~.))
 
 # Combine the two and export.
-(fig_bw22 <- fig_bw_do22 + fig_bw_temp22)
+(fig_bw22 <- fig_bw_do22 + fig_bw_temp22 + plot_annotation(tag_levels = 'A'))
 
-# ggsave("figures/2022_data_bw_020124.png",
+# ggsave("figures/2022_data_bw_041524.png",
 #        width = 30,
 #        height = 12,
 #        units = "cm"
@@ -154,10 +158,11 @@ dat_clean_GB22 <- dat_clean %>%
                                        location == "3m" ~ "nearshore"),
                              levels = c("nearshore", "shallow litt.",
                                         "mid-depth litt.", "deep littoral")),
-         replicate = factor(case_when(replicate %in% c("Benthic", "NS1") ~ "NS1",
-                                      replicate %in% c("Pelagic", "NS2") ~ "NS2",
-                                      TRUE ~ "NS3"),
-                            levels = c("NS1", "NS2", "NS3")))
+         replicate = factor(case_when(replicate %in% c("NS1") ~ "NS1",
+                                      replicate %in% c("NS2") ~ "NS2",
+                                      replicate %in% c("NS3") ~ "NS3",
+                                      TRUE ~ "Littoral"),
+                            levels = c("NS1", "NS2", "NS3", "Littoral")))
   
 # DO
 (fig_gb_do22 <- ggplot(dat_clean_GB22, aes(x = Pacific_Standard_Time, 
@@ -165,13 +170,14 @@ dat_clean_GB22 <- dat_clean %>%
                            group = month(Pacific_Standard_Time),
                            color = replicate)) +
    geom_line() +
-   scale_color_manual(values = c("#3B7D6E","#4CA49E","#7AC9B7")) +
+   scale_color_manual(values = c("#A8CBB8","#7AC9B7",
+                                 "#4CA49E","#3B7D6E")) +
    labs(x = "Date",
-        y = "DO (% Saturation)",
-        title = "Stage I - East Shore") +
+        y = "DO (% Saturation)") +
     theme_bw() +
     facet_grid(location_f~.) +
-    theme(legend.position = "none",
+    theme(legend.position = "bottom",
+          legend.title = element_blank(),
           strip.text.y = element_blank()))
 
 # Temperature
@@ -180,21 +186,23 @@ dat_clean_GB22 <- dat_clean %>%
                           group = month(Pacific_Standard_Time),
                           color = replicate)) +
     geom_line() +
-    scale_color_manual(values = c("#5A7ECB","#4B8FF7","#59A3F8")) +
+    scale_color_manual(values = c("#69B9FA", "#59A3F8", 
+                                  "#4B8FF7", "#5A7ECB")) +
     labs(x = "Date",
          y = "Temperature (°C)") +
     theme_bw() +
-    theme(legend.position = "none") +
+    theme(legend.position = "bottom",
+          legend.title = element_blank()) +
     facet_grid(location_f~.))
 
 # Combine the two and export.
-(fig_gb22 <- fig_gb_do22 + fig_gb_temp22)
+(fig_gb22 <- fig_gb_do22 + fig_gb_temp22 + plot_annotation(tag_levels = 'A'))
 
-# ggsave("figures/2022_data_gb_020124.png",
-#        width = 30,
-#        height = 12,
-#        units = "cm"
-# )
+ggsave("figures/2022_data_gb_041524.png",
+       width = 30,
+       height = 12,
+       units = "cm"
+)
 
 ##### BW 2023 #####
 
