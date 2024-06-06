@@ -49,6 +49,9 @@ dtw_2_12 <- tsclust(data_DO,
                  centroid="dba")
 # Only took about a minute or so.
 
+# Export model fit.
+# saveRDS(dtw_2_12, "data_modelfits/dtw_2022_2thru12_060624.rds")
+
 # Examine cluster validity indices.
 # Now, this takes longer than the model fit (~ 3 minutes).
 dtw_results <- lapply(dtw_2_12, cvi)
@@ -70,12 +73,81 @@ dtw_results_df <- t(dtw_results_df)
 # Maximize D
 # Minimize COP
 
-# Examine most parsimonious output.
-plot(dtw_2_12[[1]]) # by most measures
-plot(dtw_2_12[[4]]) # by D measure
-plot(dtw_2_12[[10]]) # by COP measure
+# Examine the most parsimonious clusterings.
+plot(dtw_2_12[[1]]) # by most measures (2 clusters)
+plot(dtw_2_12[[7]]) # by D measure (8 clusters)
+plot(dtw_2_12[[11]]) # by COP measure (12 clusters)
 
 # Hmmmm, this is looking fairly messy, likely due to the
 # sheer number of days for which I have data.
 
+# But let's examine the data for the most parsimonious fit.
+plot(dtw_2_12[[1]], type = "c") # plots centroids only
+
+# And pull out cluster membership
+clusters <- dtw_2_12[[1]]@cluster 
+
+# Append to the original data
+data_df <- plyr::ldply(data, data.frame) 
+
+data_sites <- unique(data_df$`.id`)
+
+data_sites_clusters <- as.data.frame(cbind(data_sites, clusters))
+
+data_df <- left_join(data_df, data_sites_clusters,
+                     by = c(`.id` = "data_sites"))
+
+data_clusters <- data_df %>%
+  group_by(site, location, replicate, uniqueID) %>%
+  summarize(cluster = mean(as.numeric(clusters))) %>%
+  ungroup()
+
+# Also creating an additional dataset with months
+# but doing separately bc something is wonky
+data_months <- data_df %>%
+  mutate(month = factor(case_when(month(date) == 1 ~ "Jan",
+                           month(date) == 2 ~ "Feb",
+                           month(date) == 3 ~ "Mar",
+                           month(date) == 4 ~ "Apr",
+                           month(date) == 5 ~ "May",
+                           month(date) == 6 ~ "Jun",
+                           month(date) == 7 ~ "Jul",
+                           month(date) == 8 ~ "Aug",
+                           month(date) == 9 ~ "Sep",
+                           month(date) == 10 ~ "Oct",
+                           month(date) == 11 ~ "Nov",
+                           month(date) == 12 ~ "Dec",
+                           month(date) == 1 ~ "Jan",
+                           TRUE ~ NA),
+                        levels = c("Jan", "Feb", "Mar",
+                                   "Apr", "May", "Jun",
+                                   "Jul", "Aug", "Sep",
+                                   "Oct", "Nov", "Dec"))) %>%
+  group_by(site, location, replicate, month, uniqueID) %>%
+  summarize(cluster = mean(as.numeric(clusters))) %>%
+  ungroup()
+
+# And plot results to see what belongs to which cluster.
+ggplot(data_clusters, aes(x = site)) +
+  geom_bar(aes(fill = factor(cluster))) +
+  labs(x = "Site",
+       y = "Timeseries count (days)",
+       fill = "Cluster ID") +
+  theme_bw()
+
+ggplot(data_clusters, aes(x = location)) +
+  geom_bar(aes(fill = factor(cluster))) +
+  labs(x = "Location",
+       y = "Timeseries count (days)",
+       fill = "Cluster ID") +
+  theme_bw()
+
+ggplot(data_months, aes(x = month)) +
+  geom_bar(aes(fill = factor(cluster))) +
+  labs(x = "Time of Year",
+       y = "Timeseries count (days)",
+       fill = "Cluster ID") +
+  theme_bw() # these results are most stark!
+# with cluster 1 occurring almost exclusively in summer
+  
 # End of script.
