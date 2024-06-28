@@ -80,6 +80,7 @@ data_2023 <- data_indexed_complete %>%
   # far from stream sites
   filter(date >= ymd("2023-02-12")) %>%
   # and scale DO values
+  # scale = (x - mean(x))/sd(x)
   mutate(scaled_DO_mg_L = scale(DO_mg_L))
 
 # Finally, split into lists based on unique IDs.

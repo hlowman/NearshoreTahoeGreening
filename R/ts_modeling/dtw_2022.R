@@ -5,8 +5,10 @@
 # ---------------------------- README ---------------------------------
 # The following script will fit data from the first stage of
 # the project using the clustered dynamic time warping approach.
+# Note, future runs of fuzzy clustering should be run on the Pinyon
+# server - they take ~1 day to run on personal laptops.
 
-#### SETUP ####
+#### Setup ####
 
 # Load packages.
 library(lubridate)
@@ -18,13 +20,13 @@ library(dtwclust)
 # Load data.
 data <- readRDS("data_working/do_data_2022_dailylist_053124.rds")
 
-#### TIDY ####
+#### Tidy ####
 
 # Must include ONLY values in the input dataset.
 # And applying scale-transform.
 data_DO <- lapply(data, function(x) {x$scaled_DO_mg_L})
 
-#### MODEL FIT ####
+#### Partitional Fit ####
 
 # Perform clustered DTW on data from June 2021 through
 # February 2023 on either side of the lake and all replicates 
@@ -72,6 +74,9 @@ dtw_results_df <- t(dtw_results_df)
 # Minimize DBstar
 # Maximize D
 # Minimize COP
+
+# For more info on CVIs, see
+# https://rdrr.io/cran/dtwclust/man/cvi.html
 
 # Examine the most parsimonious clusterings.
 plot(dtw_2_12[[1]]) # by most measures (2 clusters)
@@ -149,5 +154,143 @@ ggplot(data_months, aes(x = month)) +
        fill = "Cluster ID") +
   theme_bw() # these results are most stark!
 # with cluster 1 occurring almost exclusively in summer
+
+#### Fuzzy Fit ####
+
+# Perform clustered DTW on data from June 2021 through
+# February 2023 on either side of the lake and all replicates 
+# across 3m, 10m, and 20m water depths.
+dtw_fuzzy_2_12 <- tsclust(data_DO, 
+                    
+                    # partitional - ts may only belong to one group
+                    # fuzzy - ts may belong partially to multiple groups
+                    type = "fuzzy", 
+                    
+                    # 2L - 2 state hypothesis (biology vs. physics)
+                    # 12L - 12 state hypothesis (independent site behavior)
+                    k = 2L:12L, # 10 possible
+                    
+                    # state that no preprocessing should occur
+                    preproc = NULL,
+                    
+                    # dtw - ???
+                    distance="dtw", 
+                    
+                    # fcmdd - fuzzy c-mediods
+                    centroid="fcmdd",
+                    
+                    # setting window size
+                    # should be approx. 10% of series length
+                    # 24 * .1 = 2.4 ~ 3
+                    args = tsclust_args(dist = list(window.size = 3L)),
+                    
+                    # controls number of iterations
+                    control = fuzzy_control(iter.max = 1000L),
+                    
+                    # prints progress to screen
+                    trace = T)
+
+# Takes about 10 hours on my laptop
+# (started 12:03pm, finished at 10:40 am)
+
+# Export model fit.
+# saveRDS(dtw_fuzzy_2_12, "data_modelfits/dtw_2022_fuzzy_062824.rds")
+
+# Examine cluster validity indices. Be patient - takes a moment.
+dtw_results <- lapply(dtw_fuzzy_2_12, cvi)
+
+dtw_results_df <- as.data.frame(dtw_results,
+                                col.names = c("L2", "L3", "L4",
+                                              "L5", "L6", "L7",
+                                              "L8", "L9", "L10",
+                                              "L11", "L12"))
+
+dtw_results_df <- t(dtw_results_df)
+
+# Want to:
+# Maximize MPC
+# Minimize K
+# Minimize T
+# Maximize SC
+# Maximize PBMF
+
+# Examine the most parsimonious clusterings.
+plot(dtw_fuzzy_2_12[[1]]) # Per MPC, K, and T metrics (2 clusters)
+plot(dtw_fuzzy_2_12[[7]]) # Per SC and PBMF metrics (8 clusters)
+
+# Export cluster groupings for most parsimonious model fit.
+dtw_clusters <- as.data.frame(dtw_fuzzy_2_12[[1]]@fcluster) %>%
+  rownames_to_column() %>%
+  rename(uniqueID = rowname) %>%
+  mutate(clusters = 2)
+
+# Will need to pull each cluster membership df separately and
+# merge together if needed to.
+
+# Add new column to assign groupings with 90% cutoff.
+dtw_clusters$group <- case_when(dtw_clusters$cluster_1 >= 0.9 ~ "Cluster 1",
+                                dtw_clusters$cluster_2 >= 0.9 ~ "Cluster 2",
+                                TRUE ~ "None")
+
+# And plot these results.
+# First need to make the dataset into a df.
+data_df <- plyr::ldply(data, data.frame)
+
+# And join with the cluster data.
+full_df <- left_join(data_df, dtw_clusters) %>%
+  # need to add plotting index otherwise hours appear weirdly
+  mutate(hour_index = case_when(hour == 4 ~ 1,hour == 5 ~ 2,hour == 6 ~ 3,
+                                hour == 7 ~ 4,hour == 8 ~ 5,hour == 9 ~ 6,
+                                hour == 10 ~ 7,hour == 11 ~ 8,hour == 12 ~ 9,
+                                hour == 13 ~ 10,hour == 14 ~ 11,hour == 15 ~ 12,
+                                hour == 16 ~ 13,hour == 17 ~ 14,hour == 18 ~ 15,
+                                hour == 19 ~ 16,hour == 20 ~ 17,hour == 21 ~ 18,
+                                hour == 22 ~ 19,hour == 23 ~ 20,hour == 0 ~ 21,
+                                hour == 1 ~ 22,hour == 2 ~ 23,hour == 3 ~ 24))
+
+ggplot(full_df, aes(x = hour_index, y = scaled_DO_mg_L,
+                    color = group, group = uniqueID)) +
+  geom_line() +
+  theme_bw() +
+  facet_wrap(group~.) +
+  theme(legend.position = "none")
+
+# And doing the same for the 8 cluster results.
+# Export cluster groupings for most parsimonious model fit.
+dtw_clusters8 <- as.data.frame(dtw_fuzzy_2_12[[7]]@fcluster) %>%
+  rownames_to_column() %>%
+  rename(uniqueID = rowname) %>%
+  mutate(clusters = 8)
+
+# Add new column to assign groupings with 50% cutoff.
+dtw_clusters8$group <- case_when(dtw_clusters8$cluster_1 >= 0.5 ~ "Cluster 1",
+                                dtw_clusters8$cluster_2 >= 0.5 ~ "Cluster 2",
+                                dtw_clusters8$cluster_3 >= 0.5 ~ "Cluster 3",
+                                dtw_clusters8$cluster_4 >= 0.5 ~ "Cluster 4",
+                                dtw_clusters8$cluster_5 >= 0.5 ~ "Cluster 5",
+                                dtw_clusters8$cluster_6 >= 0.5 ~ "Cluster 6",
+                                dtw_clusters8$cluster_7 >= 0.5 ~ "Cluster 7",
+                                dtw_clusters8$cluster_8 >= 0.5 ~ "Cluster 8",
+                                TRUE ~ "None")
+
+# And join with the cluster data.
+full_df8 <- left_join(data_df, dtw_clusters8) %>%
+  # need to add plotting index otherwise hours appear weirdly
+  mutate(hour_index = case_when(hour == 4 ~ 1,hour == 5 ~ 2,hour == 6 ~ 3,
+                                hour == 7 ~ 4,hour == 8 ~ 5,hour == 9 ~ 6,
+                                hour == 10 ~ 7,hour == 11 ~ 8,hour == 12 ~ 9,
+                                hour == 13 ~ 10,hour == 14 ~ 11,hour == 15 ~ 12,
+                                hour == 16 ~ 13,hour == 17 ~ 14,hour == 18 ~ 15,
+                                hour == 19 ~ 16,hour == 20 ~ 17,hour == 21 ~ 18,
+                                hour == 22 ~ 19,hour == 23 ~ 20,hour == 0 ~ 21,
+                                hour == 1 ~ 22,hour == 2 ~ 23,hour == 3 ~ 24))
+
+# And plot these results.
+ggplot(full_df8, aes(x = hour_index, y = scaled_DO_mg_L,
+                    color = group, group = uniqueID)) +
+  geom_line() +
+  theme_bw() +
+  facet_wrap(group~.) +
+  theme(legend.position = "none")
   
 # End of script.

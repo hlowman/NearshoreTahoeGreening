@@ -42,7 +42,7 @@ vignettes/*.pdf
 data_raw
 data_working
 data_model_outputs
-Metabolism_Loria_Scordo
+others_code
 
 # Folder for large plotly files
 plotly
