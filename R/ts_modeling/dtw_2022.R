@@ -216,6 +216,7 @@ dtw_results_df <- t(dtw_results_df)
 
 # Examine the most parsimonious clusterings.
 plot(dtw_fuzzy_2_12[[1]]) # Per MPC, K, and T metrics (2 clusters)
+plot(dtw_fuzzy_2_12[[1]], type = "c")
 plot(dtw_fuzzy_2_12[[7]]) # Per SC and PBMF metrics (8 clusters)
 
 # Export cluster groupings for most parsimonious model fit.
@@ -254,6 +255,83 @@ ggplot(full_df, aes(x = hour_index, y = scaled_DO_mg_L,
   theme_bw() +
   facet_wrap(group~.) +
   theme(legend.position = "none")
+
+ggplot(full_df, aes(x = site)) +
+  geom_bar(aes(fill = factor(group))) +
+  labs(x = "Site",
+       y = "Timeseries count (days)",
+       fill = "Cluster ID") +
+  theme_bw()
+
+ggplot(full_df, aes(x = location)) +
+  geom_bar(aes(fill = factor(group))) +
+  labs(x = "Location",
+       y = "Timeseries count (days)",
+       fill = "Cluster ID") +
+  theme_bw()
+
+# Since these appear roughly proportional, let's do a quick
+# data check to be sure.
+location_counts <- full_df %>%
+  group_by(location, group) %>%
+  summarize(count = n()) %>%
+  ungroup() %>%
+  pivot_wider(names_from = group, values_from = count) %>%
+  mutate(Total = (`Cluster 1` + `Cluster 2` + `None`))
+
+location_perc <- location_counts %>%
+  mutate(Cluster1_perc = `Cluster 1`/Total,
+         Cluster2_perc = `Cluster 2`/Total,
+         None_perc = None/Total) %>%
+  pivot_longer(Cluster1_perc:None_perc, names_to = "group_perc")
+
+ggplot(location_perc, aes(x = location, y = value)) +
+  geom_bar(aes(fill = factor(group_perc)), stat = "identity") +
+  labs(x = "Location",
+       y = "Timeseries count (% of total)",
+       fill = "Cluster ID") +
+  theme_bw()
+
+# Also creating column with months
+# but doing separately bc something is wonky
+full_df <- full_df %>%
+  mutate(month = factor(case_when(month(date) == 1 ~ "Jan",
+                                  month(date) == 2 ~ "Feb",
+                                  month(date) == 3 ~ "Mar",
+                                  month(date) == 4 ~ "Apr",
+                                  month(date) == 5 ~ "May",
+                                  month(date) == 6 ~ "Jun",
+                                  month(date) == 7 ~ "Jul",
+                                  month(date) == 8 ~ "Aug",
+                                  month(date) == 9 ~ "Sep",
+                                  month(date) == 10 ~ "Oct",
+                                  month(date) == 11 ~ "Nov",
+                                  month(date) == 12 ~ "Dec",
+                                  month(date) == 1 ~ "Jan",
+                                  TRUE ~ NA),
+                        levels = c("Jan", "Feb", "Mar",
+                                   "Apr", "May", "Jun",
+                                   "Jul", "Aug", "Sep",
+                                   "Oct", "Nov", "Dec")))
+
+ggplot(full_df, aes(x = month)) +
+  geom_bar(aes(fill = factor(group))) +
+  labs(x = "Time of Year",
+       y = "Timeseries count (days)",
+       fill = "Cluster ID") +
+  theme_bw() # these results are most stark!
+# with cluster 2 occurring almost exclusively in summer
+
+# Hmmmm, just out of curiosity, let's look at the actual ts
+# split by cluster but colored by month
+library(viridis)
+
+ggplot(full_df, aes(x = hour_index, y = scaled_DO_mg_L,
+                    color = month, group = uniqueID)) +
+  geom_line() +
+  scale_color_viridis(discrete = TRUE) +
+  theme_bw() +
+  facet_wrap(group~.)
 
 # And doing the same for the 8 cluster results.
 # Export cluster groupings for most parsimonious model fit.
