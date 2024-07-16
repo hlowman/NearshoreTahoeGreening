@@ -198,7 +198,7 @@ dtw_fuzzy_2_12 <- tsclust(data_DO,
 
 # Export model fit.
 # saveRDS(dtw_fuzzy_2_12, "data_modelfits/dtw_2022_fuzzy_062824.rds")
-saveRDS(dtw_fuzzy_2_12, "data_modelfits/dtw_2022_fuzzy_070324.rds")
+saveRDS(dtw_fuzzy_2_12, "data_model_outputs/dtw_2022_fuzzy_070324.rds")
 
 # Examine cluster validity indices. Be patient - takes a moment.
 dtw_results <- lapply(dtw_fuzzy_2_12, cvi)
