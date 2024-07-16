@@ -42,6 +42,7 @@ vignettes/*.pdf
 data_raw
 data_working
 data_model_outputs
+data_modelfits
 others_code
 
 # Folder for large plotly files

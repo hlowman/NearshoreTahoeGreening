@@ -18,7 +18,7 @@ library(here)
 library(dtwclust)
 
 # Load data.
-data <- readRDS("data_working/do_data_2022_dailylist_053124.rds")
+data <- readRDS("data_working/do_data_2022_dailylist_070324.rds")
 
 #### Tidy ####
 
@@ -193,8 +193,12 @@ dtw_fuzzy_2_12 <- tsclust(data_DO,
 # Takes about 10 hours on my laptop
 # (started 12:03pm, finished at 10:40 am)
 
+# Takes about ?? hours on Pinyon
+# Run2 (started 3:06pm, finished at ?:??)
+
 # Export model fit.
 # saveRDS(dtw_fuzzy_2_12, "data_modelfits/dtw_2022_fuzzy_062824.rds")
+saveRDS(dtw_fuzzy_2_12, "data_model_outputs/dtw_2022_fuzzy_070324.rds")
 
 # Examine cluster validity indices. Be patient - takes a moment.
 dtw_results <- lapply(dtw_fuzzy_2_12, cvi)
