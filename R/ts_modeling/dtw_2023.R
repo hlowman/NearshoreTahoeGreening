@@ -16,7 +16,7 @@ library(here)
 library(dtwclust)
 
 # Load data.
-data <- readRDS("data_working/do_data_2023_dailylist_053124.rds")
+data <- readRDS("data_working/do_data_2023_dailylist_070324.rds")
 
 #### TIDY ####
 
