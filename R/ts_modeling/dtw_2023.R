@@ -6,7 +6,7 @@
 # The following script will fit data from the second stage of
 # the project using the clustered dynamic time warping approach.
 
-#### SETUP ####
+#### Setup ####
 
 # Load packages.
 library(lubridate)
@@ -16,15 +16,15 @@ library(here)
 library(dtwclust)
 
 # Load data.
-data <- readRDS("data_working/do_data_2023_dailylist_053124.rds")
+data <- readRDS("data_working/do_data_2023_dailylist_070324.rds")
 
-#### TIDY ####
+#### Tidy ####
 
 # Must include ONLY values in the input dataset.
 # And applying scale-transform.
 data_DO <- lapply(data, function(x) {x$scaled_DO_mg_L})
 
-#### MODEL FIT ####
+#### Partitional Fit ####
 
 # Perform clustered DTW on data from February through
 # September 2023 on either side of the lake and all replicates 
@@ -168,5 +168,253 @@ ggplot(data_months, aes(x = month)) +
        fill = "Cluster ID") +
   theme_bw() # these results are most stark!
 # cluster 1 again occurring almost exclusively in summer
+
+#### Fuzzy Fit ####
+
+# Perform clustered DTW on data from March through
+# September 2023 on either side of the lake and all replicates 
+# across 3m and 10m water depths.
+dtw_fuzzy_2_14 <- tsclust(data_DO, 
+                          
+                          # partitional - ts may only belong to one group
+                          # fuzzy - ts may belong partially to multiple groups
+                          type = "fuzzy", 
+                          
+                          # 2L - 2 state hypothesis (biology vs. physics)
+                          # 14L - 14 state hypothesis (independent site behavior)
+                          k = 2L:14L, # 12 possible
+                          
+                          # state that no preprocessing should occur
+                          # since we already scaled values
+                          preproc = NULL,
+                          
+                          # dtw - ???
+                          distance="dtw", 
+                          
+                          # fcmdd - fuzzy c-mediods
+                          centroid="fcmdd",
+                          
+                          # WAS GENERATING ERROR MESSAGE
+                          # setting window size
+                          # should be approx. 10% of series length
+                          # 24 * .1 = 2.4 ~ 3
+                          #args = tsclust_args(dist = list(window.size = 3L)),
+                          
+                          # controls number of iterations
+                          control = fuzzy_control(iter.max = 1000L),
+                          
+                          # prints progress to screen
+                          trace = T)
+
+# Takes about 20 minutes on Pinyon.
+# Started at 10:33AM. Ran until 10:50AM.
+
+# Export model fit.
+# saveRDS(dtw_fuzzy_2_14, "data_model_outputs/dtw_2023_fuzzy_071624.rds")
+
+# Examine cluster validity indices. Be patient - takes a moment.
+dtw_results <- lapply(dtw_fuzzy_2_14, cvi)
+
+dtw_results_df <- as.data.frame(dtw_results,
+                                col.names = c("L2", "L3", "L4",
+                                              "L5", "L6", "L7",
+                                              "L8", "L9", "L10",
+                                              "L11", "L12", "L13",
+                                              "L14"))
+
+dtw_results_df <- t(dtw_results_df)
+
+# Want to:
+# Maximize MPC
+# Minimize K
+# Minimize T
+# Maximize SC
+# Maximize PBMF
+
+# Examine the most parsimonious clusterings.
+plot(dtw_fuzzy_2_14[[1]]) # Per MPC, K, and T metrics (2 clusters)
+plot(dtw_fuzzy_2_14[[2]]) # Per SC metric (3 clusters)
+plot(dtw_fuzzy_2_14[[8]]) # Per PBMF metric (9 clusters)
+
+# Export cluster groupings for most parsimonious model fit.
+dtw_clusters <- as.data.frame(dtw_fuzzy_2_14[[1]]@fcluster) %>%
+  rownames_to_column() %>%
+  rename(uniqueID = rowname) %>%
+  mutate(clusters = 2)
+
+# Will need to pull each cluster membership df separately and
+# merge together if needed to.
+
+# Add new column to assign groupings with 90% cutoff.
+dtw_clusters$group <- case_when(dtw_clusters$cluster_1 >= 0.9 ~ "Cluster 1",
+                                dtw_clusters$cluster_2 >= 0.9 ~ "Cluster 2",
+                                TRUE ~ "None")
+
+# And plot these results.
+# First need to make the dataset into a df.
+data_df <- plyr::ldply(data, data.frame)
+
+# And join with the cluster data.
+full_df <- left_join(data_df, dtw_clusters,
+                     by = c(".id" = "uniqueID")) %>%
+  # need to add plotting index otherwise hours appear weirdly
+  mutate(hour_index = case_when(hour == 4 ~ 1,hour == 5 ~ 2,hour == 6 ~ 3,
+                                hour == 7 ~ 4,hour == 8 ~ 5,hour == 9 ~ 6,
+                                hour == 10 ~ 7,hour == 11 ~ 8,hour == 12 ~ 9,
+                                hour == 13 ~ 10,hour == 14 ~ 11,hour == 15 ~ 12,
+                                hour == 16 ~ 13,hour == 17 ~ 14,hour == 18 ~ 15,
+                                hour == 19 ~ 16,hour == 20 ~ 17,hour == 21 ~ 18,
+                                hour == 22 ~ 19,hour == 23 ~ 20,hour == 0 ~ 21,
+                                hour == 1 ~ 22,hour == 2 ~ 23,hour == 3 ~ 24))
+
+ggplot(full_df, aes(x = hour_index, y = scaled_DO_mg_L,
+                    color = group, group = `.id`)) +
+  geom_line() +
+  theme_bw() +
+  facet_wrap(group~.) +
+  theme(legend.position = "none")
+
+ggplot(full_df, aes(x = site)) +
+  geom_bar(aes(fill = factor(group))) +
+  labs(x = "Site",
+       y = "Timeseries count (days)",
+       fill = "Cluster ID") +
+  theme_bw()
+
+ggplot(full_df, aes(x = location)) +
+  geom_bar(aes(fill = factor(group))) +
+  labs(x = "Location",
+       y = "Timeseries count (days)",
+       fill = "Cluster ID") +
+  theme_bw()
+
+# Since these appear roughly proportional, let's do a quick
+# data check to be sure.
+location_counts <- full_df %>%
+  group_by(location, group) %>%
+  summarize(count = n()) %>%
+  ungroup() %>%
+  pivot_wider(names_from = group, values_from = count) %>%
+  mutate(Total = (`Cluster 1` + `Cluster 2` + `None`))
+
+location_perc <- location_counts %>%
+  mutate(Cluster1_perc = `Cluster 1`/Total,
+         Cluster2_perc = `Cluster 2`/Total,
+         None_perc = None/Total) %>%
+  pivot_longer(Cluster1_perc:None_perc, names_to = "group_perc")
+
+ggplot(location_perc, aes(x = location, y = value)) +
+  geom_bar(aes(fill = factor(group_perc)), stat = "identity") +
+  labs(x = "Location",
+       y = "Timeseries count (% of total)",
+       fill = "Cluster ID") +
+  theme_bw()
+
+# Also creating column with months
+# but doing separately bc something is wonky
+full_df <- full_df %>%
+  mutate(month = factor(case_when(month(date) == 1 ~ "Jan",
+                                  month(date) == 2 ~ "Feb",
+                                  month(date) == 3 ~ "Mar",
+                                  month(date) == 4 ~ "Apr",
+                                  month(date) == 5 ~ "May",
+                                  month(date) == 6 ~ "Jun",
+                                  month(date) == 7 ~ "Jul",
+                                  month(date) == 8 ~ "Aug",
+                                  month(date) == 9 ~ "Sep",
+                                  month(date) == 10 ~ "Oct",
+                                  month(date) == 11 ~ "Nov",
+                                  month(date) == 12 ~ "Dec",
+                                  month(date) == 1 ~ "Jan",
+                                  TRUE ~ NA),
+                        levels = c("Jan", "Feb", "Mar",
+                                   "Apr", "May", "Jun",
+                                   "Jul", "Aug", "Sep",
+                                   "Oct", "Nov", "Dec")))
+
+ggplot(full_df, aes(x = month)) +
+  geom_bar(aes(fill = factor(group))) +
+  labs(x = "Time of Year",
+       y = "Timeseries count (days)",
+       fill = "Cluster ID") +
+  theme_bw() # these results are most stark!
+# with cluster 2 occurring again exclusively in summer
+# but also an interesting lack of clustering in june
+
+# Hmmmm, just out of curiosity, let's look at the actual ts
+# split by cluster but colored by month
+library(viridis)
+
+ggplot(full_df, aes(x = hour_index, y = scaled_DO_mg_L,
+                    color = month, group = `.id`)) +
+  geom_line() +
+  scale_color_viridis(discrete = TRUE) +
+  theme_bw() +
+  facet_wrap(group~.)
+
+# And doing the same for the 3 cluster results.
+# Export cluster groupings for most parsimonious model fit.
+dtw_clusters3 <- as.data.frame(dtw_fuzzy_2_14[[2]]@fcluster) %>%
+  rownames_to_column() %>%
+  rename(uniqueID = rowname) %>%
+  mutate(clusters = 3)
+
+# Add new column to assign groupings with 75% cutoff.
+dtw_clusters3$group <- case_when(dtw_clusters3$cluster_1 >= 0.75 ~ "Cluster 1",
+                                 dtw_clusters3$cluster_2 >= 0.75 ~ "Cluster 2",
+                                 dtw_clusters3$cluster_3 >= 0.75 ~ "Cluster 3",
+                                 TRUE ~ "None")
+
+# And join with the cluster data.
+full_df3 <- left_join(data_df, dtw_clusters3,
+                      by = c(".id" = "uniqueID")) %>%
+  # need to add plotting index otherwise hours appear weirdly
+  mutate(hour_index = case_when(hour == 4 ~ 1,hour == 5 ~ 2,hour == 6 ~ 3,
+                                hour == 7 ~ 4,hour == 8 ~ 5,hour == 9 ~ 6,
+                                hour == 10 ~ 7,hour == 11 ~ 8,hour == 12 ~ 9,
+                                hour == 13 ~ 10,hour == 14 ~ 11,hour == 15 ~ 12,
+                                hour == 16 ~ 13,hour == 17 ~ 14,hour == 18 ~ 15,
+                                hour == 19 ~ 16,hour == 20 ~ 17,hour == 21 ~ 18,
+                                hour == 22 ~ 19,hour == 23 ~ 20,hour == 0 ~ 21,
+                                hour == 1 ~ 22,hour == 2 ~ 23,hour == 3 ~ 24))
+
+# And plot these results.
+ggplot(full_df3, aes(x = hour_index, y = scaled_DO_mg_L,
+                     color = group, group = `.id`)) +
+  geom_line() +
+  theme_bw() +
+  facet_wrap(group~.) +
+  theme(legend.position = "none")
+
+# Also creating column with months
+# but doing separately bc something is wonky
+full_df3 <- full_df3 %>%
+  mutate(month = factor(case_when(month(date) == 1 ~ "Jan",
+                                  month(date) == 2 ~ "Feb",
+                                  month(date) == 3 ~ "Mar",
+                                  month(date) == 4 ~ "Apr",
+                                  month(date) == 5 ~ "May",
+                                  month(date) == 6 ~ "Jun",
+                                  month(date) == 7 ~ "Jul",
+                                  month(date) == 8 ~ "Aug",
+                                  month(date) == 9 ~ "Sep",
+                                  month(date) == 10 ~ "Oct",
+                                  month(date) == 11 ~ "Nov",
+                                  month(date) == 12 ~ "Dec",
+                                  month(date) == 1 ~ "Jan",
+                                  TRUE ~ NA),
+                        levels = c("Jan", "Feb", "Mar",
+                                   "Apr", "May", "Jun",
+                                   "Jul", "Aug", "Sep",
+                                   "Oct", "Nov", "Dec")))
+
+ggplot(full_df3, aes(x = month)) +
+  geom_bar(aes(fill = factor(group))) +
+  labs(x = "Time of Year",
+       y = "Timeseries count (days)",
+       fill = "Cluster ID") +
+  theme_bw() # these results are most stark!
+# with cluster 2 occurring again exclusively in summer
+# and cluster 3 occurring in june! woot!
 
 # End of script.
