@@ -44,6 +44,7 @@ data_working
 data_model_outputs
 data_modelfits
 others_code
+Metabolism_Loria_Scordo
 
 # Folder for large plotly files
 plotly

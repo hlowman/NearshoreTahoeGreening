@@ -242,7 +242,8 @@ dtw_clusters$group <- case_when(dtw_clusters$cluster_1 >= 0.9 ~ "Cluster 1",
 data_df <- plyr::ldply(data, data.frame)
 
 # And join with the cluster data.
-full_df <- left_join(data_df, dtw_clusters) %>%
+full_df <- left_join(data_df, dtw_clusters,
+                     by = c(".id" = "uniqueID")) %>%
   # need to add plotting index otherwise hours appear weirdly
   mutate(hour_index = case_when(hour == 4 ~ 1,hour == 5 ~ 2,hour == 6 ~ 3,
                                 hour == 7 ~ 4,hour == 8 ~ 5,hour == 9 ~ 6,
@@ -325,6 +326,16 @@ ggplot(full_df, aes(x = month)) +
        fill = "Cluster ID") +
   theme_bw() # these results are most stark!
 # with cluster 2 occurring almost exclusively in summer
+
+ggplot(full_df %>%
+         mutate(location_f = factor(location,
+                                    levels = c("3m", "10m", "15m", "20m"))), aes(x = month)) +
+  geom_bar(aes(fill = factor(group))) +
+  labs(x = "Time of Year",
+       y = "Timeseries count (days)",
+       fill = "Cluster ID") +
+  theme_bw() +
+  facet_grid(location_f~., scales = "free")
 
 # Hmmmm, just out of curiosity, let's look at the actual ts
 # split by cluster but colored by month
