@@ -15,18 +15,19 @@ library(data.table)
 library(here)
 
 # Load data.
-data <- readRDS("R/ts_modeling/shiny/do_sat_shiny_010924.rds")
+data <- readRDS("data_raw/24_DO_offset.rds")
 
 #### TIDY ####
 
-# STEP 1 - Assign daily indices.
+# Assign daily indices.
 data_hourly <- data %>%
   mutate(date = date(Pacific_Standard_Time),
          hour = hour(Pacific_Standard_Time)) %>%
-  group_by(site, location, replicate, date, hour) %>%
-  summarize(DO_mg_L = mean(Dissolved_O_mg_L, na.rm = TRUE)) %>%
-  ungroup() #%>%
-  # mutate(index = 0)
+  group_by(site, location, replicate, date, hour,
+           Flag1, Flag2, Flag3, Flag4) %>%
+  summarize(DO_mg_L = mean(Dissolved_Oxygen_offset, 
+                           na.rm = TRUE)) %>%
+  ungroup()
 
 # Creating a function that can be applied by grouping.
 indexFUN <- function(x){
@@ -60,7 +61,8 @@ data_hourly <- data_hourly %>%
 
 # Also, create a baseline dataset of dates, because trying
 # rules to anticipate indexing proved too singular.
-date_times <- seq(ymd_hms("2021-05-31 04:00:00"), ymd_hms("2023-10-01 03:00:00"),
+date_times <- seq(ymd_hms("2021-05-31 04:00:00"), 
+                  ymd_hms("2023-10-01 03:00:00"),
                   by = "hour")
 
 # NOTE - will be measuring from 4AM to 4AM!!
@@ -83,15 +85,23 @@ for(i in 2:nrow(dates_all)){
   }
 }
 
-# Repeat 17 times.
+# Now, to create a base dataset to join with the raw data.
+# Repeat 21 times.
 dates_all <- dates_all %>% 
-  slice(rep(1:n(), 17))
+  slice(rep(1:n(), 21))
 
-sites <- rep(c("BW_10m_NS1", "BW_15m_NS1", "BW_20m_NS1", "BW_3m_NS1",
-              "BW_3m_NS2", "BW_3m_NS3", "GB_10m_NS1", "GB_15m_NS1",
-              "GB_20m_NS1", "GB_3m_NS1", "GB_3m_NS2", "GB_3m_NS3",
-              "SH_3m_NS1", "SH_3m_NS2", "SH_3m_NS3", "SS_3m_NS1", "SS_3m_NS2"),
+sites <- rep(c("BW_10m_Benthic", "BW_15m_Benthic", "BW_20m_Benthic",
+               "BW_20m_Pelagic", "BW_3m_NS1", "BW_3m_NS2",
+               "BW_3m_NS3", "GB_10m_Benthic", "GB_10m_Pelagic",
+               "GB_15m_Benthic", "GB_15m_Pelagic", "GB_20m_Benthic",
+               "GB_20m_Pelagic", "GB_3m_NS1", "GB_3m_NS2",
+               "GB_3m_NS3", "SH_3m_NS1", "SH_3m_NS2", "SH_3m_NS3",
+               "SS_3m_NS1", "SS_3m_NS2"),
             each = 20472)
+
+# Noticed one weird NA value made it in there.
+data_hourly <- data_hourly %>%
+  drop_na(site)
 
 # And join with sites.
 dates_all <- dates_all %>%
@@ -105,28 +115,54 @@ data_full_hourly <- full_join(dates_all, data_hourly,
   # and create new column
   mutate(ID_index = paste(ID, index, sep = "_"))
 
+#### TRIM ####
+
 # Remove days with less than 24 hours of measurements.
-data_indexed_complete <- data_full_hourly %>%
+data_indexed_filtered <- data_full_hourly %>%
   drop_na(DO_mg_L) %>% # removes rows where DO is NA
-  group_by(ID, index) %>%
-  mutate(count = n()) %>%
-  ungroup() %>% # Ok, checked here to be sure we aren't getting values >24
-  filter(count == 24)
+  # filter for days that pass the flags
+  # 1 - deployment/retrieval days
+  # 2 - sensor quality (Q) < 0.7
+  # 3 - wiper function (wipe time < 4 sec or current > 140)
+  # 4 - photo evidence of biofouling
+  filter(Flag1 == "NO",
+         Flag2 == "NO",
+         Flag3 == "NO",
+         Flag4 == "NO")
 
-length(unique(data_indexed_complete$ID_index)) # 6,152 site-days remaining
+length(unique(data_indexed_filtered$ID_index)) # 7,448 site-days remaining
 
-# And split into 2021/2022 and 2023 datasets.
-data_2022 <- data_indexed_complete %>%
+# And split into 2022 and 2023 datasets.
+data_2022 <- data_indexed_filtered %>%
   # only use data prior to installing of cinderblocks at
   # far from stream sites
-  filter(date < ymd_hms("2023-02-12 04:00:00")) %>%
-  # and scale DO values
+  filter(date >= ymd_hms("2022-04-28 04:00:00") &
+           date < ymd_hms("2023-02-12 04:00:00")) %>%
+  # Note BW has about a month's worth of data before this
+  # and 4 months worth of data after this
+  # at deeper depths which could be added back in...
+  group_by(ID_index) %>%
+  mutate(count = n()) %>%
+  ungroup() %>% 
+  # Ok, checked here to be sure we aren't getting values >24
+  filter(count == 24) %>%
+  # and scale calibration-corrected DO values
   mutate(scaled_DO_mg_L = scale(DO_mg_L))
 
-data_2023 <- data_indexed_complete %>%
+data_2023 <- data_indexed_filtered %>%
   # only use data after installation of cinderblocks at
   # far from stream sites
   filter(date >= ymd_hms("2023-02-12 04:00:00")) %>%
+  # Note SS only has one block until May, but I felt that
+  # was enough for comparison since SH blocks went in in
+  # Feb, could be trimmed to May if necessary...
+  group_by(ID_index) %>%
+  mutate(count = n()) %>%
+  ungroup() %>% 
+  # Ok, checked here to be sure we aren't getting values >24
+  filter(count == 24) %>%
+  # REMOVE DEPTHS > 3m
+  filter(location == "3m") %>%
   # and scale DO values
   # scale = (x - mean(x))/sd(x)
   mutate(scaled_DO_mg_L = scale(DO_mg_L))
@@ -138,7 +174,9 @@ data_2023_l <- split(data_2023, data_2023$ID_index)
 #### EXPORT ####
 
 # Save out these datasets for use in analyses.
-# saveRDS(data_2022_l, "data_working/do_data_2022_dailylist_070324.rds")
-# saveRDS(data_2023_l, "data_working/do_data_2023_dailylist_070324.rds")
+# saveRDS(data_2022_l,
+#         "data_working/do_data_2022_dailylist_081624.rds")
+# saveRDS(data_2023_l,
+#         "data_working/do_data_2023_dailylist_081724.rds")
 
 # End of script.
