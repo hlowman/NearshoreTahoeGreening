@@ -268,13 +268,13 @@ full_df <- left_join(data_df, dtw_clusters,
 
 (fig_curves <- ggplot(full_df %>%
                         filter(site %in% c("BW", "GB")), 
-                      aes(x = hour_index, y = scaled_DO_mg_L,
+                      aes(x = hour_index, y = DO_mg_L,
                       color = group, group = `.id`)) +
                geom_line() +
                scale_color_manual(values = c("#FABA39FF", "#1AE4B6FF",
                                              "#4662D7FF")) + 
                labs(x = "Hour of Day (+4)", 
-                    y = "scale(DO) mg/L") +
+                    y = "Dissolved Oxygen (mg/L)") +
                theme_bw() +
                facet_wrap(group~.) +
                theme(legend.position = "none"))
@@ -332,10 +332,11 @@ full_df <- full_df %>%
                                   month(date) == 12 ~ "Dec",
                                   month(date) == 1 ~ "Jan",
                                   TRUE ~ NA),
-                        levels = c("Jan", "Feb", "Mar",
-                                   "Apr", "May", "Jun",
+                        # and ordering them as they were collected
+                        levels = c("Apr", "May", "Jun",
                                    "Jul", "Aug", "Sep",
-                                   "Oct", "Nov", "Dec")))
+                                   "Oct", "Nov", "Dec",
+                                   "Jan", "Feb", "Mar")))
 
 ggplot(full_df, aes(x = month)) +
   geom_bar(aes(fill = factor(group))) +
@@ -345,7 +346,19 @@ ggplot(full_df, aes(x = month)) +
   theme_bw() # these results are most stark!
 # with cluster 2 occurring almost exclusively in summer
 
-(fig_months <- ggplot(full_df %>%
+# Now, before plotting counts, I have to remember to
+# collapse this down to days (since all hours are currently
+# represented and inflating counts).
+full_df_daily <- full_df %>%
+  # first need to trim down the dataset so it doesn't
+  # duplicate days (4am one -> 4am the next)
+  group_by(`.id`) %>%
+  slice_head() %>%
+  ungroup() %>%
+  select(`.id`, date, month, site, location, replicate, group) %>%
+  unique()
+
+(fig_months <- ggplot(full_df_daily %>%
                       filter(site %in% c("BW", "GB")) %>%
                       mutate(location_f = factor(location,
                                     levels = c("3m", "10m", 
@@ -364,7 +377,7 @@ ggplot(full_df, aes(x = month)) +
 (fig_all <- (fig_curves | fig_months))
 
 # ggsave(plot = fig_all,
-#        filename = "figures/dtw_2022_081724.png",
+#        filename = "figures/dtw_2022_082124.png",
 #        width = 40,
 #        height = 10,
 #        units = "cm")

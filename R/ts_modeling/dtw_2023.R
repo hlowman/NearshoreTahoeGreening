@@ -266,12 +266,12 @@ full_df <- left_join(data_df, dtw_clusters,
                                 hour == 1 ~ 22,hour == 2 ~ 23,hour == 3 ~ 24))
 
 (fig_curves <- ggplot(full_df, aes(x = hour_index, 
-                                   y = scaled_DO_mg_L,
+                                   y = DO_mg_L,
                                    color = group, group = `.id`)) +
     geom_line() +
     scale_color_manual(values = c("#FABA39FF", "#1AE4B6FF",
                                   "#4662D7FF")) + 
-    labs(x = "Hour of Day (+4)", y = "scale(DO) mg/L") +
+    labs(x = "Hour of Day (+4)", y = "Dissolved Oxygen mg/L") +
     theme_bw() +
     facet_wrap(group~.) +
     theme(legend.position = "none"))
@@ -327,14 +327,25 @@ full_df <- full_df %>%
                                   month(date) == 10 ~ "Oct",
                                   month(date) == 11 ~ "Nov",
                                   month(date) == 12 ~ "Dec",
-                                  month(date) == 1 ~ "Jan",
                                   TRUE ~ NA),
                         levels = c("Jan", "Feb", "Mar",
                                    "Apr", "May", "Jun",
                                    "Jul", "Aug", "Sep",
                                    "Oct", "Nov", "Dec")))
 
-(fig_months <- ggplot(full_df %>%
+# Now, before plotting counts, I have to remember to
+# collapse this down to days (since all hours are currently
+# represented and inflating counts).
+full_df_daily <- full_df %>%
+  # first need to trim down the dataset so it doesn't
+  # duplicate days (4am one -> 4am the next)
+  group_by(`.id`) %>%
+  slice_head() %>%
+  ungroup() %>%
+  select(`.id`, date, month, site, location, replicate, group) %>%
+  unique()
+
+(fig_months <- ggplot(full_df_daily %>%
                         mutate(site_f = factor(site,
                                 levels = c("BW", "SS", 
                                            "GB", "SH"))), 
@@ -353,7 +364,7 @@ full_df <- full_df %>%
     plot_layout(widths = c(2, 1)))
 
 # ggsave(plot = fig_all,
-#        filename = "figures/dtw_2023_081724.png",
+#        filename = "figures/dtw_2023_082124.png",
 #        width = 40,
 #        height = 10,
 #        units = "cm")
