@@ -117,7 +117,6 @@ data_full_hourly <- full_join(dates_all, data_hourly,
 
 #### TRIM ####
 
-# Remove days with less than 24 hours of measurements.
 data_indexed_filtered <- data_full_hourly %>%
   drop_na(DO_mg_L) %>% # removes rows where DO is NA
   # filter for days that pass the flags
@@ -130,7 +129,7 @@ data_indexed_filtered <- data_full_hourly %>%
          Flag3 == "NO",
          Flag4 == "NO")
 
-length(unique(data_indexed_filtered$ID_index)) # 7,448 site-days remaining
+length(unique(data_indexed_filtered$ID_index)) # 7,448 site-days remaining in total
 
 # And split into 2022 and 2023 datasets.
 data_2022 <- data_indexed_filtered %>%
@@ -141,6 +140,10 @@ data_2022 <- data_indexed_filtered %>%
   # Note BW has about a month's worth of data before this
   # and 4 months worth of data after this
   # at deeper depths which could be added back in...
+  # only want BW and GB sites
+  filter(site %in% c("BW", "GB")) %>%
+  # and omit pelagic sensors
+  filter(replicate %in% c("NS1", "NS2", "NS3", "Benthic")) %>%
   group_by(ID_index) %>%
   mutate(count = n()) %>%
   ungroup() %>% 
@@ -167,16 +170,78 @@ data_2023 <- data_indexed_filtered %>%
   # scale = (x - mean(x))/sd(x)
   mutate(scaled_DO_mg_L = scale(DO_mg_L))
 
+# Creating additional 2022/2023 datasets for complete cases,
+# i.e., days on which we have data at all sites.
+data_2022_sitedays <- data_2022 %>%
+  select(date, site, location, replicate) %>%
+  unique() %>%
+  group_by(site, date) %>%
+  summarize(obs_count = n()) %>%
+  ungroup()
+
+# All 6 instruments should be functioning so let's filter
+# for those.
+data_2022_completedays <- data_2022_sitedays %>%
+  mutate(complete_case = case_when(obs_count == 6 ~ "YES",
+                                   TRUE ~ "NO"))
+
+# And use it to trim the 2022 dataset.
+data_2022_trim <- left_join(data_2022, data_2022_completedays) %>%
+  filter(complete_case == "YES") %>%
+  # re-do the grouping to be sure only days with
+  # 24 measures are included once more
+  group_by(ID_index) %>%
+  mutate(count = n()) %>%
+  ungroup() %>% 
+  # Ok, checked here to be sure we aren't getting values >24
+  filter(count == 24) %>%
+  # and re-do the DO scaling
+  mutate(scaled_DO_mg_L = scale(DO_mg_L))
+# 19,248/66,480 obs remaining, loss of 72%
+
+# And need to do the same for the 2023 data.
+data_2023_sitedays <- data_2023 %>%
+  select(date, site, location, replicate) %>%
+  unique() %>%
+  group_by(site, date) %>%
+  summarize(obs_count = n()) %>%
+  ungroup()
+
+# All 3 instruments should be functioning on each shore.
+data_2023_completedays <- data_2023_sitedays %>%
+  mutate(complete_case = case_when(obs_count == 3 ~ "YES",
+                                   TRUE ~ "NO"))
+
+# And use it to trim the 2023 dataset.
+data_2023_trim <- left_join(data_2023, data_2023_completedays) %>%
+  filter(complete_case == "YES") %>%
+  # re-do the grouping to be sure only days with
+  # 24 measures are included once more
+  group_by(ID_index) %>%
+  mutate(count = n()) %>%
+  ungroup() %>% 
+  # Ok, checked here to be sure we aren't getting values >24
+  filter(count == 24) %>%
+  # and re-do the DO scaling
+  mutate(scaled_DO_mg_L = scale(DO_mg_L))
+# 15,240/27,288 obs remaining, loss of 45%
+
 # Finally, split into lists based on unique IDs.
 data_2022_l <- split(data_2022, data_2022$ID_index)
 data_2023_l <- split(data_2023, data_2023$ID_index)
+data_2022_trim_l <- split(data_2022_trim, data_2022_trim$ID_index)
+data_2023_trim_l <- split(data_2023_trim, data_2023_trim$ID_index)
 
 #### EXPORT ####
 
 # Save out these datasets for use in analyses.
 # saveRDS(data_2022_l,
-#         "data_working/do_data_2022_dailylist_081624.rds")
+#         "data_working/do_data_2022_dailylist_082124.rds")
 # saveRDS(data_2023_l,
 #         "data_working/do_data_2023_dailylist_081724.rds")
+# saveRDS(data_2022_trim_l,
+#         "data_working/do_data_2022_trim_dailylist_082124.rds")
+# saveRDS(data_2023_trim_l,
+#         "data_working/do_data_2023_trim_dailylist_082124.rds")
 
 # End of script.
