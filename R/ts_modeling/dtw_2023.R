@@ -16,14 +16,14 @@ library(here)
 library(dtwclust)
 
 # Load data.
-data <- readRDS("data_working/do_data_2023_dailylist_081724.rds")
+data <- readRDS("data_working/do_data_2023_dailylist_090624.rds")
 data_trim <- readRDS("data_working/do_data_2023_trim_dailylist_082124.rds")
 
 #### Tidy ####
 
 # Must include ONLY values in the input dataset.
 # And applying scale-transform.
-data_DO <- lapply(data, function(x) {x$scaled_DO_mg_L})
+data_DO <- lapply(data, function(x) {x$scaled_DO_sat})
 data_trim_DO <- lapply(data_trim, function(x) {x$scaled_DO_mg_L})
 
 #### Partitional Fit ####
@@ -207,11 +207,11 @@ dtw_fuzzy_2_12 <- tsclust(data_DO,
                           trace = T)
 
 # Takes about 15 minutes on Pinyon.
-# Started at 12:58PM. Ran until 1:13PM.
+# Started at 7:26PM. Ran until 7:42PM.
 
 # Export model fit.
 saveRDS(dtw_fuzzy_2_12, 
-        "data_model_outputs/dtw_2023_fuzzy_081724.rds")
+        "data_model_outputs/dtw_2023_fuzzy_090624.rds")
 
 # Examine cluster validity indices. Be patient - takes a moment.
 dtw_results <- lapply(dtw_fuzzy_2_12, cvi)
@@ -225,29 +225,31 @@ dtw_results_df <- as.data.frame(dtw_results,
 dtw_results_df <- t(dtw_results_df)
 
 # Want to:
-# Maximize MPC
-# Minimize K
-# Minimize T
-# Maximize SC
-# Maximize PBMF
+# Maximize MPC - 3
+# Minimize K - 4
+# Minimize T - 4
+# Maximize SC - 4
+# Maximize PBMF - 11
 
 # Examine the most parsimonious clusterings.
-plot(dtw_fuzzy_2_12[[1]]) # Per MPC, K, and T metrics (2 clusters)
-plot(dtw_fuzzy_2_12[[6]]) # Per SC metric (7 clusters)
-plot(dtw_fuzzy_2_12[[9]]) # Per PBMF metric (10 clusters)
+plot(dtw_fuzzy_2_12[[2]]) # Per MPC metric (3 clusters)
+plot(dtw_fuzzy_2_12[[3]]) # Per K, T, and SC metrics (4 clusters)
+plot(dtw_fuzzy_2_12[[10]]) # Per PBMF metric (11 clusters)
 
 # Export cluster groupings for most parsimonious model fit.
-dtw_clusters <- as.data.frame(dtw_fuzzy_2_12[[1]]@fcluster) %>%
+dtw_clusters <- as.data.frame(dtw_fuzzy_2_12[[3]]@fcluster) %>%
   rownames_to_column() %>%
   rename(uniqueID = rowname) %>%
-  mutate(clusters = 2)
+  mutate(clusters = 4)
 
 # Will need to pull each cluster membership df separately and
 # merge together if needed to.
 
 # Add new column to assign groupings with 90% cutoff.
-dtw_clusters$group <- case_when(dtw_clusters$cluster_1 >= 0.9 ~ "Cluster 1",
-                                dtw_clusters$cluster_2 >= 0.9 ~ "Cluster 2",
+dtw_clusters$group <- case_when(dtw_clusters$cluster_1 >= 0.7 ~ "Cluster 1",
+                                dtw_clusters$cluster_2 >= 0.7 ~ "Cluster 2",
+                                dtw_clusters$cluster_3 >= 0.7 ~ "Cluster 3",
+                                dtw_clusters$cluster_4 >= 0.7 ~ "Cluster 4",
                                 TRUE ~ "Neither")
 
 # And plot these results.
@@ -268,12 +270,13 @@ full_df <- left_join(data_df, dtw_clusters,
                                 hour == 1 ~ 22,hour == 2 ~ 23,hour == 3 ~ 24))
 
 (fig_curves <- ggplot(full_df, aes(x = hour_index, 
-                                   y = DO_mg_L,
+                                   y = DO_sat,
                                    color = group, group = `.id`)) +
     geom_line() +
     scale_color_manual(values = c("#FABA39FF", "#1AE4B6FF",
-                                  "#4662D7FF")) + 
-    labs(x = "Hour of Day (+4)", y = "Dissolved Oxygen mg/L") +
+                                  "#4662D7FF", "#D3105C",
+                                  "#E4B3E2")) + 
+    labs(x = "Hour of Day (+4)", y = "Dissolved Oxygen (% Saturation)") +
     theme_bw() +
     facet_wrap(group~.) +
     theme(legend.position = "none"))
@@ -322,7 +325,8 @@ counts_daily <- full_df_daily %>%
                       aes(x = month)) +
     geom_bar(aes(fill = factor(group))) +
     scale_fill_manual(values = c("#FABA39","#1AE4B6",
-                                 "#4662D7")) +
+                                 "#4662D7", "#D3105C",
+                                 "#E4B3E2")) +
     labs(x = "Month of Year",
          y = "Timeseries count (days)",
          fill = "Cluster ID") +
@@ -330,11 +334,10 @@ counts_daily <- full_df_daily %>%
     facet_grid(site_f~., scales = "free"))
 
 # Export figure.
-(fig_all <- fig_curves | fig_months +
-    plot_layout(widths = c(2, 1)))
+(fig_all <- fig_curves | fig_months)
 
 # ggsave(plot = fig_all,
-#        filename = "figures/dtw_2023_082124.png",
+#        filename = "figures/dtw_2023_090624.png",
 #        width = 40,
 #        height = 10,
 #        units = "cm")

@@ -19,14 +19,14 @@ library(viridis)
 library(patchwork)
 
 # Load data.
-data <- readRDS("data_working/do_data_2022_dailylist_082124.rds")
+data <- readRDS("data_working/do_data_2022_dailylist_090624.rds")
 data_trim <- readRDS("data_working/do_data_2022_trim_dailylist_082124.rds")
 
 #### Tidy ####
 
 # Must include ONLY DO values in the input dataset.
 # And using scale-transformed ones.
-data_DO <- lapply(data, function(x) {x$scaled_DO_mg_L})
+data_DO <- lapply(data, function(x) {x$scaled_DO_sat})
 data_trim_DO <- lapply(data_trim, function(x) {x$scaled_DO_mg_L})
 
 #### Partitional Fit ####
@@ -200,11 +200,11 @@ dtw_fuzzy_2_12 <- tsclust(data_DO,
 # (started 12:03pm, finished at 10:40 am)
 
 # Takes about 1 hour on Pinyon
-# Run2 (started 2:48pm, finished at 3:??pm)
+# Run2 (started 4:49pm, finished at 5:53pm)
 
 # Export model fit.
 saveRDS(dtw_fuzzy_2_12, 
-        "data_model_outputs/dtw_2022_fuzzy_082124.rds")
+        "data_model_outputs/dtw_2022_fuzzy_090624.rds")
 
 # Examine cluster validity indices. Be patient - takes a moment.
 dtw_results <- lapply(dtw_fuzzy_2_12, cvi)
@@ -227,7 +227,8 @@ dtw_results_df <- t(dtw_results_df)
 # Examine the most parsimonious clusterings.
 plot(dtw_fuzzy_2_12[[1]]) # Per MPC, K, and T metrics (2 clusters)
 plot(dtw_fuzzy_2_12[[1]], type = "c")
-plot(dtw_fuzzy_2_12[[5]]) # Per SC and PBMF metrics (6 clusters)
+plot(dtw_fuzzy_2_12[[9]]) # Per SC metric (10 clusters)
+plot(dtw_fuzzy_2_12[[8]]) # Per PBMF metric (9 clusters)
 
 # Export cluster groupings for most parsimonious model fit.
 dtw_clusters <- as.data.frame(dtw_fuzzy_2_12[[1]]@fcluster) %>%
@@ -270,13 +271,13 @@ full_df <- left_join(data_df, dtw_clusters,
 
 (fig_curves <- ggplot(full_df %>%
                         filter(site %in% c("BW", "GB")), 
-                      aes(x = hour_index, y = DO_mg_L,
+                      aes(x = hour_index, y = DO_sat,
                       color = group, group = `.id`)) +
                geom_line() +
                scale_color_manual(values = c("#FABA39FF", "#1AE4B6FF",
                                              "#4662D7FF")) + 
                labs(x = "Hour of Day (+4)", 
-                    y = "Dissolved Oxygen (mg/L)") +
+                    y = "Dissolved Oxygen (% Saturation)") +
                theme_bw() +
                facet_wrap(group~.) +
                theme(legend.position = "none"))
@@ -338,7 +339,7 @@ counts_daily <- full_df_daily %>%
 (fig_all <- (fig_curves | fig_months))
 
 # ggsave(plot = fig_all,
-#        filename = "figures/dtw_2022_082124.png",
+#        filename = "figures/dtw_2022_090624.png",
 #        width = 40,
 #        height = 10,
 #        units = "cm")

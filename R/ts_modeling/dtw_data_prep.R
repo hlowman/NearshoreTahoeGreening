@@ -15,7 +15,8 @@ library(data.table)
 library(here)
 
 # Load data.
-data <- readRDS("data_raw/24_DO_offset.rds")
+#data <- readRDS("data_raw/24_DO_offset.rds")
+data <- readRDS("data_working/24_DOsat_offset.rds")
 
 #### TIDY ####
 
@@ -25,7 +26,7 @@ data_hourly <- data %>%
          hour = hour(Pacific_Standard_Time)) %>%
   group_by(site, location, replicate, date, hour,
            Flag1, Flag2, Flag3, Flag4) %>%
-  summarize(DO_mg_L = mean(Dissolved_Oxygen_offset, 
+  summarize(DO_sat = mean(o2_sat100, 
                            na.rm = TRUE)) %>%
   ungroup()
 
@@ -60,7 +61,7 @@ data_hourly <- data_hourly %>%
   mutate(ID = paste(site, location, replicate, sep = "_"))
 
 # Also, create a baseline dataset of dates, because trying
-# rules to anticipate indexing proved too singular.
+# rules to anticipate indexing proved too challenging.
 date_times <- seq(ymd_hms("2021-05-31 04:00:00"), 
                   ymd_hms("2023-10-01 03:00:00"),
                   by = "hour")
@@ -118,7 +119,7 @@ data_full_hourly <- full_join(dates_all, data_hourly,
 #### TRIM ####
 
 data_indexed_filtered <- data_full_hourly %>%
-  drop_na(DO_mg_L) %>% # removes rows where DO is NA
+  drop_na(DO_sat) %>% # removes rows where DO is NA
   # filter for days that pass the flags
   # 1 - deployment/retrieval days
   # 2 - sensor quality (Q) < 0.7
@@ -149,8 +150,8 @@ data_2022 <- data_indexed_filtered %>%
   ungroup() %>% 
   # Ok, checked here to be sure we aren't getting values >24
   filter(count == 24) %>%
-  # and scale calibration-corrected DO values
-  mutate(scaled_DO_mg_L = scale(DO_mg_L))
+  # and scale calibration-corrected % saturation DO values
+  mutate(scaled_DO_sat = scale(DO_sat))
 
 data_2023 <- data_indexed_filtered %>%
   # only use data after installation of cinderblocks at
@@ -166,12 +167,13 @@ data_2023 <- data_indexed_filtered %>%
   filter(count == 24) %>%
   # REMOVE DEPTHS > 3m
   filter(location == "3m") %>%
-  # and scale DO values
+  # and scale % DO saturation values
   # scale = (x - mean(x))/sd(x)
-  mutate(scaled_DO_mg_L = scale(DO_mg_L))
+  mutate(scaled_DO_sat = scale(DO_sat))
 
 # Creating additional 2022/2023 datasets for complete cases,
 # i.e., days on which we have data at all sites.
+# NOTE THIS WAS DONE FOR PREVIOUS mg/L DATA.
 data_2022_sitedays <- data_2022 %>%
   select(date, site, location, replicate) %>%
   unique() %>%
@@ -236,9 +238,9 @@ data_2023_trim_l <- split(data_2023_trim, data_2023_trim$ID_index)
 
 # Save out these datasets for use in analyses.
 # saveRDS(data_2022_l,
-#         "data_working/do_data_2022_dailylist_082124.rds")
+#         "data_working/do_data_2022_dailylist_090624.rds")
 # saveRDS(data_2023_l,
-#         "data_working/do_data_2023_dailylist_081724.rds")
+#         "data_working/do_data_2023_dailylist_090624.rds")
 # saveRDS(data_2022_trim_l,
 #         "data_working/do_data_2022_trim_dailylist_082124.rds")
 # saveRDS(data_2023_trim_l,
