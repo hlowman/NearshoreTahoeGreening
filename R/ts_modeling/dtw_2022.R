@@ -19,7 +19,7 @@ library(viridis)
 library(patchwork)
 
 # Load data.
-data <- readRDS("data_working/do_data_2022_dailylist_090624.rds")
+data <- readRDS("data_working/do_data_2022_dailylist_091024.rds")
 data_trim <- readRDS("data_working/do_data_2022_trim_dailylist_082124.rds")
 
 #### Tidy ####
@@ -28,6 +28,9 @@ data_trim <- readRDS("data_working/do_data_2022_trim_dailylist_082124.rds")
 # And using scale-transformed ones.
 data_DO <- lapply(data, function(x) {x$scaled_DO_sat})
 data_trim_DO <- lapply(data_trim, function(x) {x$scaled_DO_mg_L})
+
+# Or temperature data for the supplementary model fits.
+data_Temp <- lapply(data, function(x) {x$scaled_temp})
 
 #### Partitional Fit ####
 
@@ -159,6 +162,8 @@ ggplot(data_months, aes(x = month)) +
 # with cluster 1 occurring almost exclusively in summer
 
 #### Fuzzy Fit ####
+
+##### DO #####
 
 # Perform clustered DTW on data from April 2022 through
 # February 2023 on either side of the lake and all replicates 
@@ -344,7 +349,7 @@ counts_daily <- full_df_daily %>%
 #        height = 10,
 #        units = "cm")
 
-##### Trim DF #####
+##### Trim DO DF #####
 
 # Below, we'll re-fit the fuzzy clustering approach but to a 
 # dataset containing 72% less days, because we've trimmed it
@@ -517,5 +522,188 @@ full_trim_df_daily <- full_trim_df %>%
 #        width = 40,
 #        height = 10,
 #        units = "cm")
-  
+
+##### Temp #####
+
+# Perform clustered DTW on data from April 2022 through
+# February 2023 on either side of the lake and all replicates 
+# across 3m, 10m, and 20m water depths.
+dtw_fuzzy_2_12T <- tsclust(data_Temp, 
+                          
+                          # fuzzy - ts may belong partially to 
+                          # multiple groups (output a proportion)
+                          type = "fuzzy", 
+                          
+                          # 2L - biology vs. physics
+                          # 12L - sites independent
+                          k = 2L:12L, # 10 possible
+                          
+                          # no pre-processing should occur
+                          preproc = NULL,
+                          
+                          # dtw - ???
+                          distance = "dtw", 
+                          
+                          # fcmdd - fuzzy c-mediods
+                          centroid = "fcmdd",
+                          
+                          # setting window size
+                          # should be approx. 10% of series length
+                          # 24 * .1 = 2.4 ~ 3
+                          # window.size refers to distance between
+                          # a value and one of the edges
+                          args = tsclust_args(dist = 
+                                          list(window.size = 1L)),
+                          
+                          # controls number of iterations
+                          control = fuzzy_control(
+                            iter.max = 1000L),
+                          
+                          # prints progress to screen
+                          trace = T)
+
+# Takes about 1 hour on Pinyon
+# Run2 (started 9:22am, finished at 10:??pm)
+
+# Export model fit.
+saveRDS(dtw_fuzzy_2_12T, 
+        "data_model_outputs/dtw_2022_fuzzy_temp_091024.rds")
+
+# Examine cluster validity indices. Be patient - takes a moment.
+dtw_results <- lapply(dtw_fuzzy_2_12T, cvi)
+
+dtw_results_df <- as.data.frame(dtw_results,
+                                col.names = c("L2", "L3", "L4",
+                                              "L5", "L6", "L7",
+                                              "L8", "L9", "L10",
+                                              "L11", "L12"))
+
+dtw_results_df <- t(dtw_results_df)
+
+# Want to:
+# Maximize MPC
+# Minimize K
+# Minimize T
+# Maximize SC
+# Maximize PBMF
+
+# Examine the most parsimonious clusterings.
+plot(dtw_fuzzy_2_12T[[1]]) # Per MPC, K, and T metrics (2 clusters)
+plot(dtw_fuzzy_2_12T[[11]]) # Per SC metric (12 clusters)
+plot(dtw_fuzzy_2_12T[[9]]) # Per PBMF metric (10 clusters)
+
+# Export cluster groupings for most parsimonious model fit.
+dtw_clusters <- as.data.frame(dtw_fuzzy_2_12T[[1]]@fcluster) %>%
+  rownames_to_column() %>%
+  rename(uniqueID = rowname) %>%
+  mutate(clusters = 2)
+
+# Will need to pull each cluster membership df separately and
+# merge together if needed too.
+
+# Add new column to assign groupings with 90% cutoff.
+dtw_clusters$group <- case_when(dtw_clusters$cluster_1 >= 0.9 ~ "Cluster 1",
+                                dtw_clusters$cluster_2 >= 0.9 ~ "Cluster 2",
+                                TRUE ~ "Neither")
+
+# And plot these results.
+# First need to make the dataset into a df.
+data_df <- plyr::ldply(data, data.frame)
+
+# And join with the cluster data.
+full_df <- left_join(data_df, dtw_clusters,
+                     by = c(".id" = "uniqueID")) %>%
+  # need to add plotting index otherwise hours appear weirdly
+  mutate(hour_index = case_when(hour == 4 ~ 1,hour == 5 ~ 2,
+                                hour == 6 ~ 3,
+                                hour == 7 ~ 4,hour == 8 ~ 5,
+                                hour == 9 ~ 6,
+                                hour == 10 ~ 7,hour == 11 ~ 8,
+                                hour == 12 ~ 9,
+                                hour == 13 ~ 10,hour == 14 ~ 11,
+                                hour == 15 ~ 12,
+                                hour == 16 ~ 13,hour == 17 ~ 14,
+                                hour == 18 ~ 15,
+                                hour == 19 ~ 16,hour == 20 ~ 17,
+                                hour == 21 ~ 18,
+                                hour == 22 ~ 19,hour == 23 ~ 20,
+                                hour == 0 ~ 21,
+                                hour == 1 ~ 22,hour == 2 ~ 23,
+                                hour == 3 ~ 24))
+
+(fig_curvesT <- ggplot(full_df %>%
+                        filter(site %in% c("BW", "GB")), 
+                      aes(x = hour_index, y = Temp_C,
+                          color = group, group = `.id`)) +
+    geom_line() +
+    scale_color_manual(values = c("#FABA39FF", "#1AE4B6FF",
+                                  "#4662D7FF")) + 
+    labs(x = "Hour of Day (+4)", 
+         y = "Temperature (Degrees C)") +
+    theme_bw() +
+    facet_wrap(group~.) +
+    theme(legend.position = "none"))
+
+# Also creating column with months
+# but doing separately bc something is wonky
+full_df <- full_df %>%
+  mutate(month = factor(case_when(month(date) == 1 ~ "Jan",
+                                  month(date) == 2 ~ "Feb",
+                                  month(date) == 3 ~ "Mar",
+                                  month(date) == 4 ~ "Apr",
+                                  month(date) == 5 ~ "May",
+                                  month(date) == 6 ~ "Jun",
+                                  month(date) == 7 ~ "Jul",
+                                  month(date) == 8 ~ "Aug",
+                                  month(date) == 9 ~ "Sep",
+                                  month(date) == 10 ~ "Oct",
+                                  month(date) == 11 ~ "Nov",
+                                  month(date) == 12 ~ "Dec",
+                                  month(date) == 1 ~ "Jan",
+                                  TRUE ~ NA),
+                        # and ordering them as they were collected
+                        levels = c("Apr", "May", "Jun",
+                                   "Jul", "Aug", "Sep",
+                                   "Oct", "Nov", "Dec",
+                                   "Jan", "Feb", "Mar")))
+
+# Now, before plotting counts, I have to remember to
+# collapse this down to days (since all hours are currently
+# represented and inflating counts).
+full_df_daily <- full_df %>%
+  # first need to trim down the dataset so it doesn't
+  # duplicate days (4am one -> 4am the next)
+  group_by(`.id`) %>%
+  slice_head() %>%
+  ungroup() %>%
+  select(`.id`, date, month, site, location, replicate, group) %>%
+  unique()
+
+counts_daily <- full_df_daily %>%
+  count(group) %>%
+  ungroup()
+
+(fig_monthsT <- ggplot(full_df_daily %>%
+                        mutate(location_f = factor(location,
+                                                   levels = c("3m", "10m", 
+                                                              "15m", "20m"))), 
+                      aes(x = month)) +
+    geom_bar(aes(fill = factor(group))) +
+    scale_fill_manual(values = c("#FABA39","#1AE4B6",
+                                 "#4662D7")) +
+    labs(x = "Month of Year",
+         y = "Timeseries count (days)",
+         fill = "Cluster ID") +
+    theme_bw() +
+    facet_grid(location_f~site, scales = "free"))
+
+# Export figure.
+(fig_allT <- (fig_curvesT | fig_monthsT))
+
+# ggsave(plot = fig_allT,
+#        filename = "figures/dtw_2022_temp_091024.png",
+#        width = 40,
+#        height = 10,
+#        units = "cm")
+
 # End of script.

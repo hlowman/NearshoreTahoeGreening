@@ -27,7 +27,9 @@ data_hourly <- data %>%
   group_by(site, location, replicate, date, hour,
            Flag1, Flag2, Flag3, Flag4) %>%
   summarize(DO_sat = mean(o2_sat100, 
-                           na.rm = TRUE)) %>%
+                           na.rm = TRUE),
+            Temp_C = mean(Temperature_deg_C,
+                          na.rm = TRUE)) %>%
   ungroup()
 
 # Creating a function that can be applied by grouping.
@@ -151,7 +153,8 @@ data_2022 <- data_indexed_filtered %>%
   # Ok, checked here to be sure we aren't getting values >24
   filter(count == 24) %>%
   # and scale calibration-corrected % saturation DO values
-  mutate(scaled_DO_sat = scale(DO_sat))
+  mutate(scaled_DO_sat = scale(DO_sat),
+         scaled_temp = scale(Temp_C))
 
 data_2023 <- data_indexed_filtered %>%
   # only use data after installation of cinderblocks at
@@ -169,7 +172,8 @@ data_2023 <- data_indexed_filtered %>%
   filter(location == "3m") %>%
   # and scale % DO saturation values
   # scale = (x - mean(x))/sd(x)
-  mutate(scaled_DO_sat = scale(DO_sat))
+  mutate(scaled_DO_sat = scale(DO_sat),
+         scaled_temp = scale(Temp_C))
 
 # Creating additional 2022/2023 datasets for complete cases,
 # i.e., days on which we have data at all sites.
@@ -238,9 +242,9 @@ data_2023_trim_l <- split(data_2023_trim, data_2023_trim$ID_index)
 
 # Save out these datasets for use in analyses.
 # saveRDS(data_2022_l,
-#         "data_working/do_data_2022_dailylist_090624.rds")
+#         "data_working/do_data_2022_dailylist_091024.rds")
 # saveRDS(data_2023_l,
-#         "data_working/do_data_2023_dailylist_090624.rds")
+#         "data_working/do_data_2023_dailylist_091024.rds")
 # saveRDS(data_2022_trim_l,
 #         "data_working/do_data_2022_trim_dailylist_082124.rds")
 # saveRDS(data_2023_trim_l,
