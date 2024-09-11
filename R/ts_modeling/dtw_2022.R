@@ -349,6 +349,31 @@ counts_daily <- full_df_daily %>%
 #        height = 10,
 #        units = "cm")
 
+###### Posthoc analyses #####
+
+# I also need to generate some descriptive statistics about
+# each of these groups.
+full_df_daily_summary <- full_df %>%
+  group_by(`.id`, site, 
+           location, replicate, group) %>%
+  summarize(mean_DOsat = mean(DO_sat, na.rm = TRUE),
+            max_DOsat = max(DO_sat, na.rm = TRUE),
+            min_DOsat = min(DO_sat, na.rm = TRUE),
+            mean_Temp = mean(Temp_C, na.rm = TRUE),
+            max_Temp = max(Temp_C, na.rm = TRUE),
+            min_Temp = min(Temp_C, na.rm = TRUE),) %>%
+  ungroup() %>%
+  mutate(range_DOsat = max_DOsat - min_DOsat,
+         range_Temp = max_Temp - min_Temp)
+
+full_df_group_summary <- full_df_daily_summary %>%
+  group_by(group) %>%
+  summarize(median_mean_DOsat = median(mean_DOsat),
+            mean_range_DOsat = mean(range_DOsat),
+            median_mean_Temp = median(mean_Temp),
+            mean_range_Temp = mean(range_Temp)) %>%
+  ungroup()
+
 ##### Trim DO DF #####
 
 # Below, we'll re-fit the fuzzy clustering approach but to a 
