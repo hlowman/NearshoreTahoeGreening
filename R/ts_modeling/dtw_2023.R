@@ -16,7 +16,7 @@ library(here)
 library(dtwclust)
 
 # Load data.
-data <- readRDS("data_working/do_data_2023_dailylist_091024.rds")
+data <- readRDS("data_working/do_data_2023_dailylist_092324.rds")
 data_trim <- readRDS("data_working/do_data_2023_trim_dailylist_082124.rds")
 
 #### Tidy ####
@@ -280,7 +280,14 @@ full_df <- left_join(data_df, dtw_clusters,
     geom_line() +
     scale_color_manual(values = c("#FABA39FF", "#1AE4B6FF",
                                   "#4662D7FF", "#D3105C",
-                                  "#E4B3E2")) + 
+                                  "gray30")) + 
+    # adding annotation to better delineate time of day
+    annotate('rect', xmin = 0, xmax = 3,
+             ymin = 60, ymax = 125,
+             alpha = 0.2, fill = "black") + #sunrise
+    annotate('rect', xmin = 14, xmax = 24,
+             ymin = 60, ymax = 125,
+             alpha = 0.2, fill = "black") + #sunset
     labs(x = "Hour of Day (+4)", y = "Dissolved Oxygen (% Saturation)") +
     theme_bw() +
     facet_wrap(group~.) +
@@ -331,7 +338,7 @@ counts_daily <- full_df_daily %>%
     geom_bar(aes(fill = factor(group))) +
     scale_fill_manual(values = c("#FABA39","#1AE4B6",
                                  "#4662D7", "#D3105C",
-                                 "#E4B3E2")) +
+                                 "gray30")) +
     labs(x = "Month of Year",
          y = "Timeseries count (days)",
          fill = "Cluster ID") +
@@ -342,7 +349,7 @@ counts_daily <- full_df_daily %>%
 (fig_all <- fig_curves | fig_months)
 
 # ggsave(plot = fig_all,
-#        filename = "figures/dtw_2023_090624.png",
+#        filename = "figures/dtw_2023_092324.png",
 #        width = 40,
 #        height = 10,
 #        units = "cm")
@@ -370,6 +377,31 @@ full_df_group_summary <- full_df_daily_summary %>%
             mean_range_DOsat = mean(range_DOsat),
             median_mean_Temp = median(mean_Temp),
             mean_range_Temp = mean(range_Temp)) %>%
+  ungroup()
+
+# Need to calculate the difference between max DO sat
+# and solar noon.
+full_df_max_DO_difftimes <- full_df %>%
+  group_by(`.id`, site, 
+           location, replicate, group) %>%
+  slice_max(DO_sat) %>%
+  ungroup() %>%
+  mutate(DOmax_hour = hour(date_times),
+         DOmax_minutes = minute(date_times),
+         DOmax_seconds = second(date_times)) %>%
+  mutate(DOmax_time = as_hms(paste(DOmax_hour,
+                                   DOmax_minutes,
+                                   DOmax_seconds,
+                                   sep = ":"))) %>%
+  mutate(max_offset = solar_noon - DOmax_time)
+
+offset_group_summary <- full_df_max_DO_difftimes %>%
+  group_by(group) %>%
+  summarize(median_offset_min = median(as.numeric(max_offset))/60,
+            mean_offset_min = mean(as.numeric(max_offset))/60,
+            minimum_offset_min = min(as.numeric(max_offset))/60,
+            maximum_offset_min = max(as.numeric(max_offset))/60,
+            stddev_offset_min = sd(as.numeric(max_offset))/60) %>%
   ungroup()
 
 ##### Trim DO DF #####
