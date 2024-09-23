@@ -12,6 +12,7 @@
 library(lubridate)
 library(tidyverse)
 library(data.table)
+library(suntools)
 library(here)
 
 # Load data.
@@ -111,6 +112,81 @@ dates_all <- dates_all %>%
   mutate(ID = sites,
          date = date(date_times))
 
+##### Solar Noon #####
+
+# Making custom solar noon function to pull out
+# only the value I want.
+solar_noon_fx <- function(Longitude, Latitude, Date){
+  
+  x <- solarnoon(matrix(c(Longitude, Latitude), nrow = 1),
+                 as.POSIXct(Date, tz = "America/Los_Angeles"),
+                            POSIXct.out = TRUE)
+  
+  solar_noon_time <- x$time[1]
+  
+  return(solar_noon_time)
+  
+}
+
+# Add sites and lat/lon values for solar noon calculation.
+# Using nearshore values from Kelly's NLDAS script located:
+# https://github.com/kellyloria/Littoral-Lake-Metabolism/blob/e93fe82617e3c7aa3e7624f776efe9e1d4dd9ce4/climate_scripts/KAL_DL_NLDAS.R
+dates_all <- dates_all %>%
+  mutate(site = case_when(ID %in% c("BW_10m_Benthic",
+                                    "BW_15m_Benthic",
+                                    "BW_20m_Benthic",
+                                    "BW_20m_Pelagic", 
+                                    "BW_3m_NS1", 
+                                    "BW_3m_NS2",
+                                    "BW_3m_NS3") ~ "BW",
+                          ID %in% c("GB_10m_Benthic",
+                                    "GB_10m_Pelagic",
+                                    "GB_15m_Benthic",
+                                    "GB_15m_Pelagic",
+                                    "GB_20m_Benthic",
+                                    "GB_20m_Pelagic", 
+                                    "GB_3m_NS1", 
+                                    "GB_3m_NS2",
+                                    "GB_3m_NS3") ~ "GB",
+                          ID %in% c("SH_3m_NS1", 
+                                    "SH_3m_NS2", 
+                                    "SH_3m_NS3") ~ "SH",
+                          ID %in% c("SS_3m_NS1", 
+                                    "SS_3m_NS2") ~ "SS")) %>%
+  mutate(lat = case_when(site == "BW" ~ "39.10697",
+                         site == "GB" ~ "39.0880",
+                         site == "SH" ~ "39.0944",
+                         site == "SS" ~ "39.13904"),
+         lon = case_when(site == "BW" ~ "-120.15721",
+                         site == "GB" ~ "-119.9421",
+                         site == "SH" ~ "-119.9436",
+                         site == "SS" ~ "-120.15236")) 
+
+# Trying it another way.
+lon_vec <- as.numeric(dates_all$lon)
+lat_vec <- as.numeric(dates_all$lat)
+date_vec <- force_tz(dates_all$date, "America/Los_Angeles")
+
+solar_noon_mx <- solarnoon(matrix(c(lon_vec, lat_vec), 
+                                  nrow = 429912),
+                 as.POSIXct(date_vec), POSIXct.out = TRUE)
+
+dates_all$solar_noon_time <- solar_noon_mx$time
+
+dates_all <- dates_all %>%
+  mutate(solar_noon_hour = hour(solar_noon_time),
+         solar_noon_minutes = minute(solar_noon_time),
+         solar_noon_seconds = second(solar_noon_time)) %>%
+  mutate(solar_noon = as_hms(paste(solar_noon_hour,
+                                solar_noon_minutes,
+                                solar_noon_seconds,
+                                sep = ":"))) # PHEW
+
+# Just trimming down to columns of interest
+dates_all <- dates_all %>%
+  select(date_times, hour, index, ID, 
+         date, lat, lon, solar_noon)
+  
 # Now, to combine the maximum possible date-times
 # with the actual data.
 data_full_hourly <- full_join(dates_all, data_hourly,
@@ -235,16 +311,16 @@ data_2023_trim <- left_join(data_2023, data_2023_completedays) %>%
 # Finally, split into lists based on unique IDs.
 data_2022_l <- split(data_2022, data_2022$ID_index)
 data_2023_l <- split(data_2023, data_2023$ID_index)
-data_2022_trim_l <- split(data_2022_trim, data_2022_trim$ID_index)
-data_2023_trim_l <- split(data_2023_trim, data_2023_trim$ID_index)
+# data_2022_trim_l <- split(data_2022_trim, data_2022_trim$ID_index)
+# data_2023_trim_l <- split(data_2023_trim, data_2023_trim$ID_index)
 
 #### EXPORT ####
 
 # Save out these datasets for use in analyses.
 # saveRDS(data_2022_l,
-#         "data_working/do_data_2022_dailylist_091024.rds")
+#         "data_working/do_data_2022_dailylist_092324.rds")
 # saveRDS(data_2023_l,
-#         "data_working/do_data_2023_dailylist_091024.rds")
+#         "data_working/do_data_2023_dailylist_092324.rds")
 # saveRDS(data_2022_trim_l,
 #         "data_working/do_data_2022_trim_dailylist_082124.rds")
 # saveRDS(data_2023_trim_l,
