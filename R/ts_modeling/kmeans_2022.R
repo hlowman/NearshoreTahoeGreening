@@ -22,6 +22,7 @@ library(patchwork)
 
 # Load data.
 dat_2022 <- readRDS("data_working/do_covariate_daily_data_2022_101124.rds")
+dtw_2022 <- readRDS("data_model_outputs/dtw_2022_fuzzy_090624.rds")
 
 #### Prep ####
 
@@ -68,6 +69,9 @@ ggplot(clusterings, aes(k, tot.withinss)) +
   geom_line() +
   geom_point() # 4 looks to be the "elbow"
 
+# Export full kmeans fit.
+saveRDS(kclusts, "data_working/kmeans_2022_101824.rds")
+
 #### Results ####
 
 k4_fit <- assignments %>%
@@ -78,7 +82,7 @@ k4_fit <- assignments %>%
 
 dat_2022 <- full_join(dat_2022, k4_fit)
 
-fig_kmeans22 <- ggplot(dat_2022 %>%
+(fig_kmeans22 <- ggplot(dat_2022 %>%
          select(ID_index, Cluster,
                 delta_dosat, mean_light, 
                 max_ws, mean_q) %>%
@@ -98,12 +102,43 @@ fig_kmeans22 <- ggplot(dat_2022 %>%
                                 "#69B9FA")) +
   theme_bw() +
   facet_grid(Cluster~var, scales = "free") +
-  theme(legend.position = "none")
+  theme(legend.position = "none"))
 
 # ggsave(plot = fig_kmeans22,
 #        filename = "figures/kmeans_2022_101124.png",
 #        width = 20,
 #        height = 20,
 #        units = "cm")
+
+# And compare with DTW results.
+
+# Export cluster groupings for most parsimonious model fit.
+dtw_clusters <- as.data.frame(dtw_2022[[1]]@fcluster) %>%
+  rownames_to_column() %>%
+  rename(uniqueID = rowname)
+
+# Add new column to assign groupings with 90% cutoff.
+dtw_clusters$group <- case_when(dtw_clusters$cluster_1 >= 0.9 ~ "Cluster 1",
+                                dtw_clusters$cluster_2 >= 0.9 ~ "Cluster 2",
+                                TRUE ~ "Neither")
+
+# Join with larger dataset with kmeans info.
+dat_2022 <- full_join(dat_2022, dtw_clusters,
+                      by = c("ID_index" = "uniqueID"))
+
+
+(fig_clusters <- ggplot(dat_2022 %>%
+                          mutate(location_f = factor(location,
+                                                     levels = c("3m", "10m", 
+                                                                "15m", "20m"))), 
+                      aes(x = Cluster)) +
+    geom_bar(aes(fill = factor(group))) +
+    scale_fill_manual(values = c("#FABA39","#1AE4B6",
+                                 "gray30")) +
+    labs(x = "K-means Clusters",
+         y = "Timeseries count (days)",
+         fill = "DTW Clusters") +
+    theme_bw() +
+    facet_grid(location_f~site, scales = "free"))
 
 # End of script.
