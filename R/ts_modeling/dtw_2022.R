@@ -249,6 +249,10 @@ dtw_clusters$group <- case_when(dtw_clusters$cluster_1 >= 0.9 ~ "Cluster 1",
                                 dtw_clusters$cluster_2 >= 0.9 ~ "Cluster 2",
                                 TRUE ~ "Neither")
 
+# Export for use in posthoc analyses.
+saveRDS(dtw_clusters,
+        "data_working/dtw_clusters_2022_110124.rds")
+
 # And plot these results.
 # First need to make the dataset into a df.
 data_df <- plyr::ldply(data, data.frame)

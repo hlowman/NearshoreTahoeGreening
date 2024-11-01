@@ -1,10 +1,10 @@
-# K-means Clustering Data Prep Script
+# Posthoc Analysis Data Prep Script
 # Authors: Heili E. Lowman
 # Date Created: 2024-10-11
 
 # ---------------------------- README ---------------------------------
-# The following script will  prep data to be fit by the 
-# k-means clustering approach.
+# The following script will  prep data to be fit by  
+# post-dynamic time warping approaches.
 
 #### Setup ####
 
@@ -23,6 +23,11 @@ library(patchwork)
 # hourly timestep
 dosat_2022 <- readRDS("data_working/do_data_2022_dailylist_092324.rds")
 dosat_2023 <- readRDS("data_working/do_data_2023_dailylist_092324.rds")
+
+# As well as clusters resulting from
+# dynamic time warping analysis.
+clusters_2022 <- readRDS("data_working/dtw_clusters_2022_110124.rds")
+clusters_2023 <- readRDS("data_working/dtw_clusters_2023_110124.rds")
 
 # Next load in precip.
 # daily timestep
@@ -74,6 +79,9 @@ ws_trim <- rbind(wind_ns, wind_os) %>%
   select(site, date, hour, windsp_ms)
 
 # Summarize and trim the discharge dataset.
+# Summarizing here to the hour level, since "days"
+# will be assigned 4am to 4am below. Hourly will
+# match light and DO data (lowest common denominator).
 q_trim <- q_data %>%
   mutate(date = date(datePST),
          hour = hour(datePST)) %>%
@@ -85,8 +93,18 @@ q_trim <- q_data %>%
 #### Join ####
 
 # Joining the covariate data to each of the DO files since
-# I'll be running slightly different k means clustering analyses
-# for the two.
+# I'll be running slightly different analyses for them.
+
+##### Clusters #####
+
+# Need to join with cluster assignments, which will
+# be the response variable in my logistic regression.
+dosat_2022_df <- full_join(dosat_2022_df,
+                            clusters_2022,
+                            by = c("ID_index" = "uniqueID"))
+dosat_2023_df <- full_join(dosat_2023_df,
+                           clusters_2023,
+                           by = c("ID_index" = "uniqueID"))
 
 ##### Precip #####
 
@@ -311,10 +329,17 @@ dosat_ppt_lt_bp_ws_q_22 <- left_join(dosat_ppt_lt_bp_ws_22,
 
 #### Summarize ####
 
-# Generate summary metrics for use in k means analysis.
+# Generate summary metrics for use in posthoc analysis.
+
+# This will properly group days (from 4am to 4am) by index
+# rather than by date to aggregate covariates.
 summary_22 <- dosat_ppt_lt_bp_ws_q_22 %>%
-  group_by(site, location, replicate, ID, index, ID_index) %>%
-  summarize(min_dosat = min(DO_sat, na.rm = TRUE),
+  group_by(site, location, replicate, 
+           ID, index, ID_index) %>%
+  summarize(cluster_1 = cluster_1[1],
+            cluster_2 = cluster_2[1],
+            group = group[1],
+            min_dosat = min(DO_sat, na.rm = TRUE),
             max_dosat = max(DO_sat, na.rm = TRUE),
             mean_dosat = mean(DO_sat, na.rm = TRUE),
             min_wtemp = min(Temp_C, na.rm = TRUE),
@@ -324,8 +349,11 @@ summary_22 <- dosat_ppt_lt_bp_ws_q_22 %>%
             min_atemp = mean(tmin_C, na.rm = TRUE),
             max_atemp = mean(tmax_C, na.rm = TRUE),
             mean_atemp = mean(tmean_C, na.rm = TRUE),
+            min_light = min(light, na.rm = TRUE),
+            max_light = max(light, na.rm = TRUE),
             mean_light = mean(light, na.rm = TRUE),
             mean_bp = mean(baro_Pa, na.rm = TRUE),
+            min_ws = min(windsp_ms, na.rm = TRUE),
             max_ws = max(windsp_ms, na.rm = TRUE),
             mean_ws = mean(windsp_ms, na.rm = TRUE),
             min_q = min(mean_q_cms, na.rm = TRUE),
@@ -335,11 +363,19 @@ summary_22 <- dosat_ppt_lt_bp_ws_q_22 %>%
   mutate(delta_dosat = max_dosat - min_dosat,
          delta_wtemp = max_wtemp - min_wtemp,
          delta_atemp = max_atemp - min_atemp,
+         delta_light = max_light - min_light,
+         delta_ws = max_ws - min_ws,
          delta_q = max_q - min_q)
 
 summary_23 <- dosat_ppt_lt_bp_ws_23 %>%
-  group_by(site, location, replicate, ID, index, ID_index) %>%
-  summarize(min_dosat = min(DO_sat, na.rm = TRUE),
+  group_by(site, location, replicate, 
+           ID, index, ID_index) %>%
+  summarize(cluster_1 = cluster_1[1],
+            cluster_2 = cluster_2[1],
+            cluster_3 = cluster_3[1],
+            cluster_4 = cluster_4[1],
+            group = group[1],
+            min_dosat = min(DO_sat, na.rm = TRUE),
             max_dosat = max(DO_sat, na.rm = TRUE),
             mean_dosat = mean(DO_sat, na.rm = TRUE),
             min_wtemp = min(Temp_C, na.rm = TRUE),
@@ -349,21 +385,27 @@ summary_23 <- dosat_ppt_lt_bp_ws_23 %>%
             min_atemp = mean(tmin_C, na.rm = TRUE),
             max_atemp = mean(tmax_C, na.rm = TRUE),
             mean_atemp = mean(tmean_C, na.rm = TRUE),
+            min_light = min(light, na.rm = TRUE),
+            max_light = max(light, na.rm = TRUE),
             mean_light = mean(light, na.rm = TRUE),
             mean_bp = mean(baro_Pa, na.rm = TRUE),
+            min_ws = min(windsp_ms, na.rm = TRUE),
             max_ws = max(windsp_ms, na.rm = TRUE),
             mean_ws = mean(windsp_ms, na.rm = TRUE)) %>%
   ungroup() %>%
   mutate(delta_dosat = max_dosat - min_dosat,
          delta_wtemp = max_wtemp - min_wtemp,
-         delta_atemp = max_atemp - min_atemp)
+         delta_atemp = max_atemp - min_atemp,
+         delta_light = max_light - min_light,
+         delta_ws = max_ws - min_ws)
 
 #### Export ####
 
 # Export both datasets.
 # saveRDS(summary_22,
-#         "data_working/do_covariate_daily_data_2022_101124.rds")
+#         "data_working/do_covariate_daily_data_2022_110124.rds")
 # saveRDS(summary_23,
-#         "data_working/do_covariate_daily_data_2023_101124.rds")
+#         "data_working/do_covariate_daily_data_2023_110124.rds")
 
 # End of script.
+
