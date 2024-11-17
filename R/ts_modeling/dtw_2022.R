@@ -283,7 +283,8 @@ full_df <- left_join(data_df, dtw_clusters,
                       aes(x = hour_index, y = DO_sat,
                       color = group, group = `.id`)) +
                geom_line() +
-               scale_color_manual(values = c("#FABA39FF", "#1AE4B6FF",
+               scale_color_manual(values = c("#FABA39FF", 
+                                             "#1AE4B6FF",
                                              "gray30")) + 
                labs(x = "Hour of Day (+4)", 
                     y = "Dissolved Oxygen (% Saturation)") +
@@ -298,6 +299,50 @@ full_df <- left_join(data_df, dtw_clusters,
                theme_bw() +
                facet_wrap(group~.) +
                theme(legend.position = "none"))
+
+# Also making some summary statistics to more clearly plot
+# the clusters.
+summary_df <- full_df %>%
+  # across the daily time series in each cluster...
+  group_by(group, hour_index) %>%
+  # calculate the median and interquartile ranges
+  summarize(medianDO_sat = median(DO_sat),
+            q25DO_sat = quantile(DO_sat, 
+                                 probs = 0.25),
+            q75DO_sat = quantile(DO_sat, 
+                                 probs = 0.75)) %>%
+  ungroup()
+
+(fig2_curves <- ggplot(summary_df, 
+                       aes(x = hour_index, 
+                           y = medianDO_sat,
+                           ymin = q25DO_sat, 
+                           ymax = q75DO_sat,
+                           color = group, 
+                           fill = group)) +
+    # adding annotation to better delineate time of day
+    annotate('rect', xmin = 0, xmax = 3,
+             ymin = 92, ymax = 113,
+             alpha = 0.15, fill = "black") + #sunrise
+    annotate('rect', xmin = 14, xmax = 24,
+             ymin = 92, ymax = 113,
+             alpha = 0.15, fill = "black") + #sunset
+    geom_line(linewidth = 2) +
+    geom_ribbon(alpha = 0.5,
+                linewidth = 0.1) + 
+    scale_color_manual(values = c("#FABA39FF", 
+                                  "#1AE4B6FF",
+                                  "gray60")) +
+    scale_fill_manual(values = c("#FABA39FF", 
+                                 "#1AE4B6FF",
+                                 "gray60")) +
+    labs(x = "Hour of Day (+4)", 
+         y = "Dissolved Oxygen (% Saturation)") +
+    scale_x_continuous(breaks = c(0,5,10,15,20)) +
+    theme_bw() +
+    facet_wrap(group~.) +
+    theme(legend.position = "none",
+          text = element_text(size = 20)))
 
 # Also creating column with months
 # but doing separately bc something is wonky
@@ -339,26 +384,35 @@ counts_daily <- full_df_daily %>%
   ungroup()
 
 (fig_months <- ggplot(full_df_daily %>%
-                      mutate(location_f = factor(location,
-                                    levels = c("3m", "10m", 
-                                               "15m", "20m"))), 
+                      mutate(location_f = factor(
+                        case_when(location == "3m" ~ "nearshore",
+                                  location == "10m" ~ "shallow", 
+                                  location == "15m" ~ "mid",
+                                  location == "20m" ~ "deep"),
+                        levels = c("nearshore",
+                                   "shallow",
+                                   "mid",
+                                   "deep"))), 
                     aes(x = month)) +
               geom_bar(aes(fill = factor(group))) +
               scale_fill_manual(values = c("#FABA39","#1AE4B6",
-                                           "gray30")) +
+                                           "gray60")) +
+              # customizing which months print below the x axis
+              scale_x_discrete(breaks = levels(full_df_daily$month)[c(T, F, T, F, T, F, T, F, T, F, T)]) +
               labs(x = "Month of Year",
                    y = "Timeseries count (days)",
                    fill = "Cluster ID") +
               theme_bw() +
-              facet_grid(location_f~site, scales = "free"))
+              facet_grid(location_f~site, scales = "free") +
+    theme(text = element_text(size = 20)))
 
 # Export figure.
-(fig_all <- (fig_curves | fig_months))
+(fig_all <- (fig2_curves | fig_months))
 
 # ggsave(plot = fig_all,
-#        filename = "figures/dtw_2022_092324.png",
+#        filename = "figures/dtw_2022_11724.png",
 #        width = 40,
-#        height = 10,
+#        height = 15,
 #        units = "cm")
 
 ###### Posthoc analyses #####

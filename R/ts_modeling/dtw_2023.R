@@ -14,6 +14,8 @@ library(tidyverse)
 library(data.table)
 library(here)
 library(dtwclust)
+library(patchwork)
+library(hms)
 
 # Load data.
 data <- readRDS("data_working/do_data_2023_dailylist_111724.rds")
@@ -279,7 +281,9 @@ full_df <- left_join(data_df, dtw_clusters,
                                    y = DO_sat,
                                    color = group, group = `.id`)) +
     geom_line() +
-    scale_color_manual(values = c("#FABA39FF", "#1AE4B6FF", "gray30")) + 
+    scale_color_manual(values = c("#FABA39FF", 
+                                  "#1AE4B6FF", 
+                                  "gray30")) + 
     # adding annotation to better delineate time of day
     annotate('rect', xmin = 0, xmax = 3,
              ymin = 60, ymax = 125,
@@ -312,27 +316,29 @@ summary_df <- full_df %>%
                            ymax = q75DO_sat,
                            color = group, 
                            fill = group)) +
+    # adding annotation to better delineate time of day
+    annotate('rect', xmin = 0, xmax = 3,
+             ymin = 92, ymax = 113,
+             alpha = 0.15, fill = "black") + #sunrise
+    annotate('rect', xmin = 14, xmax = 24,
+             ymin = 92, ymax = 113,
+             alpha = 0.15, fill = "black") + #sunset
     geom_line(linewidth = 2) +
     geom_ribbon(alpha = 0.5,
                 linewidth = 0.1) + 
     scale_color_manual(values = c("#A1CAF6",
                                   "#4662D7FF", 
-                                  "gray30")) +
+                                  "gray60")) +
     scale_fill_manual(values = c("#A1CAF6",
                                  "#4662D7FF", 
-                                 "gray30")) +
-    # adding annotation to better delineate time of day
-    annotate('rect', xmin = 0, xmax = 3,
-             ymin = 95, ymax = 115,
-             alpha = 0.2, fill = "black") + #sunrise
-    annotate('rect', xmin = 14, xmax = 24,
-             ymin = 95, ymax = 115,
-             alpha = 0.2, fill = "black") + #sunset
+                                 "gray60")) +
     labs(x = "Hour of Day (+4)", 
          y = "Dissolved Oxygen (% Saturation)") +
+    scale_x_continuous(breaks = c(0,5,10,15,20)) +
     theme_bw() +
     facet_wrap(group~.) +
-    theme(legend.position = "none"))
+    theme(legend.position = "none",
+          text = element_text(size = 20)))
 
 # Also creating column with months
 # but doing separately bc something is wonky
@@ -380,12 +386,13 @@ counts_daily <- full_df_daily %>%
     geom_bar(aes(fill = factor(group))) +
     scale_fill_manual(values = c("#A1CAF6",
                                  "#4662D7FF", 
-                                 "gray30")) +
+                                 "gray60")) +
     labs(x = "Month of Year",
          y = "Timeseries count (days)",
          fill = "Cluster ID") +
     theme_bw() +
-    facet_grid(site_f~., scales = "free"))
+    facet_grid(site_f~., scales = "free") +
+    theme(text = element_text(size = 20)))
 
 # Export figure.
 (fig_all <- fig2_curves | fig_months)
@@ -393,7 +400,7 @@ counts_daily <- full_df_daily %>%
 # ggsave(plot = fig_all,
 #        filename = "figures/dtw_2023_111724.png",
 #        width = 40,
-#        height = 10,
+#        height = 15,
 #        units = "cm")
 
 ###### Posthoc analyses #####
