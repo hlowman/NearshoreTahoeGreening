@@ -177,7 +177,7 @@ dates_all <- dates_all %>%
   mutate(solar_noon_hour = hour(solar_noon_time),
          solar_noon_minutes = minute(solar_noon_time),
          solar_noon_seconds = second(solar_noon_time)) %>%
-  mutate(solar_noon = as_hms(paste(solar_noon_hour,
+  mutate(solar_noon = hms::as_hms(paste(solar_noon_hour,
                                 solar_noon_minutes,
                                 solar_noon_seconds,
                                 sep = ":"))) # PHEW
@@ -234,11 +234,8 @@ data_2022 <- data_indexed_filtered %>%
 
 data_2023 <- data_indexed_filtered %>%
   # only use data after installation of cinderblocks at
-  # far from stream sites
-  filter(date >= ymd_hms("2023-02-12 04:00:00")) %>%
-  # Note SS only has one block until May, but I felt that
-  # was enough for comparison since SH blocks went in in
-  # Feb, could be trimmed to May if necessary...
+  # near stream sites
+  filter(date >= ymd_hms("2023-05-01 04:00:00")) %>%
   group_by(ID_index) %>%
   mutate(count = n()) %>%
   ungroup() %>% 
@@ -320,7 +317,7 @@ data_2023_l <- split(data_2023, data_2023$ID_index)
 # saveRDS(data_2022_l,
 #         "data_working/do_data_2022_dailylist_092324.rds")
 # saveRDS(data_2023_l,
-#         "data_working/do_data_2023_dailylist_092324.rds")
+#         "data_working/do_data_2023_dailylist_111724.rds")
 # saveRDS(data_2022_trim_l,
 #         "data_working/do_data_2022_trim_dailylist_082124.rds")
 # saveRDS(data_2023_trim_l,

@@ -16,7 +16,7 @@ library(here)
 library(dtwclust)
 
 # Load data.
-data <- readRDS("data_working/do_data_2023_dailylist_092324.rds")
+data <- readRDS("data_working/do_data_2023_dailylist_111724.rds")
 data_trim <- readRDS("data_working/do_data_2023_trim_dailylist_082124.rds")
 
 #### Tidy ####
@@ -178,7 +178,7 @@ ggplot(data_months, aes(x = month)) +
 
 ##### DO #####
 
-# Perform clustered DTW on data from March through
+# Perform clustered DTW on data from May through
 # September 2023 on either side of the lake and all replicates 
 # at ONLY 3m water depth.
 dtw_fuzzy_2_12 <- tsclust(data_DO, 
@@ -211,12 +211,12 @@ dtw_fuzzy_2_12 <- tsclust(data_DO,
                           # prints progress to screen
                           trace = T)
 
-# Takes about 15 minutes on Pinyon.
-# Started at 7:26PM. Ran until 7:42PM.
+# Takes about 4 minutes on desktop.
+# Started at 1:24PM. Ran until 1:28PM.
 
 # Export model fit.
 saveRDS(dtw_fuzzy_2_12, 
-        "data_model_outputs/dtw_2023_fuzzy_090624.rds")
+        "data_model_outputs/dtw_2023_fuzzy_111724.rds")
 
 # Examine cluster validity indices. Be patient - takes a moment.
 dtw_results <- lapply(dtw_fuzzy_2_12, cvi)
@@ -230,36 +230,33 @@ dtw_results_df <- as.data.frame(dtw_results,
 dtw_results_df <- t(dtw_results_df)
 
 # Want to:
-# Maximize MPC - 3
-# Minimize K - 4
-# Minimize T - 4
-# Maximize SC - 4
-# Maximize PBMF - 11
+# Maximize MPC - 2
+# Minimize K - 2
+# Minimize T - 2
+# Maximize SC - 2
+# Maximize PBMF - 12
 
 # Examine the most parsimonious clusterings.
-plot(dtw_fuzzy_2_12[[2]]) # Per MPC metric (3 clusters)
-plot(dtw_fuzzy_2_12[[3]]) # Per K, T, and SC metrics (4 clusters)
-plot(dtw_fuzzy_2_12[[10]]) # Per PBMF metric (11 clusters)
+plot(dtw_fuzzy_2_12[[1]]) # Per MPC, K, T, and SC metrics (2 clusters)
+plot(dtw_fuzzy_2_12[[11]]) # Per PBMF metric (12 clusters)
 
 # Export cluster groupings for most parsimonious model fit.
-dtw_clusters <- as.data.frame(dtw_fuzzy_2_12[[3]]@fcluster) %>%
+dtw_clusters <- as.data.frame(dtw_fuzzy_2_12[[1]]@fcluster) %>%
   rownames_to_column() %>%
   rename(uniqueID = rowname) %>%
-  mutate(clusters = 4)
+  mutate(clusters = 2)
 
 # Will need to pull each cluster membership df separately and
 # merge together if needed to.
 
 # Add new column to assign groupings with 90% cutoff.
-dtw_clusters$group <- case_when(dtw_clusters$cluster_1 >= 0.7 ~ "Cluster 1",
-                                dtw_clusters$cluster_2 >= 0.7 ~ "Cluster 2",
-                                dtw_clusters$cluster_3 >= 0.7 ~ "Cluster 3",
-                                dtw_clusters$cluster_4 >= 0.7 ~ "Cluster 4",
+dtw_clusters$group <- case_when(dtw_clusters$cluster_1 >= 0.9 ~ "Cluster 1",
+                                dtw_clusters$cluster_2 >= 0.9 ~ "Cluster 2",
                                 TRUE ~ "Neither")
 
 # Export for use in posthoc analyses.
 saveRDS(dtw_clusters,
-        "data_working/dtw_clusters_2023_110124.rds")
+        "data_working/dtw_clusters_2023_111724.rds")
 
 # And plot these results.
 # First need to make the dataset into a df.
@@ -282,9 +279,7 @@ full_df <- left_join(data_df, dtw_clusters,
                                    y = DO_sat,
                                    color = group, group = `.id`)) +
     geom_line() +
-    scale_color_manual(values = c("#FABA39FF", "#1AE4B6FF",
-                                  "#4662D7FF", "#D3105C",
-                                  "gray30")) + 
+    scale_color_manual(values = c("#FABA39FF", "#1AE4B6FF", "gray30")) + 
     # adding annotation to better delineate time of day
     annotate('rect', xmin = 0, xmax = 3,
              ymin = 60, ymax = 125,
@@ -293,6 +288,48 @@ full_df <- left_join(data_df, dtw_clusters,
              ymin = 60, ymax = 125,
              alpha = 0.2, fill = "black") + #sunset
     labs(x = "Hour of Day (+4)", y = "Dissolved Oxygen (% Saturation)") +
+    theme_bw() +
+    facet_wrap(group~.) +
+    theme(legend.position = "none"))
+
+# Also making some summary statistics to more clearly plot
+# the clusters.
+summary_df <- full_df %>%
+  # across the daily time series in each cluster...
+  group_by(group, hour_index) %>%
+  # calculate the median and interquartile ranges
+  summarize(medianDO_sat = median(DO_sat),
+            q25DO_sat = quantile(DO_sat, 
+                                          probs = 0.25),
+            q75DO_sat = quantile(DO_sat, 
+                                     probs = 0.75)) %>%
+  ungroup()
+
+(fig2_curves <- ggplot(summary_df, 
+                       aes(x = hour_index, 
+                           y = medianDO_sat,
+                           ymin = q25DO_sat, 
+                           ymax = q75DO_sat,
+                           color = group, 
+                           fill = group)) +
+    geom_line(linewidth = 2) +
+    geom_ribbon(alpha = 0.5,
+                linewidth = 0.1) + 
+    scale_color_manual(values = c("#A1CAF6",
+                                  "#4662D7FF", 
+                                  "gray30")) +
+    scale_fill_manual(values = c("#A1CAF6",
+                                 "#4662D7FF", 
+                                 "gray30")) +
+    # adding annotation to better delineate time of day
+    annotate('rect', xmin = 0, xmax = 3,
+             ymin = 95, ymax = 115,
+             alpha = 0.2, fill = "black") + #sunrise
+    annotate('rect', xmin = 14, xmax = 24,
+             ymin = 95, ymax = 115,
+             alpha = 0.2, fill = "black") + #sunset
+    labs(x = "Hour of Day (+4)", 
+         y = "Dissolved Oxygen (% Saturation)") +
     theme_bw() +
     facet_wrap(group~.) +
     theme(legend.position = "none"))
@@ -327,7 +364,8 @@ full_df_daily <- full_df %>%
   group_by(`.id`) %>%
   slice_head() %>%
   ungroup() %>%
-  select(`.id`, date, month, site, location, replicate, group) %>%
+  select(`.id`, date, month, site, 
+         location, replicate, group) %>%
   unique()
 
 counts_daily <- full_df_daily %>%
@@ -340,8 +378,8 @@ counts_daily <- full_df_daily %>%
                                            "GB", "SH"))), 
                       aes(x = month)) +
     geom_bar(aes(fill = factor(group))) +
-    scale_fill_manual(values = c("#FABA39","#1AE4B6",
-                                 "#4662D7", "#D3105C",
+    scale_fill_manual(values = c("#A1CAF6",
+                                 "#4662D7FF", 
                                  "gray30")) +
     labs(x = "Month of Year",
          y = "Timeseries count (days)",
@@ -350,10 +388,10 @@ counts_daily <- full_df_daily %>%
     facet_grid(site_f~., scales = "free"))
 
 # Export figure.
-(fig_all <- fig_curves | fig_months)
+(fig_all <- fig2_curves | fig_months)
 
 # ggsave(plot = fig_all,
-#        filename = "figures/dtw_2023_092324.png",
+#        filename = "figures/dtw_2023_111724.png",
 #        width = 40,
 #        height = 10,
 #        units = "cm")
@@ -393,7 +431,7 @@ full_df_max_DO_difftimes <- full_df %>%
   mutate(DOmax_hour = hour(date_times),
          DOmax_minutes = minute(date_times),
          DOmax_seconds = second(date_times)) %>%
-  mutate(DOmax_time = as_hms(paste(DOmax_hour,
+  mutate(DOmax_time = hms::as_hms(paste(DOmax_hour,
                                    DOmax_minutes,
                                    DOmax_seconds,
                                    sep = ":"))) %>%
