@@ -116,6 +116,9 @@ fit_2022 <- brm(group ~ scale_light + scale_wind + scale_q
                 # specify multinomial if data is a matrix
                 family = categorical())
 
+# Runs in ~20 minutes on laptop.
+# Started at 11:07 am. Finished at 11:33.
+
 # Save model fit.
 saveRDS(fit_2022,
         "data_model_outputs/brms_2022_111924.rds")
@@ -124,7 +127,7 @@ saveRDS(fit_2022,
 
 # Examine model fit.
 summary(fit_2022)
-# Despite 57 divergent transitions, Rhats look good!
+# Despite 35 divergent transitions, Rhats look good!
 
 plot(fit_2022, variable = c("b_muCluster1_scale_light",
                             "b_muCluster1_scale_wind",
@@ -138,6 +141,7 @@ plot(fit_2022, variable = c("b_muCluster1_scale_light",
 mcmc_plot(fit_2022, type = "neff")
 
 # Examine relationships for each predictor.
+# Could think about including these in supplement.
 plot(conditional_effects(fit_2022, effects = "scale_light",
                          categorical = TRUE))
 plot(conditional_effects(fit_2022, effects = "scale_wind",
@@ -146,8 +150,8 @@ plot(conditional_effects(fit_2022, effects = "scale_q",
                          categorical = TRUE))
 
 # Appears mean daily q is greatest in Cluster 1,
-# daily change in light is greatest in Cluster 2,
-# and effect of wind is not as clearly delineated.
+# cumulative daily light is greatest in Cluster 2,
+# and effect of wind is not as clearly significant.
 
 ##### Visualization #####
 
@@ -176,7 +180,7 @@ View(post_data)
                         aes(x = m, y = par_f, color = par_f)) +
     geom_linerange(aes(xmin = ll, xmax = hh),
                    size = 2, alpha = 0.5) +
-    geom_point(size = 3) +
+    geom_point(size = 5) +
     vline_at(v = 0) +
     scale_x_continuous(breaks = c(-1, 0, 1)) +
     labs(x = "Posterior Estimates",
@@ -191,13 +195,13 @@ View(post_data)
     scale_color_manual(values = c("#FABA39","#1AE4B6", 
                                   "#FABA39","#1AE4B6",
                                   "#FABA39","#1AE4B6")) +
-    theme(text = element_text(size = 10),
+    theme(text = element_text(size = 20),
           legend.position = "none"))
 
 # ggsave(fig_custom,
-#        filename = "figures/brms_2022_110424.jpg",
-#        height = 8,
-#        width = 12,
+#        filename = "figures/brms_2022_111924.jpg",
+#        height = 15,
+#        width = 20,
 #        units = "cm")
 
 # STOPPED HERE.
