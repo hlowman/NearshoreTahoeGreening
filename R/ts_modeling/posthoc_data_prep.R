@@ -158,16 +158,17 @@ dosat_2023_df <- dosat_2023_df %>%
                                  site == "SH" &
                                    replicate == "NS3" ~ "SHNS3"))
 
-# quick test plot to be sure this joined as it should
-# ggplot(dosat_ppt_23, aes(x = date, y = ppt_mm)) + 
-#   geom_line() + theme_bw() + facet_wrap(.~precip_site)
-
 dosat_ppt_22 <- left_join(dosat_2022_df, ppt_trim,
                           by = c("precip_site" = "site",
                                  "date"))
 dosat_ppt_23 <- left_join(dosat_2023_df, ppt_trim,
                           by = c("precip_site" = "site",
                                  "date"))
+
+# quick test plot to be sure this joined as it should
+ggplot(dosat_ppt_23, aes(x = date, y = ppt_mm)) +
+  geom_line() + theme_bw() + facet_wrap(.~precip_site)
+
 
 ##### Light #####
 dosat_ppt_22 <- dosat_ppt_22 %>%
@@ -317,8 +318,9 @@ dosat_ppt_lt_bp_ws_23 <- left_join(dosat_ppt_lt_bp_23, ws_trim,
                                        "date", "hour"))
 
 # quick test plot to be sure this joined as it should
-# ggplot(dosat_ppt_lt_bp_ws_22, aes(x = date_times, y = windsp_ms)) +
-#   geom_point() + theme_bw() + facet_wrap(location~site)
+ggplot(dosat_ppt_lt_bp_ws_22, aes(x = date_times, 
+                                  y = windsp_ms)) +
+  geom_point() + theme_bw() + facet_wrap(location~site)
 
 ##### Discharge #####
 # Join the first dataset with Q data.
@@ -327,10 +329,15 @@ dosat_ppt_lt_bp_ws_q_22 <- left_join(dosat_ppt_lt_bp_ws_22,
                                    by = c("site" = "Site",
                                           "date", "hour"))
 
+dosat_ppt_lt_bp_ws_23 <- dosat_ppt_lt_bp_ws_23 %>%
+  # create new column for joining with windspeed data
+  mutate(q_site = case_when(site %in% c("BW", "SS") ~ "BW",
+                            site %in% c("GB", "SH") ~ "GB"))
+
 # Join the second dataset with Q data.
 dosat_ppt_lt_bp_ws_q_23 <- left_join(dosat_ppt_lt_bp_ws_23,
                                      q_trim,
-                                     by = c("site" = "Site",
+                                     by = c("q_site" = "Site",
                                             "date", "hour"))
 
 #### Summarize ####
