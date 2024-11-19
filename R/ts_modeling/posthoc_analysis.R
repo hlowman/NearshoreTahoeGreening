@@ -281,34 +281,28 @@ data_2023_multireg <- data_2023_select %>%
 
 ##### Model Fit #####
 
-# Note, after much googling, it seems no packages support
-# the frequentist format as well as the Bayesian ones,
-# so defaulting to a Bayesian approach here only for that
-# reason, not because we necessarily have priors for
-# any of the covariates.
-
 # Fit multilevel multinomial logistic regression model.
-fit_2022 <- brm(group ~ scale_light + scale_wind + scale_q
+fit_2023 <- brm(group ~ scale_light + scale_wind + scale_q
                 + (1|site/sensor), # nested random effect
-                data = data_2022_multireg,
+                data = data_2023_multireg,
                 # specify categorical if vectorized data
                 # specify multinomial if data is a matrix
                 family = categorical())
 
-# Runs in ~20 minutes on laptop.
-# Started at 11:07 am. Finished at 11:33.
+# Runs in ~3 minutes on laptop.
+# Started at 2:37 pm. Finished at 2:40.
 
 # Save model fit.
-saveRDS(fit_2022,
-        "data_model_outputs/brms_2022_111924.rds")
+saveRDS(fit_2023,
+        "data_model_outputs/brms_2023_111924.rds")
 
 ##### Diagnostics #####
 
 # Examine model fit.
-summary(fit_2022)
-# Despite 35 divergent transitions, Rhats look good!
+summary(fit_2023)
+# Only 5 divergent transitions, Rhats look good!
 
-plot(fit_2022, variable = c("b_muCluster1_scale_light",
+plot(fit_2023, variable = c("b_muCluster1_scale_light",
                             "b_muCluster1_scale_wind",
                             "b_muCluster1_scale_q",
                             "b_muCluster2_scale_light",
@@ -317,32 +311,31 @@ plot(fit_2022, variable = c("b_muCluster1_scale_light",
 # Chain mixing looking good!
 
 # Be sure no n_eff are < 0.1
-mcmc_plot(fit_2022, type = "neff")
+mcmc_plot(fit_2023, type = "neff")
 
 # Examine relationships for each predictor.
-# Could think about including these in supplement.
-plot(conditional_effects(fit_2022, effects = "scale_light",
+plot(conditional_effects(fit_2023, effects = "scale_light",
                          categorical = TRUE))
-plot(conditional_effects(fit_2022, effects = "scale_wind",
+plot(conditional_effects(fit_2023, effects = "scale_wind",
                          categorical = TRUE))
-plot(conditional_effects(fit_2022, effects = "scale_q",
+plot(conditional_effects(fit_2023, effects = "scale_q",
                          categorical = TRUE))
 
-# Appears mean daily q is greatest in Cluster 1,
-# cumulative daily light is greatest in Cluster 2,
-# and effect of wind is not as clearly significant.
+# Appears cumulative daily light is again greatest in
+# Cluster 2, high discharge most strongly predicts
+# Neither/Cluster 2, and max windspeed is not significant.
 
 ##### Visualization #####
 
 # Examine the posterior data.
-post_data <- mcmc_intervals_data(fit_2022,
+post_data23 <- mcmc_intervals_data(fit_2023,
                                  point_est = "median", # default = "median"
                                  prob = 0.66, # default = 0.5
                                  prob_outer = 0.95) # default = 0.9
 
-View(post_data)
+View(post_data23)
 
-(fig_custom <- ggplot(post_data %>%
+(fig_custom23 <- ggplot(post_data23 %>%
                         filter(parameter %in% c("b_muCluster1_scale_light",
                                                 "b_muCluster1_scale_wind",
                                                 "b_muCluster1_scale_q",
@@ -371,19 +364,30 @@ View(post_data)
                                 "b_muCluster2_scale_wind" = "Cluster 2 Windspeed",
                                 "b_muCluster2_scale_q" = "Cluster 2 Discharge")) +
     theme_bw() +
-    scale_color_manual(values = c("#FABA39","#1AE4B6", 
-                                  "#FABA39","#1AE4B6",
-                                  "#FABA39","#1AE4B6")) +
+    scale_color_manual(values = c("#A1CAF6","#4662D7FF", 
+                                  "#A1CAF6","#4662D7FF",
+                                  "#A1CAF6","#4662D7FF")) +
     theme(text = element_text(size = 20),
           legend.position = "none"))
 
-# ggsave(fig_custom,
-#        filename = "figures/brms_2022_111924.jpg",
+# ggsave(fig_custom23,
+#        filename = "figures/brms_2023_111924.jpg",
 #        height = 15,
 #        width = 20,
 #        units = "cm")
 
-# STOPPED HERE.
+#### Manuscript Figure ####
+
+# Join the plots above into a single figure.
+(fig_custom_both <- fig_custom + fig_custom23)
+
+# ggsave(fig_custom_both,
+#        filename = "figures/brms_bothyrs_111924.jpg",
+#        height = 15,
+#        width = 40,
+#        units = "cm")
+
+#### Supp. Code ####
 
 # Make dataframe with all possible combinations of values.
 all_data <- data_2022_multireg %>%
@@ -398,11 +402,15 @@ all_predictions <- fit_2022 %>%
 # biomass project and take it from there...
 # see: https://github.com/hlowman/ContinentalRiverBiomass/blob/main/code/beartooth_spring23/13_Posthoc_analyses.R
 
+#### Sources ####
+
 # Online Resources:
+
 # ~ Frequentist Multinomial Regression ~
 # https://www.princeton.edu/~otorres/LogitR101.pdf
 # https://bookdown.org/sarahwerth2024/CategoricalBook/multinomial-logit-regression-r.html
 # https://www.carlosivanrodriguez.com/guides/statistics/logistic-regression/multinomial-regression/
+
 # ~ Bayesian Multinomial Regression ~
 # https://www.andrewheiss.com/blog/2023/08/12/conjoint-multilevel-multinomial-guide/#tldr-moral-of-the-story
 
