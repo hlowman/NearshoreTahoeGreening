@@ -19,8 +19,8 @@ library(tidybayes)
 library(bayesplot)
 
 # Load data.
-data_2022 <- readRDS("data_working/do_covariate_daily_data_2022_110124.rds")
-data_2023 <- readRDS("data_working/do_covariate_daily_data_2023_110124.rds")
+data_2022 <- readRDS("data_working/do_covariate_daily_data_2022_111924.rds")
+data_2023 <- readRDS("data_working/do_covariate_daily_data_2023_111924.rds")
 
 #### 2022 Fit ####
 
@@ -44,7 +44,7 @@ covs22 <- ggpairs(data_2022 %>%
 # Next, we will select only the columns of interest
 # for this analysis, namely:
 # - clustering group (dependent variable)
-# - change in daily light (or cumulative?)
+# - cumulative daily light
 # - maximum daily windspeed
 # - mean daily discharge
 # Ensured, using plot above, that none were correlated
@@ -60,19 +60,20 @@ data_2022_select <- data_2022 %>%
                             location == "20m" ~ "20m",
                             TRUE ~ NA)) %>%
   select(group, site, sensor,
-         delta_light, max_ws, mean_q)
+         sum_light, max_ws, mean_q)
 
 # Examine plots for covariates of interest vs.
 # cluster assignments.
-boxplot(delta_light ~ group, data = data_2022_select)
+boxplot(sum_light ~ group, data = data_2022_select)
 boxplot(max_ws ~ group, data = data_2022_select)
 boxplot(log(mean_q) ~ group, data = data_2022_select)
 
 # Also examine across sites & sensors.
-boxplot(delta_light ~ site, data = data_2022_select)
+boxplot(sum_light ~ site, data = data_2022_select)
 boxplot(max_ws ~ site, data = data_2022_select)
 boxplot(log(mean_q) ~ site, data = data_2022_select)
-boxplot(delta_light ~ sensor, data = data_2022_select)
+# expecting this since BW is a much larger creek
+boxplot(sum_light ~ sensor, data = data_2022_select)
 boxplot(max_ws ~ sensor, data = data_2022_select)
 boxplot(log(mean_q) ~ sensor, data = data_2022_select)
 # Ok, these look alright to include as nested random effects.
@@ -88,7 +89,7 @@ data_2022_select <- data_2022_select %>%
          site = factor(site),
          sensor = factor(sensor)) %>%
   mutate(log_mean_q = log(mean_q)) %>%
-  mutate(scale_light = scale(delta_light),
+  mutate(scale_light = scale(sum_light),
          scale_wind = scale(max_ws),
          scale_q = scale(log_mean_q))
 
@@ -97,7 +98,7 @@ data_2022_multireg <- data_2022_select %>%
   select(group, site, sensor,
          scale_light, scale_wind, scale_q)
 
-# saveRDS(data_2022_multireg, "data_working/clustering_multireg_110124.rds")
+# saveRDS(data_2022_multireg, "data_working/clustering_multireg_111924.rds")
 
 ##### Model Fit #####
 
@@ -116,8 +117,8 @@ fit_2022 <- brm(group ~ scale_light + scale_wind + scale_q
                 family = categorical())
 
 # Save model fit.
-# saveRDS(fit_2022,
-#         "data_model_outputs/brms_2022_110424.rds")
+saveRDS(fit_2022,
+        "data_model_outputs/brms_2022_111924.rds")
 
 ##### Diagnostics #####
 
