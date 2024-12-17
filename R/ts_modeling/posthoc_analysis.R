@@ -127,32 +127,38 @@ data_2022_multireg <- data_2022_select %>%
 # any of the covariates.
 
 # Fit multilevel multinomial logistic regression model.
-fit_2022 <- brm(group ~ scale_light + scale_wind + scale_q
-                + (1|site/sensor), # nested random effect
+fit_2022 <- brm(group ~ scale_light + 
+                  scale_wind + 
+                  scale_q*scale_depth +
+                  (1|site/sensor), # nested random effect
                 data = data_2022_multireg,
                 # specify categorical if vectorized data
                 # specify multinomial if data is a matrix
                 family = categorical())
 
 # Runs in ~20 minutes on laptop.
-# Started at 11:07 am. Finished at 11:33.
+# Started at 2:16 pm. Finished at 2:40.
 
 # Save model fit.
 saveRDS(fit_2022,
-        "data_model_outputs/brms_2022_111924.rds")
+        "data_model_outputs/brms_2022_121724.rds")
 
 ##### Diagnostics #####
 
 # Examine model fit.
 summary(fit_2022)
-# Despite 35 divergent transitions, Rhats look good!
+# Despite 33 divergent transitions, Rhats look good!
 
 plot(fit_2022, variable = c("b_muCluster1_scale_light",
                             "b_muCluster1_scale_wind",
                             "b_muCluster1_scale_q",
+                            "b_muCluster1_scale_depth",
+                            "b_muCluster1_scale_q:scale_depth",
                             "b_muCluster2_scale_light",
                             "b_muCluster2_scale_wind",
-                            "b_muCluster2_scale_q"))
+                            "b_muCluster2_scale_q",
+                            "b_muCluster2_scale_depth",
+                            "b_muCluster2_scale_q:scale_depth"))
 # Chain mixing looking good!
 
 # Be sure no n_eff are < 0.1
@@ -166,10 +172,13 @@ plot(conditional_effects(fit_2022, effects = "scale_wind",
                          categorical = TRUE))
 plot(conditional_effects(fit_2022, effects = "scale_q",
                          categorical = TRUE))
+plot(conditional_effects(fit_2022, effects = "scale_depth",
+                         categorical = TRUE))
 
 # Appears mean daily q is greatest in Cluster 1,
 # cumulative daily light is greatest in Cluster 2,
-# and effect of wind is not as clearly significant.
+# the effect of wind is not as clearly significant,
+# and deeper depths typically correspond to Neither.
 
 ##### Visualization #####
 
@@ -185,40 +194,54 @@ View(post_data)
                           filter(parameter %in% c("b_muCluster1_scale_light",
                                                   "b_muCluster1_scale_wind",
                                                   "b_muCluster1_scale_q",
+                                                  "b_muCluster1_scale_depth",
+                                                  "b_muCluster1_scale_q:scale_depth",
                                                   "b_muCluster2_scale_light",
                                                   "b_muCluster2_scale_wind",
-                                                  "b_muCluster2_scale_q")) %>%
+                                                  "b_muCluster2_scale_q",
+                                                  "b_muCluster2_scale_depth",
+                                                  "b_muCluster2_scale_q:scale_depth")) %>%
                           mutate(par_f = factor(parameter, 
                                                 levels = c("b_muCluster1_scale_light",
                                                            "b_muCluster2_scale_light",
                                                            "b_muCluster1_scale_wind",
                                                            "b_muCluster2_scale_wind",
                                                            "b_muCluster1_scale_q",
-                                                           "b_muCluster2_scale_q"))), 
+                                                           "b_muCluster2_scale_q",
+                                                           "b_muCluster1_scale_depth",
+                                                           "b_muCluster2_scale_depth",
+                                                           "b_muCluster1_scale_q:scale_depth",
+                                                           "b_muCluster2_scale_q:scale_depth"))), 
                         aes(x = m, y = par_f, color = par_f)) +
     geom_linerange(aes(xmin = ll, xmax = hh),
                    size = 2, alpha = 0.5) +
     geom_point(size = 5) +
     vline_at(v = 0) +
-    scale_x_continuous(breaks = c(-1, 0, 1)) +
+    scale_x_continuous(breaks = c(-2, -1, 0, 1, 2)) +
     labs(x = "Posterior Estimates",
          y = "Predictors") +
     scale_y_discrete(labels = c("b_muCluster1_scale_light" = "Cluster 1 Light",
-                                "b_muCluster1_scale_wind" = "Cluster 1 Windspeed",
-                                "b_muCluster1_scale_q" = "Cluster 1 Discharge",
+                                "b_muCluster1_scale_wind" = "Cluster 1 Wind",
+                                "b_muCluster1_scale_q" = "Cluster 1 Q",
+                                "b_muCluster1_scale_depth" = "Cluster 1 Depth",
+                                "b_muCluster1_scale_q:scale_depth" = "Cluster 1 Q x Depth",
                                 "b_muCluster2_scale_light" = "Cluster 2 Light",
-                                "b_muCluster2_scale_wind" = "Cluster 2 Windspeed",
-                                "b_muCluster2_scale_q" = "Cluster 2 Discharge")) +
+                                "b_muCluster2_scale_wind" = "Cluster 2 Wind",
+                                "b_muCluster2_scale_q" = "Cluster 2 Q",
+                                "b_muCluster2_scale_depth" = "Cluster 2 Depth",
+                                "b_muCluster2_scale_q:scale_depth" = "Cluster 2 Q x Depth")) +
     theme_bw() +
     scale_color_manual(values = c("#FABA39","#1AE4B6", 
+                                  "#FABA39","#1AE4B6",
+                                  "#FABA39","#1AE4B6",
                                   "#FABA39","#1AE4B6",
                                   "#FABA39","#1AE4B6")) +
     theme(text = element_text(size = 20),
           legend.position = "none"))
 
 # ggsave(fig_custom,
-#        filename = "figures/brms_2022_111924.jpg",
-#        height = 15,
+#        filename = "figures/brms_2022_121724.jpg",
+#        height = 20,
 #        width = 20,
 #        units = "cm")
 
