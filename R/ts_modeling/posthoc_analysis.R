@@ -22,6 +22,19 @@ library(bayesplot)
 data_2022 <- readRDS("data_working/do_covariate_daily_data_2022_111924.rds")
 data_2023 <- readRDS("data_working/do_covariate_daily_data_2023_111924.rds")
 
+# Adding water depth column to both.
+data_2022 <- data_2022 %>%
+  mutate(w_depth = case_when(location == "3m" ~ 3,
+                             location == "10m" ~ 10,
+                             location == "15m" ~ 15,
+                             location == "20m" ~ 20))
+
+data_2023 <- data_2023 %>%
+  mutate(w_depth = case_when(location == "3m" ~ 3,
+                             location == "10m" ~ 10,
+                             location == "15m" ~ 15,
+                             location == "20m" ~ 20))
+
 #### 2022 Fit ####
 
 ##### Data QAQC #####
@@ -33,7 +46,7 @@ data_2023 <- readRDS("data_working/do_covariate_daily_data_2023_111924.rds")
 # Instead, I'll do a quick gut check of correlated
 # variables.
 covs22 <- ggpairs(data_2022 %>%
-          select(min_dosat:delta_q))
+          select(w_depth, min_dosat:delta_q))
 
 # ggsave(covs22,
 #        filename = "figures/covariates_2022.jpg",
@@ -47,6 +60,7 @@ covs22 <- ggpairs(data_2022 %>%
 # - cumulative daily light
 # - maximum daily windspeed
 # - mean daily discharge
+# - water depth
 # Ensured, using plot above, that none were correlated
 # i.e., above 0.6.
 
@@ -60,22 +74,25 @@ data_2022_select <- data_2022 %>%
                             location == "20m" ~ "20m",
                             TRUE ~ NA)) %>%
   select(group, site, sensor,
-         sum_light, max_ws, mean_q)
+         sum_light, max_ws, mean_q, w_depth)
 
 # Examine plots for covariates of interest vs.
 # cluster assignments.
 boxplot(sum_light ~ group, data = data_2022_select)
 boxplot(max_ws ~ group, data = data_2022_select)
 boxplot(log(mean_q) ~ group, data = data_2022_select)
+boxplot(w_depth ~ group, data = data_2022_select)
 
 # Also examine across sites & sensors.
 boxplot(sum_light ~ site, data = data_2022_select)
 boxplot(max_ws ~ site, data = data_2022_select)
 boxplot(log(mean_q) ~ site, data = data_2022_select)
+boxplot(w_depth ~ site, data = data_2022_select)
 # expecting this since BW is a much larger creek
 boxplot(sum_light ~ sensor, data = data_2022_select)
 boxplot(max_ws ~ sensor, data = data_2022_select)
 boxplot(log(mean_q) ~ sensor, data = data_2022_select)
+boxplot(w_depth ~ sensor, data = data_2022_select)
 # Ok, these look alright to include as nested random effects.
 
 # Need to make factors, log scale q, and scale transform
@@ -91,14 +108,15 @@ data_2022_select <- data_2022_select %>%
   mutate(log_mean_q = log(mean_q)) %>%
   mutate(scale_light = scale(sum_light),
          scale_wind = scale(max_ws),
-         scale_q = scale(log_mean_q))
+         scale_q = scale(log_mean_q),
+         scale_depth = scale(w_depth))
 
 # Create and export data for model fit.
 data_2022_multireg <- data_2022_select %>%
   select(group, site, sensor,
-         scale_light, scale_wind, scale_q)
+         scale_light, scale_wind, scale_q, scale_depth)
 
-# saveRDS(data_2022_multireg, "data_working/clustering_multireg_111924.rds")
+# saveRDS(data_2022_multireg, "data_working/clustering_multireg_121724.rds")
 
 ##### Model Fit #####
 
