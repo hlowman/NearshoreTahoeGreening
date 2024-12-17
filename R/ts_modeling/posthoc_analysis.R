@@ -256,7 +256,7 @@ View(post_data)
 # Instead, I'll do a quick gut check of correlated
 # variables.
 covs23 <- ggpairs(data_2023 %>%
-                    select(min_dosat:delta_q))
+                    select(w_depth,min_dosat:delta_q))
 
 # ggsave(covs23,
 #        filename = "figures/covariates_2023.jpg",
@@ -280,22 +280,28 @@ data_2023_select <- data_2023 %>%
                             replicate == "NS3" ~ "NS3",
                             TRUE ~ NA)) %>%
   select(group, site, sensor,
-         sum_light, max_ws, mean_q)
+         sum_light, max_ws, mean_q) %>%
+  # and creating new column with edited Q data
+  # to delineate no flow at SS/SH sites
+  # making this a small number rather than zero
+  # so log scaling will still work below
+  mutate(mean_q_ed = case_when(site %in% c("BW", "GB") ~ mean_q,
+                               site %in% c("SH", "SS") ~ 0.0001))
 
 # Examine plots for covariates of interest vs.
 # cluster assignments.
 boxplot(sum_light ~ group, data = data_2023_select)
 boxplot(max_ws ~ group, data = data_2023_select)
-boxplot(log(mean_q) ~ group, data = data_2023_select)
+boxplot(log(mean_q_ed) ~ group, data = data_2023_select)
 
 # Also examine across sites & sensors.
 boxplot(sum_light ~ site, data = data_2023_select)
 boxplot(max_ws ~ site, data = data_2023_select)
-boxplot(log(mean_q) ~ site, data = data_2023_select)
+boxplot(log(mean_q_ed) ~ site, data = data_2023_select)
 # again expecting this since BW is a much larger creek
 boxplot(sum_light ~ sensor, data = data_2023_select)
 boxplot(max_ws ~ sensor, data = data_2023_select)
-boxplot(log(mean_q) ~ sensor, data = data_2023_select)
+boxplot(log(mean_q_ed) ~ sensor, data = data_2023_select)
 # Ok, these look alright to include as nested random effects.
 
 # Need to make factors, log scale q, and scale transform
@@ -308,7 +314,7 @@ data_2023_select <- data_2023_select %>%
                                    "Cluster 2")),
          site = factor(site),
          sensor = factor(sensor)) %>%
-  mutate(log_mean_q = log(mean_q)) %>%
+  mutate(log_mean_q = log(mean_q_ed)) %>%
   mutate(scale_light = scale(sum_light),
          scale_wind = scale(max_ws),
          scale_q = scale(log_mean_q))
@@ -318,7 +324,7 @@ data_2023_multireg <- data_2023_select %>%
   select(group, site, sensor,
          scale_light, scale_wind, scale_q)
 
-# saveRDS(data_2023_multireg, "data_working/clustering_multireg23_111924.rds")
+# saveRDS(data_2023_multireg, "data_working/clustering_multireg23_121724.rds")
 
 ##### Model Fit #####
 
