@@ -140,8 +140,8 @@ fit_2022 <- brm(group ~ scale_light +
 # Started at 2:16 pm. Finished at 2:40.
 
 # Save model fit.
-saveRDS(fit_2022,
-        "data_model_outputs/brms_2022_121724.rds")
+# saveRDS(fit_2022,
+#         "data_model_outputs/brms_2022_121724.rds")
 
 ##### Diagnostics #####
 
@@ -214,8 +214,8 @@ View(post_data)
                                                            "b_muCluster2_scale_q:scale_depth"))), 
                         aes(x = m, y = par_f, color = par_f)) +
     geom_linerange(aes(xmin = ll, xmax = hh),
-                   size = 2, alpha = 0.5) +
-    geom_point(size = 5) +
+                   size = 3, alpha = 0.5) +
+    geom_point(size = 6) +
     vline_at(v = 0) +
     scale_x_continuous(breaks = c(-2, -1, 0, 1, 2)) +
     labs(x = "Posterior Estimates",
@@ -231,11 +231,11 @@ View(post_data)
                                 "b_muCluster2_scale_depth" = "Cluster 2 Depth",
                                 "b_muCluster2_scale_q:scale_depth" = "Cluster 2 Q x Depth")) +
     theme_bw() +
-    scale_color_manual(values = c("#FABA39","#1AE4B6", 
-                                  "#FABA39","#1AE4B6",
-                                  "#FABA39","#1AE4B6",
-                                  "#FABA39","#1AE4B6",
-                                  "#FABA39","#1AE4B6")) +
+    scale_color_manual(values = c("#FABA39FF", "#D46F10",
+                                  "#FABA39FF", "#D46F10",
+                                  "#FABA39FF", "#D46F10",
+                                  "#FABA39FF", "#D46F10",
+                                  "#FABA39FF", "#D46F10")) +
     theme(text = element_text(size = 20),
           legend.position = "none"))
 
@@ -329,25 +329,27 @@ data_2023_multireg <- data_2023_select %>%
 ##### Model Fit #####
 
 # Fit multilevel multinomial logistic regression model.
-fit_2023 <- brm(group ~ scale_light + scale_wind + scale_q
-                + (1|site/sensor), # nested random effect
+fit_2023 <- brm(group ~ scale_light + 
+                  scale_wind + 
+                  scale_q +
+                  (1|site/sensor), # nested random effect
                 data = data_2023_multireg,
                 # specify categorical if vectorized data
                 # specify multinomial if data is a matrix
                 family = categorical())
 
 # Runs in ~3 minutes on laptop.
-# Started at 2:37 pm. Finished at 2:40.
+# Started at 3:40 pm. Finished at 3:44.
 
 # Save model fit.
-saveRDS(fit_2023,
-        "data_model_outputs/brms_2023_111924.rds")
+# saveRDS(fit_2023,
+#         "data_model_outputs/brms_2023_121724.rds")
 
 ##### Diagnostics #####
 
 # Examine model fit.
 summary(fit_2023)
-# Only 5 divergent transitions, Rhats look good!
+# Only 1 divergent transition, Rhats look good!
 
 plot(fit_2023, variable = c("b_muCluster1_scale_light",
                             "b_muCluster1_scale_wind",
@@ -398,27 +400,27 @@ View(post_data23)
                                                          "b_muCluster2_scale_q"))), 
                       aes(x = m, y = par_f, color = par_f)) +
     geom_linerange(aes(xmin = ll, xmax = hh),
-                   size = 2, alpha = 0.5) +
-    geom_point(size = 5) +
+                   size = 3, alpha = 0.5) +
+    geom_point(size = 6) +
     vline_at(v = 0) +
-    scale_x_continuous(breaks = c(-1, 0, 1)) +
+    scale_x_continuous(breaks = c(-4, -3, -2, -1, 0, 1)) +
     labs(x = "Posterior Estimates",
          y = "Predictors") +
     scale_y_discrete(labels = c("b_muCluster1_scale_light" = "Cluster 1 Light",
-                                "b_muCluster1_scale_wind" = "Cluster 1 Windspeed",
-                                "b_muCluster1_scale_q" = "Cluster 1 Discharge",
+                                "b_muCluster1_scale_wind" = "Cluster 1 Wind",
+                                "b_muCluster1_scale_q" = "Cluster 1 Q",
                                 "b_muCluster2_scale_light" = "Cluster 2 Light",
-                                "b_muCluster2_scale_wind" = "Cluster 2 Windspeed",
-                                "b_muCluster2_scale_q" = "Cluster 2 Discharge")) +
+                                "b_muCluster2_scale_wind" = "Cluster 2 Wind",
+                                "b_muCluster2_scale_q" = "Cluster 2 Q")) +
     theme_bw() +
-    scale_color_manual(values = c("#A1CAF6","#4662D7FF", 
-                                  "#A1CAF6","#4662D7FF",
-                                  "#A1CAF6","#4662D7FF")) +
+    scale_color_manual(values = c("#0FB2D3", "#026779",
+                                  "#0FB2D3", "#026779",
+                                  "#0FB2D3", "#026779")) +
     theme(text = element_text(size = 20),
           legend.position = "none"))
 
 # ggsave(fig_custom23,
-#        filename = "figures/brms_2023_111924.jpg",
+#        filename = "figures/brms_2023_121724.jpg",
 #        height = 15,
 #        width = 20,
 #        units = "cm")
@@ -426,11 +428,12 @@ View(post_data23)
 #### Manuscript Figure ####
 
 # Join the plots above into a single figure.
-(fig_custom_both <- fig_custom + fig_custom23)
+(fig_custom_both <- fig_custom + fig_custom23 +
+   plot_annotation(tag_levels = 'A'))
 
 # ggsave(fig_custom_both,
-#        filename = "figures/brms_bothyrs_111924.jpg",
-#        height = 15,
+#        filename = "figures/brms_bothyrs_121824.jpg",
+#        height = 20,
 #        width = 40,
 #        units = "cm")
 

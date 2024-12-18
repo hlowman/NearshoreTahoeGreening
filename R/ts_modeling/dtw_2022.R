@@ -20,6 +20,7 @@ library(patchwork)
 
 # Load data.
 data <- readRDS("data_working/do_data_2022_dailylist_092324.rds")
+
 data_trim <- readRDS("data_working/do_data_2022_trim_dailylist_082124.rds")
 
 #### Tidy ####
@@ -331,14 +332,15 @@ summary_df <- full_df %>%
     geom_ribbon(alpha = 0.5,
                 linewidth = 0.1) + 
     scale_color_manual(values = c("#FABA39FF", 
-                                  "#1AE4B6FF",
-                                  "gray60")) +
+                                  "#D46F10",
+                                  "gray70")) +
     scale_fill_manual(values = c("#FABA39FF", 
-                                 "#1AE4B6FF",
-                                 "gray60")) +
-    labs(x = "Hour of Day (+4)", 
+                                 "#D46F10",
+                                 "gray70")) +
+    labs(x = "Hour of Day", 
          y = "Dissolved Oxygen (% Saturation)") +
-    scale_x_continuous(breaks = c(0,5,10,15,20)) +
+    scale_x_continuous(breaks = c(0,5,10,15,20),
+                       labels = c(4,9,14,19,24)) +
     theme_bw() +
     facet_wrap(group~.) +
     theme(legend.position = "none",
@@ -395,8 +397,9 @@ counts_daily <- full_df_daily %>%
                                    "deep"))), 
                     aes(x = month)) +
               geom_bar(aes(fill = factor(group))) +
-              scale_fill_manual(values = c("#FABA39","#1AE4B6",
-                                           "gray60")) +
+              scale_fill_manual(values = c("#FABA39FF", 
+                                           "#D46F10",
+                                           "gray80")) +
               # customizing which months print below the x axis
               scale_x_discrete(breaks = levels(full_df_daily$month)[c(T, F, T, F, T, F, T, F, T, F, T)]) +
               labs(x = "Month of Year",
@@ -407,10 +410,11 @@ counts_daily <- full_df_daily %>%
     theme(text = element_text(size = 20)))
 
 # Export figure.
-(fig_all <- (fig2_curves | fig_months))
+(fig_all <- (fig2_curves | fig_months) +
+    plot_annotation(tag_levels = 'A'))
 
 # ggsave(plot = fig_all,
-#        filename = "figures/dtw_2022_11724.png",
+#        filename = "figures/dtw_2022_121824.png",
 #        width = 40,
 #        height = 15,
 #        units = "cm")

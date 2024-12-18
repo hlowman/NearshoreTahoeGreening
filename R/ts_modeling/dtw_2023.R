@@ -19,6 +19,7 @@ library(hms)
 
 # Load data.
 data <- readRDS("data_working/do_data_2023_dailylist_111724.rds")
+
 data_trim <- readRDS("data_working/do_data_2023_trim_dailylist_082124.rds")
 
 #### Tidy ####
@@ -326,15 +327,16 @@ summary_df <- full_df %>%
     geom_line(linewidth = 2) +
     geom_ribbon(alpha = 0.5,
                 linewidth = 0.1) + 
-    scale_color_manual(values = c("#A1CAF6",
-                                  "#4662D7FF", 
-                                  "gray60")) +
-    scale_fill_manual(values = c("#A1CAF6",
-                                 "#4662D7FF", 
-                                 "gray60")) +
-    labs(x = "Hour of Day (+4)", 
+    scale_color_manual(values = c("#0FB2D3", 
+                                  "#026779", 
+                                  "gray70")) +
+    scale_fill_manual(values = c("#0FB2D3", 
+                                 "#026779", 
+                                 "gray70")) +
+    labs(x = "Hour of Day", 
          y = "Dissolved Oxygen (% Saturation)") +
-    scale_x_continuous(breaks = c(0,5,10,15,20)) +
+    scale_x_continuous(breaks = c(0,5,10,15,20),
+                       labels = c(4,9,14,19,24)) +
     theme_bw() +
     facet_wrap(group~.) +
     theme(legend.position = "none",
@@ -380,28 +382,29 @@ counts_daily <- full_df_daily %>%
 
 (fig_months <- ggplot(full_df_daily %>%
                         mutate(site_f = factor(site,
-                                levels = c("BW", "SS", 
-                                           "GB", "SH"))), 
+                                levels = c("BW", "GB", 
+                                           "SS", "SH"))), 
                       aes(x = month)) +
     geom_bar(aes(fill = factor(group))) +
-    scale_fill_manual(values = c("#A1CAF6",
-                                 "#4662D7FF", 
-                                 "gray60")) +
+    scale_fill_manual(values = c("#0FB2D3", 
+                                 "#026779",
+                                 "gray80")) +
     labs(x = "Month of Year",
          y = "Timeseries count (days)",
          fill = "Cluster ID") +
     theme_bw() +
-    facet_grid(site_f~., scales = "free") +
+    facet_wrap(.~site_f, scales = "free_y") +
     theme(text = element_text(size = 20)))
 
 # Export figure.
-(fig_all <- fig2_curves | fig_months)
+(fig_all <- (fig2_curves | fig_months) +
+    plot_annotation(tag_levels = 'A'))
 
-# ggsave(plot = fig_all,
-#        filename = "figures/dtw_2023_111724.png",
-#        width = 40,
-#        height = 15,
-#        units = "cm")
+ggsave(plot = fig_all,
+       filename = "figures/dtw_2023_121824.png",
+       width = 40,
+       height = 15,
+       units = "cm")
 
 ###### Posthoc analyses #####
 
