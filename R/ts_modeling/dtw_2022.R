@@ -311,6 +311,11 @@ summary_df <- full_df %>%
             q25DO_sat = quantile(DO_sat, 
                                  probs = 0.25),
             q75DO_sat = quantile(DO_sat, 
+                                 probs = 0.75),
+            medianDOscale_sat = median(scaled_DO_sat),
+            q25DOscale_sat = quantile(scaled_DO_sat, 
+                                 probs = 0.25),
+            q75DOscale_sat = quantile(scaled_DO_sat, 
                                  probs = 0.75)) %>%
   ungroup()
 
@@ -338,11 +343,44 @@ summary_df <- full_df %>%
                                  "#D46F10",
                                  "gray70")) +
     labs(x = "Hour of Day", 
-         y = "Dissolved Oxygen (% Saturation)") +
+         y = "Dissolved Oxygen (% sat.)") +
     scale_x_continuous(breaks = c(0,5,10,15,20),
                        labels = c(4,9,14,19,24)) +
     theme_bw() +
     facet_wrap(group~.) +
+    theme(legend.position = "none",
+          text = element_text(size = 20)))
+
+(fig2_scaled <- ggplot(summary_df %>%
+                         filter(group %in% c("Cluster 1",
+                                            "Cluster 2")), 
+                       aes(x = hour_index, 
+                           y = medianDOscale_sat,
+                           ymin = q25DOscale_sat, 
+                           ymax = q75DOscale_sat,
+                           color = group, 
+                           fill = group)) +
+    # adding annotation to better delineate time of day
+    annotate('rect', xmin = 0, xmax = 3,
+             ymin = -1.5, ymax = 1.5,
+             alpha = 0.15, fill = "black") + #sunrise
+    annotate('rect', xmin = 14, xmax = 24,
+             ymin = -1.5, ymax = 1.5,
+             alpha = 0.15, fill = "black") + #sunset
+    geom_line(linewidth = 2) +
+    geom_ribbon(alpha = 0.5,
+                linewidth = 0.1) + 
+    scale_color_manual(values = c("#FABA39FF", 
+                                  "#D46F10",
+                                  "gray70")) +
+    scale_fill_manual(values = c("#FABA39FF", 
+                                 "#D46F10",
+                                 "gray70")) +
+    labs(x = "Hour of Day", 
+         y = "Dissolved Oxygen (scaled)") +
+    scale_x_continuous(breaks = c(0,5,10,15,20),
+                       labels = c(4,9,14,19,24)) +
+    theme_bw() +
     theme(legend.position = "none",
           text = element_text(size = 20)))
 
@@ -385,6 +423,11 @@ counts_daily <- full_df_daily %>%
   count(group) %>%
   ungroup()
 
+# New facet label names
+site.labs <- c("West Shore",
+               "East Shore")
+names(site.labs) <- c("BW", "GB")
+
 (fig_months <- ggplot(full_df_daily %>%
                       mutate(location_f = factor(
                         case_when(location == "3m" ~ "nearshore",
@@ -406,18 +449,19 @@ counts_daily <- full_df_daily %>%
                    y = "Timeseries count (days)",
                    fill = "Cluster ID") +
               theme_bw() +
-              facet_grid(location_f~site, scales = "free") +
+              facet_grid(location_f~site, scales = "free",
+                         labeller = labeller(site = site.labs)) +
     theme(text = element_text(size = 20)))
 
 # Export figure.
-(fig_all <- (fig2_curves | fig_months) +
+(fig_all <- ((fig2_curves / fig2_scaled) | fig_months) +
     plot_annotation(tag_levels = 'A'))
 
-# ggsave(plot = fig_all,
-#        filename = "figures/dtw_2022_121824.png",
-#        width = 40,
-#        height = 15,
-#        units = "cm")
+ggsave(plot = fig_all,
+       filename = "figures/dtw_2022_122324.png",
+       width = 40,
+       height = 20,
+       units = "cm")
 
 ###### Posthoc analyses #####
 
