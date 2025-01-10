@@ -22,12 +22,12 @@ library(patchwork)
 # First load in raw DO lists.
 # hourly timestep
 dosat_2022 <- readRDS("data_working/do_data_2022_dailylist_092324.rds")
-dosat_2023 <- readRDS("data_working/do_data_2023_dailylist_111724.rds")
+dosat_2023 <- readRDS("data_working/do_data_2023_dailylist_011025.rds")
 
 # As well as clusters resulting from
 # dynamic time warping analysis.
 clusters_2022 <- readRDS("data_working/dtw_clusters_2022_110124.rds")
-clusters_2023 <- readRDS("data_working/dtw_clusters_2023_111724.rds")
+clusters_2023 <- readRDS("data_working/dtw_clusters_2023_011025.rds")
 
 # Next load in precip.
 # daily timestep
@@ -422,6 +422,6 @@ summary_23 <- dosat_ppt_lt_bp_ws_q_23 %>%
 # saveRDS(summary_22,
 #         "data_working/do_covariate_daily_data_2022_111924.rds")
 # saveRDS(summary_23,
-#         "data_working/do_covariate_daily_data_2023_111924.rds")
+#         "data_working/do_covariate_daily_data_2023_011025.rds")
 
 # End of script.
