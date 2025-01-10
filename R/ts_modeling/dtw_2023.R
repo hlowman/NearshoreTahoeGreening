@@ -296,7 +296,7 @@ names(site.labs) <- c("BW", "SS", "GB", "SH")
     theme(text = element_text(size = 20)))
 
 # Export figure.
-(fig_all <- (fig2_curves / fig2_scaled) | fig_months +
+(fig_all <- ((fig2_curves / fig2_scaled) | fig_months) +
     plot_annotation(tag_levels = 'A'))
 
 # ggsave(plot = fig_all,
