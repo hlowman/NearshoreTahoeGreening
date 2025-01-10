@@ -20,7 +20,7 @@ library(bayesplot)
 
 # Load data.
 data_2022 <- readRDS("data_working/do_covariate_daily_data_2022_111924.rds")
-data_2023 <- readRDS("data_working/do_covariate_daily_data_2023_111924.rds")
+data_2023 <- readRDS("data_working/do_covariate_daily_data_2023_011025.rds")
 
 # Adding water depth column to both.
 data_2022 <- data_2022 %>%
@@ -324,7 +324,7 @@ data_2023_multireg <- data_2023_select %>%
   select(group, site, sensor,
          scale_light, scale_wind, scale_q)
 
-# saveRDS(data_2023_multireg, "data_working/clustering_multireg23_121724.rds")
+# saveRDS(data_2023_multireg, "data_working/clustering_multireg23_011025.rds")
 
 ##### Model Fit #####
 
@@ -339,17 +339,17 @@ fit_2023 <- brm(group ~ scale_light +
                 family = categorical())
 
 # Runs in ~3 minutes on laptop.
-# Started at 3:40 pm. Finished at 3:44.
+# Started at 3:37 pm. Finished at 3:40.
 
 # Save model fit.
-# saveRDS(fit_2023,
-#         "data_model_outputs/brms_2023_121724.rds")
+saveRDS(fit_2023,
+        "data_model_outputs/brms_2023_011025.rds")
 
 ##### Diagnostics #####
 
 # Examine model fit.
 summary(fit_2023)
-# Only 1 divergent transition, Rhats look good!
+# Only 2 divergent transitions, Rhats look good!
 
 plot(fit_2023, variable = c("b_muCluster1_scale_light",
                             "b_muCluster1_scale_wind",
@@ -370,9 +370,9 @@ plot(conditional_effects(fit_2023, effects = "scale_wind",
 plot(conditional_effects(fit_2023, effects = "scale_q",
                          categorical = TRUE))
 
-# Appears cumulative daily light is again greatest in
-# Cluster 2, high discharge most strongly predicts
-# Neither/Cluster 2, and max windspeed is not significant.
+# Appears cumulative daily light is greatest in
+# Cluster 1, high discharge most strongly predicts
+# Neither/Cluster 1, and max windspeed is not significant.
 
 ##### Visualization #####
 
@@ -420,7 +420,7 @@ View(post_data23)
           legend.position = "none"))
 
 # ggsave(fig_custom23,
-#        filename = "figures/brms_2023_121724.jpg",
+#        filename = "figures/brms_2023_011025.jpg",
 #        height = 15,
 #        width = 20,
 #        units = "cm")
@@ -428,11 +428,11 @@ View(post_data23)
 #### Manuscript Figure ####
 
 # Join the plots above into a single figure.
-(fig_custom_both <- fig_custom + fig_custom23 +
+(fig_custom_both <- (fig_custom + fig_custom23) +
    plot_annotation(tag_levels = 'A'))
 
 # ggsave(fig_custom_both,
-#        filename = "figures/brms_bothyrs_121824.jpg",
+#        filename = "figures/brms_bothyrs_011025.jpg",
 #        height = 20,
 #        width = 40,
 #        units = "cm")
