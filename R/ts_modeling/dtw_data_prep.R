@@ -16,7 +16,6 @@ library(suntools)
 library(here)
 
 # Load data.
-#data <- readRDS("data_raw/24_DO_offset.rds")
 data <- readRDS("data_working/24_DOsat_offset.rds")
 
 #### TIDY ####
@@ -235,7 +234,7 @@ data_2022 <- data_indexed_filtered %>%
 data_2023 <- data_indexed_filtered %>%
   # only use data after installation of cinderblocks at
   # near stream sites
-  filter(date >= ymd_hms("2023-05-01 04:00:00")) %>%
+  filter(date >= ymd_hms("2023-06-01 04:00:00")) %>%
   group_by(ID_index) %>%
   mutate(count = n()) %>%
   ungroup() %>% 
@@ -275,7 +274,8 @@ data_2022_trim <- left_join(data_2022, data_2022_completedays) %>%
   # Ok, checked here to be sure we aren't getting values >24
   filter(count == 24) %>%
   # and re-do the DO scaling
-  mutate(scaled_DO_mg_L = scale(DO_mg_L))
+  select(-scaled_DO_sat) %>%
+  mutate(scaled_DO_sat = scale(DO_sat))
 # 19,248/66,480 obs remaining, loss of 72%
 
 # And need to do the same for the 2023 data.
@@ -302,14 +302,15 @@ data_2023_trim <- left_join(data_2023, data_2023_completedays) %>%
   # Ok, checked here to be sure we aren't getting values >24
   filter(count == 24) %>%
   # and re-do the DO scaling
-  mutate(scaled_DO_mg_L = scale(DO_mg_L))
-# 15,240/27,288 obs remaining, loss of 45%
+  select(-scaled_DO_sat) %>%
+  mutate(scaled_DO_sat = scale(DO_sat))
+# 12,792/19,704 obs remaining, loss of 35%
 
 # Finally, split into lists based on unique IDs.
 data_2022_l <- split(data_2022, data_2022$ID_index)
 data_2023_l <- split(data_2023, data_2023$ID_index)
-# data_2022_trim_l <- split(data_2022_trim, data_2022_trim$ID_index)
-# data_2023_trim_l <- split(data_2023_trim, data_2023_trim$ID_index)
+data_2022_trim_l <- split(data_2022_trim, data_2022_trim$ID_index)
+data_2023_trim_l <- split(data_2023_trim, data_2023_trim$ID_index)
 
 #### EXPORT ####
 
@@ -317,10 +318,10 @@ data_2023_l <- split(data_2023, data_2023$ID_index)
 # saveRDS(data_2022_l,
 #         "data_working/do_data_2022_dailylist_092324.rds")
 # saveRDS(data_2023_l,
-#         "data_working/do_data_2023_dailylist_111724.rds")
+#         "data_working/do_data_2023_dailylist_011025.rds")
 # saveRDS(data_2022_trim_l,
-#         "data_working/do_data_2022_trim_dailylist_082124.rds")
+#         "data_working/do_data_2022_trim_dailylist_011025.rds")
 # saveRDS(data_2023_trim_l,
-#         "data_working/do_data_2023_trim_dailylist_082124.rds")
+#         "data_working/do_data_2023_trim_dailylist_011025.rds")
 
 # End of script.
