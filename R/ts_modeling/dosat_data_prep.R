@@ -95,18 +95,13 @@ o2.at.sat <- function(temp, bp){
   # to mg/L per USGS memo 2011.03
   mgL.mlL <- 1.42905
   
-  # NEED TO INVESTIGATE BC THIS SEEMS TO BE THE 
-  # CORRECTION FACTOR FOR THE WEISS, NOT THE GARCIA
-  # AND GORDON EQUATIONS!!!
-  # pressure correction per USGS memos 81.11 and 81.15. 
-  # calculate u by Antoine equation.
-  # u <- 10 ^ (8.10765 - 1750.286 / (235 + temp)) # u is vapor pressure of water; water temp is used as an approximation for water & air temp at the air-water boundary
-  # press.corr <- (bp_mmHg - u) / (760 - u) # pressure correction is ratio of current to standard pressure after correcting for vapor pressure of water.
-  
-  # satO = baseline[DO] * conversion from mL/L to mg/L * pressure
+  # this matches the `garcia-benson` option in the LM.o2.at.sat.R
+  # in the LakeMetabolizer workflow
     
     satO_base <-(exp(2.00907 + 3.22014 * (log((298.15-temp) / (273.15 + temp))) + 4.0501 * (log((298.15 - temp) / (273.15 + temp))) ^ 2 + 4.94457 * (log((298.15 - temp) / (273.15 + temp))) ^ 3 - 0.256847 * (log((298.15 - temp) / (273.15 + temp))) ^ 4 + 3.88767 * (log((298.15 - temp) / (273.15 + temp))) ^ 5))
     
+    # satO = baseline[DO] * conversion from mL/L to mg/L * pressure
+  
     satO_correctunits <- satO_base * mgL.mlL * bp_atm
     
     return(satO_correctunits)
@@ -114,9 +109,12 @@ o2.at.sat <- function(temp, bp){
 }
 
 dosat_data <- merged_filled_data %>%
+  # calculate oxygen at saturation in mg/L
   mutate(do_eq = o2.at.sat(temp = Temperature_deg_C, 
                            bp = baro_Pa)) %>% 
+  # divide measured oxygen (with correction) by oxygen at saturation
   mutate(o2_sat = Dissolved_Oxygen_offset/do_eq) %>%
+  # multiply ratio by 100 to get in percent
   mutate(o2_sat100 = o2_sat*100)
 
 #### Export ####
