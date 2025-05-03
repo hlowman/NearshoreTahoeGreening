@@ -28,6 +28,8 @@ data_hourly <- data %>%
            Flag1, Flag2, Flag3, Flag4) %>%
   summarize(DO_sat = mean(o2_sat100, 
                            na.rm = TRUE),
+            DO_mgL = mean(Dissolved_Oxygen_offset,
+                          na.rm = TRUE),
             Temp_C = mean(Temperature_deg_C,
                           na.rm = TRUE)) %>%
   ungroup()
@@ -196,7 +198,7 @@ data_full_hourly <- full_join(dates_all, data_hourly,
 #### TRIM ####
 
 data_indexed_filtered <- data_full_hourly %>%
-  drop_na(DO_sat) %>% # removes rows where DO is NA
+  drop_na(DO_mgL) %>% # removes rows where DO is NA
   # filter for days that pass the flags
   # 1 - deployment/retrieval days
   # 2 - sensor quality (Q) < 0.7
@@ -229,6 +231,7 @@ data_2022 <- data_indexed_filtered %>%
   filter(count == 24) %>%
   # and scale calibration-corrected % saturation DO values
   mutate(scaled_DO_sat = scale(DO_sat),
+         scaled_DO_mgL = scale(DO_mgL),
          scaled_temp = scale(Temp_C))
 
 data_2023 <- data_indexed_filtered %>%
@@ -245,80 +248,85 @@ data_2023 <- data_indexed_filtered %>%
   # and scale % DO saturation values
   # scale = (x - mean(x))/sd(x)
   mutate(scaled_DO_sat = scale(DO_sat),
+         scaled_DO_mgL = scale(DO_mgL),
          scaled_temp = scale(Temp_C))
 
 # Creating additional 2022/2023 datasets for complete cases,
 # i.e., days on which we have data at all sites.
 # NOTE THIS WAS DONE FOR PREVIOUS mg/L DATA.
-data_2022_sitedays <- data_2022 %>%
-  select(date, site, location, replicate) %>%
-  unique() %>%
-  group_by(site, date) %>%
-  summarize(obs_count = n()) %>%
-  ungroup()
+# data_2022_sitedays <- data_2022 %>%
+#   select(date, site, location, replicate) %>%
+#   unique() %>%
+#   group_by(site, date) %>%
+#   summarize(obs_count = n()) %>%
+#   ungroup()
 
 # All 6 instruments should be functioning so let's filter
 # for those.
-data_2022_completedays <- data_2022_sitedays %>%
-  mutate(complete_case = case_when(obs_count == 6 ~ "YES",
-                                   TRUE ~ "NO"))
+# data_2022_completedays <- data_2022_sitedays %>%
+#   mutate(complete_case = case_when(obs_count == 6 ~ "YES",
+#                                    TRUE ~ "NO"))
 
 # And use it to trim the 2022 dataset.
-data_2022_trim <- left_join(data_2022, data_2022_completedays) %>%
-  filter(complete_case == "YES") %>%
-  # re-do the grouping to be sure only days with
-  # 24 measures are included once more
-  group_by(ID_index) %>%
-  mutate(count = n()) %>%
-  ungroup() %>% 
-  # Ok, checked here to be sure we aren't getting values >24
-  filter(count == 24) %>%
-  # and re-do the DO scaling
-  select(-scaled_DO_sat) %>%
-  mutate(scaled_DO_sat = scale(DO_sat))
+# data_2022_trim <- left_join(data_2022, data_2022_completedays) %>%
+#   filter(complete_case == "YES") %>%
+#   # re-do the grouping to be sure only days with
+#   # 24 measures are included once more
+#   group_by(ID_index) %>%
+#   mutate(count = n()) %>%
+#   ungroup() %>% 
+#   # Ok, checked here to be sure we aren't getting values >24
+#   filter(count == 24) %>%
+#   # and re-do the DO scaling
+#   select(-scaled_DO_sat) %>%
+#   mutate(scaled_DO_sat = scale(DO_sat))
 # 19,248/66,480 obs remaining, loss of 72%
 
 # And need to do the same for the 2023 data.
-data_2023_sitedays <- data_2023 %>%
-  select(date, site, location, replicate) %>%
-  unique() %>%
-  group_by(site, date) %>%
-  summarize(obs_count = n()) %>%
-  ungroup()
+# data_2023_sitedays <- data_2023 %>%
+#   select(date, site, location, replicate) %>%
+#   unique() %>%
+#   group_by(site, date) %>%
+#   summarize(obs_count = n()) %>%
+#   ungroup()
 
 # All 3 instruments should be functioning on each shore.
-data_2023_completedays <- data_2023_sitedays %>%
-  mutate(complete_case = case_when(obs_count == 3 ~ "YES",
-                                   TRUE ~ "NO"))
+# data_2023_completedays <- data_2023_sitedays %>%
+#   mutate(complete_case = case_when(obs_count == 3 ~ "YES",
+#                                    TRUE ~ "NO"))
 
 # And use it to trim the 2023 dataset.
-data_2023_trim <- left_join(data_2023, data_2023_completedays) %>%
-  filter(complete_case == "YES") %>%
-  # re-do the grouping to be sure only days with
-  # 24 measures are included once more
-  group_by(ID_index) %>%
-  mutate(count = n()) %>%
-  ungroup() %>% 
-  # Ok, checked here to be sure we aren't getting values >24
-  filter(count == 24) %>%
-  # and re-do the DO scaling
-  select(-scaled_DO_sat) %>%
-  mutate(scaled_DO_sat = scale(DO_sat))
+# data_2023_trim <- left_join(data_2023, data_2023_completedays) %>%
+#   filter(complete_case == "YES") %>%
+#   # re-do the grouping to be sure only days with
+#   # 24 measures are included once more
+#   group_by(ID_index) %>%
+#   mutate(count = n()) %>%
+#   ungroup() %>% 
+#   # Ok, checked here to be sure we aren't getting values >24
+#   filter(count == 24) %>%
+#   # and re-do the DO scaling
+#   select(-scaled_DO_sat) %>%
+#   mutate(scaled_DO_sat = scale(DO_sat))
 # 12,792/19,704 obs remaining, loss of 35%
 
 # Finally, split into lists based on unique IDs.
 data_2022_l <- split(data_2022, data_2022$ID_index)
 data_2023_l <- split(data_2023, data_2023$ID_index)
-data_2022_trim_l <- split(data_2022_trim, data_2022_trim$ID_index)
-data_2023_trim_l <- split(data_2023_trim, data_2023_trim$ID_index)
+# data_2022_trim_l <- split(data_2022_trim, data_2022_trim$ID_index)
+# data_2023_trim_l <- split(data_2023_trim, data_2023_trim$ID_index)
 
 #### EXPORT ####
 
-# Save out these datasets for use in analyses.
-# saveRDS(data_2022_l,
-#         "data_working/do_data_2022_dailylist_092324.rds")
-# saveRDS(data_2023_l,
-#         "data_working/do_data_2023_dailylist_011025.rds")
+# Save out these datasets for use in analyses and figure making.
+# saveRDS(data_2022,
+#         "data_working/do_data_2022_042925.rds")
+# saveRDS(data_2023,
+#         "data_working/do_data_2023_042925.rds")
+saveRDS(data_2022_l,
+        "data_working/do_data_2022_dailylist_050225.rds")
+saveRDS(data_2023_l,
+        "data_working/do_data_2023_dailylist_050225.rds")
 # saveRDS(data_2022_trim_l,
 #         "data_working/do_data_2022_trim_dailylist_011025.rds")
 # saveRDS(data_2023_trim_l,
