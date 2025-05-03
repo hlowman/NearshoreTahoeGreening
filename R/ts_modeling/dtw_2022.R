@@ -11,6 +11,7 @@
 
 # Load packages.
 library(lubridate)
+library(hms)
 library(tidyverse)
 library(data.table)
 library(here)
@@ -19,19 +20,19 @@ library(viridis)
 library(patchwork)
 
 # Load data.
-data <- readRDS("data_working/do_data_2022_dailylist_092324.rds")
+data <- readRDS("data_working/do_data_2022_dailylist_050225.rds")
 
-data_trim <- readRDS("data_working/do_data_2022_trim_dailylist_082124.rds")
+#data_trim <- readRDS("data_working/do_data_2022_trim_dailylist_082124.rds")
 
 #### Tidy ####
 
 # Must include ONLY DO values in the input dataset.
 # And using scale-transformed ones.
-data_DO <- lapply(data, function(x) {x$scaled_DO_sat})
-data_trim_DO <- lapply(data_trim, function(x) {x$scaled_DO_mg_L})
+data_DO <- lapply(data, function(x) {x$scaled_DO_mgL})
+#data_trim_DO <- lapply(data_trim, function(x) {x$scaled_DO_mg_L})
 
 # Or temperature data for the supplementary model fits.
-data_Temp <- lapply(data, function(x) {x$scaled_temp})
+#data_Temp <- lapply(data, function(x) {x$scaled_temp})
 
 #### Fuzzy Fit ####
 
@@ -76,12 +77,15 @@ dtw_fuzzy_2_12 <- tsclust(data_DO,
 # Takes about 10 hours on my laptop
 # (started 12:03pm, finished at 10:40 am)
 
+# Takes about 2 hours on UNR Desktop
+# (started 10:00am, finished at 11:48 am)
+
 # Takes about 1 hour on Pinyon
 # Run2 (started 4:49pm, finished at 5:53pm)
 
 # Export model fit.
 saveRDS(dtw_fuzzy_2_12, 
-        "data_model_outputs/dtw_2022_fuzzy_090624.rds")
+        "data_model_outputs/dtw_2022_fuzzy_050225.rds")
 
 # Examine cluster validity indices. Be patient - takes a moment.
 dtw_results <- lapply(dtw_fuzzy_2_12, cvi)
@@ -104,8 +108,7 @@ dtw_results_df <- t(dtw_results_df)
 # Examine the most parsimonious clusterings.
 plot(dtw_fuzzy_2_12[[1]]) # Per MPC, K, and T metrics (2 clusters)
 plot(dtw_fuzzy_2_12[[1]], type = "c")
-plot(dtw_fuzzy_2_12[[9]]) # Per SC metric (10 clusters)
-plot(dtw_fuzzy_2_12[[8]]) # Per PBMF metric (9 clusters)
+plot(dtw_fuzzy_2_12[[8]]) # Per SC&PBMF metrics (9 clusters)
 
 # Export cluster groupings for most parsimonious model fit.
 dtw_clusters <- as.data.frame(dtw_fuzzy_2_12[[1]]@fcluster) %>%
@@ -123,7 +126,7 @@ dtw_clusters$group <- case_when(dtw_clusters$cluster_1 >= 0.9 ~ "Cluster 1",
 
 # Export for use in posthoc analyses.
 saveRDS(dtw_clusters,
-        "data_working/dtw_clusters_2022_110124.rds")
+        "data_working/dtw_clusters_2022_050225.rds")
 
 # And plot these results.
 # First need to make the dataset into a df.
@@ -178,31 +181,31 @@ summary_df <- full_df %>%
   # across the daily time series in each cluster...
   group_by(group, hour_index) %>%
   # calculate the median and interquartile ranges
-  summarize(medianDO_sat = median(DO_sat),
-            q25DO_sat = quantile(DO_sat, 
+  summarize(medianDO_mgL = median(DO_mgL),
+            q25DO_mgL = quantile(DO_mgL, 
                                  probs = 0.25),
-            q75DO_sat = quantile(DO_sat, 
+            q75DO_mgL = quantile(DO_mgL, 
                                  probs = 0.75),
-            medianDOscale_sat = median(scaled_DO_sat),
-            q25DOscale_sat = quantile(scaled_DO_sat, 
+            medianDOscale_mgL = median(scaled_DO_mgL),
+            q25DOscale_mgL = quantile(scaled_DO_mgL, 
                                  probs = 0.25),
-            q75DOscale_sat = quantile(scaled_DO_sat, 
+            q75DOscale_mgL = quantile(scaled_DO_mgL, 
                                  probs = 0.75)) %>%
   ungroup()
 
 (fig2_curves <- ggplot(summary_df, 
                        aes(x = hour_index, 
-                           y = medianDO_sat,
-                           ymin = q25DO_sat, 
-                           ymax = q75DO_sat,
+                           y = medianDO_mgL,
+                           ymin = q25DO_mgL, 
+                           ymax = q75DO_mgL,
                            color = group, 
                            fill = group)) +
     # adding annotation to better delineate time of day
     annotate('rect', xmin = 0, xmax = 3,
-             ymin = 92, ymax = 113,
+             ymin = 7.5, ymax = 10,
              alpha = 0.15, fill = "black") + #sunrise
     annotate('rect', xmin = 14, xmax = 24,
-             ymin = 92, ymax = 113,
+             ymin = 7.5, ymax = 10,
              alpha = 0.15, fill = "black") + #sunset
     geom_line(linewidth = 2) +
     geom_ribbon(alpha = 0.5,
@@ -214,21 +217,25 @@ summary_df <- full_df %>%
                                  "#D46F10",
                                  "gray70")) +
     labs(x = "Hour of Day", 
-         y = "Dissolved Oxygen (% sat.)") +
+         y = "Dissolved Oxygen (mg/L)") +
     scale_x_continuous(breaks = c(0,5,10,15,20),
                        labels = c(4,9,14,19,24)) +
     theme_bw() +
     facet_wrap(group~.) +
     theme(legend.position = "none",
-          text = element_text(size = 20)))
+          text = element_text(size = 18)))
+
+# Calculate mean solar noon across dataset to add a solar
+# maxima line to the plot below.
+mean(full_df$solar_noon) # 45597.65 secs or 12:39:58
 
 (fig2_scaled <- ggplot(summary_df %>%
                          filter(group %in% c("Cluster 1",
                                             "Cluster 2")), 
                        aes(x = hour_index, 
-                           y = medianDOscale_sat,
-                           ymin = q25DOscale_sat, 
-                           ymax = q75DOscale_sat,
+                           y = medianDOscale_mgL,
+                           ymin = q25DOscale_mgL, 
+                           ymax = q75DOscale_mgL,
                            color = group, 
                            fill = group)) +
     # adding annotation to better delineate time of day
@@ -240,7 +247,16 @@ summary_df <- full_df %>%
              alpha = 0.15, fill = "black") + #sunset
     geom_line(linewidth = 2) +
     geom_ribbon(alpha = 0.5,
-                linewidth = 0.1) + 
+                linewidth = 0.1) +
+    # adding annotation to more clearly delineate DO maxima
+    geom_vline(xintercept = 8.66601, color = "#FFAA00",
+               linetype = "dashed", linewidth = 2) +
+    geom_point(x = 10.10119, y = -1.09124643, 
+               shape = 8, size = 5, stroke = 1.5,
+               color = "gray20") +
+    geom_point(x = 7.50414, y = 0.84321457, 
+               shape = 8, size = 5, stroke = 1.5,
+               color = "gray20") +
     scale_color_manual(values = c("#FABA39FF", 
                                   "#D46F10",
                                   "gray70")) +
@@ -253,7 +269,7 @@ summary_df <- full_df %>%
                        labels = c(4,9,14,19,24)) +
     theme_bw() +
     theme(legend.position = "none",
-          text = element_text(size = 20)))
+          text = element_text(size = 18)))
 
 # Also creating column with months
 # but doing separately bc something is wonky
@@ -315,24 +331,24 @@ names(site.labs) <- c("BW", "GB")
                                            "#D46F10",
                                            "gray80")) +
               # customizing which months print below the x axis
-              scale_x_discrete(breaks = levels(full_df_daily$month)[c(T, F, T, F, T, F, T, F, T, F, T)]) +
+              scale_x_discrete(breaks = levels(full_df_daily$month)[c(T, F, F, T, F, F, T, F, F, T, F)]) +
               labs(x = "Month of Year",
                    y = "Timeseries count (days)",
                    fill = "Cluster ID") +
               theme_bw() +
               facet_grid(location_f~site, scales = "free",
                          labeller = labeller(site = site.labs)) +
-    theme(text = element_text(size = 20)))
+    theme(text = element_text(size = 18)))
 
 # Export figure.
 (fig_all <- ((fig2_curves / fig2_scaled) | fig_months) +
     plot_annotation(tag_levels = 'A'))
 
-ggsave(plot = fig_all,
-       filename = "figures/dtw_2022_122324.png",
-       width = 40,
-       height = 20,
-       units = "cm")
+# ggsave(plot = fig_all,
+#        filename = "figures/dtw_2022_050325.png",
+#        width = 30,
+#        height = 20,
+#        units = "cm")
 
 ###### Posthoc analyses #####
 
@@ -344,27 +360,34 @@ full_df_daily_summary <- full_df %>%
   summarize(mean_DOsat = mean(DO_sat, na.rm = TRUE),
             max_DOsat = max(DO_sat, na.rm = TRUE),
             min_DOsat = min(DO_sat, na.rm = TRUE),
+            mean_DOmgL = mean(DO_mgL, na.rm = TRUE),
+            max_DOmgL = max(DO_mgL, na.rm = TRUE),
+            min_DOmgL = min(DO_mgL, na.rm = TRUE),
             mean_Temp = mean(Temp_C, na.rm = TRUE),
             max_Temp = max(Temp_C, na.rm = TRUE),
             min_Temp = min(Temp_C, na.rm = TRUE),) %>%
   ungroup() %>%
   mutate(range_DOsat = max_DOsat - min_DOsat,
+         range_DOmgL = max_DOmgL - min_DOmgL,
          range_Temp = max_Temp - min_Temp)
 
 full_df_group_summary <- full_df_daily_summary %>%
   group_by(group) %>%
-  summarize(median_mean_DOsat = median(mean_DOsat),
+  summarize(no_days = n(),
+            median_mean_DOsat = median(mean_DOsat),
             mean_range_DOsat = mean(range_DOsat),
+            median_mean_DOmgL = median(mean_DOmgL),
+            mean_range_DOmgL = mean(range_DOmgL),
             median_mean_Temp = median(mean_Temp),
             mean_range_Temp = mean(range_Temp)) %>%
   ungroup()
 
-# Need to calculate the difference between max DO sat
+# Need to calculate the difference between max DO 
 # and solar noon.
 full_df_max_DO_difftimes <- full_df %>%
   group_by(`.id`, site, 
            location, replicate, group) %>%
-  slice_max(DO_sat) %>%
+  slice_max(DO_mgL) %>%
   ungroup() %>%
   mutate(DOmax_hour = hour(date_times),
          DOmax_minutes = minute(date_times),
@@ -383,6 +406,17 @@ offset_group_summary <- full_df_max_DO_difftimes %>%
             maximum_offset_min = max(as.numeric(max_offset))/60,
             stddev_offset_min = sd(as.numeric(max_offset))/60) %>%
   ungroup()
+
+# Also calculating mean hour of maximum DO
+max_summary <- full_df_max_DO_difftimes %>%
+  group_by(group) %>%
+  summarize(mean_time_of_DOmax = mean(DOmax_time)) %>%
+  ungroup() %>%
+  mutate(mean_minute_of_DOmax = as.numeric(mean_time_of_DOmax)/60) %>%
+  mutate(mean_hour_of_DOmax = mean_minute_of_DOmax/60)
+
+# Difference between mean peak times of either cluster
+14.10119-11.50414 # 2.59705
 
 ##### Trim DO DF #####
 
