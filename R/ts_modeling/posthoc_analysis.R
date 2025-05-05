@@ -19,8 +19,8 @@ library(tidybayes)
 library(bayesplot)
 
 # Load data.
-data_2022 <- readRDS("data_working/do_covariate_daily_data_2022_111924.rds")
-data_2023 <- readRDS("data_working/do_covariate_daily_data_2023_011025.rds")
+data_2022 <- readRDS("data_working/do_covariate_daily_data_2022_050425.rds")
+data_2023 <- readRDS("data_working/do_covariate_daily_data_2023_050425.rds")
 
 # Adding water depth column to both.
 data_2022 <- data_2022 %>%
@@ -58,11 +58,12 @@ covs22 <- ggpairs(data_2022 %>%
 # for this analysis, namely:
 # - clustering group (dependent variable)
 # - cumulative daily light
-# - maximum daily windspeed
+# - mean daily water temperature
+# - mean daily windspeed
 # - mean daily discharge
-# - water depth
+
 # Ensured, using plot above, that none were correlated
-# i.e., above 0.6.
+# i.e., above 0.7.
 
 data_2022_select <- data_2022 %>%
   # make new "sensor" column
@@ -74,32 +75,34 @@ data_2022_select <- data_2022 %>%
                             location == "20m" ~ "20m",
                             TRUE ~ NA)) %>%
   select(group, site, sensor,
-         sum_light, max_ws, mean_q, w_depth)
+         sum_light, mean_wtemp, mean_ws, mean_q)
 
 # Examine plots for covariates of interest vs.
 # cluster assignments.
 boxplot(sum_light ~ group, data = data_2022_select)
-boxplot(max_ws ~ group, data = data_2022_select)
+boxplot(mean_wtemp ~ group, data = data_2022_select)
+boxplot(mean_ws ~ group, data = data_2022_select)
 boxplot(log(mean_q) ~ group, data = data_2022_select)
-boxplot(w_depth ~ group, data = data_2022_select)
 
 # Also examine across sites & sensors.
+# Want these to be roughly similar variance since using as random intercepts.
 boxplot(sum_light ~ site, data = data_2022_select)
-boxplot(max_ws ~ site, data = data_2022_select)
+boxplot(mean_wtemp ~ site, data = data_2022_select)
+boxplot(mean_ws ~ site, data = data_2022_select)
 boxplot(log(mean_q) ~ site, data = data_2022_select)
-boxplot(w_depth ~ site, data = data_2022_select)
+
 # expecting this since BW is a much larger creek
 boxplot(sum_light ~ sensor, data = data_2022_select)
-boxplot(max_ws ~ sensor, data = data_2022_select)
+boxplot(mean_wtemp ~ sensor, data = data_2022_select)
+boxplot(mean_ws ~ sensor, data = data_2022_select)
 boxplot(log(mean_q) ~ sensor, data = data_2022_select)
-boxplot(w_depth ~ sensor, data = data_2022_select)
 # Ok, these look alright to include as nested random effects.
 
 # Need to make factors, log scale q, and scale transform
 # numeric variables.
 data_2022_select <- data_2022_select %>%
   mutate(group = factor(group,
-                        # making base the "Neither" group
+                        # making the "Neither" group the reference variable
                         levels = c("Neither",
                                    "Cluster 1",
                                    "Cluster 2")),
@@ -107,16 +110,16 @@ data_2022_select <- data_2022_select %>%
          sensor = factor(sensor)) %>%
   mutate(log_mean_q = log(mean_q)) %>%
   mutate(scale_light = scale(sum_light),
-         scale_wind = scale(max_ws),
-         scale_q = scale(log_mean_q),
-         scale_depth = scale(w_depth))
+         scale_temp = scale(mean_wtemp),
+         scale_wind = scale(mean_ws),
+         scale_q = scale(log_mean_q))
 
 # Create and export data for model fit.
 data_2022_multireg <- data_2022_select %>%
   select(group, site, sensor,
-         scale_light, scale_wind, scale_q, scale_depth)
+         scale_light, scale_temp, scale_wind, scale_q)
 
-# saveRDS(data_2022_multireg, "data_working/clustering_multireg_121724.rds")
+# saveRDS(data_2022_multireg, "data_working/clustering_multireg_050425.rds")
 
 ##### Model Fit #####
 
@@ -128,8 +131,10 @@ data_2022_multireg <- data_2022_select %>%
 
 # Fit multilevel multinomial logistic regression model.
 fit_2022 <- brm(group ~ scale_light + 
+                  scale_temp +
                   scale_wind + 
-                  scale_q*scale_depth +
+                  scale_q +
+                  #scale_depth +
                   (1|site/sensor), # nested random effect
                 data = data_2022_multireg,
                 # specify categorical if vectorized data
@@ -137,50 +142,154 @@ fit_2022 <- brm(group ~ scale_light +
                 family = categorical())
 
 # Runs in ~20 minutes on laptop.
-# Started at 2:16 pm. Finished at 2:40.
+# Started at 12:30 pm. Finished at 12:48.
 
 # Save model fit.
-# saveRDS(fit_2022,
-#         "data_model_outputs/brms_2022_121724.rds")
+saveRDS(fit_2022,
+        "data_model_outputs/brms_2022_050425_nodepth.rds")
 
 ##### Diagnostics #####
 
 # Examine model fit.
 summary(fit_2022)
-# Despite 33 divergent transitions, Rhats look good!
+# Despite 125 divergent transitions, Rhats look good!
 
 plot(fit_2022, variable = c("b_muCluster1_scale_light",
+                            "b_muCluster1_scale_temp",
                             "b_muCluster1_scale_wind",
                             "b_muCluster1_scale_q",
-                            "b_muCluster1_scale_depth",
-                            "b_muCluster1_scale_q:scale_depth",
                             "b_muCluster2_scale_light",
+                            "b_muCluster2_scale_temp",
                             "b_muCluster2_scale_wind",
-                            "b_muCluster2_scale_q",
-                            "b_muCluster2_scale_depth",
-                            "b_muCluster2_scale_q:scale_depth"))
+                            "b_muCluster2_scale_q"))
 # Chain mixing looking good!
 
 # Be sure no n_eff are < 0.1
 mcmc_plot(fit_2022, type = "neff")
+# Only one at 0.1.
 
-# Examine relationships for each predictor.
-# Could think about including these in supplement.
+# Examine relationships for each predictor. 
 plot(conditional_effects(fit_2022, effects = "scale_light",
+                         categorical = TRUE))
+plot(conditional_effects(fit_2022, effects = "scale_temp",
                          categorical = TRUE))
 plot(conditional_effects(fit_2022, effects = "scale_wind",
                          categorical = TRUE))
 plot(conditional_effects(fit_2022, effects = "scale_q",
                          categorical = TRUE))
-plot(conditional_effects(fit_2022, effects = "scale_depth",
-                         categorical = TRUE))
-
-# Appears mean daily q is greatest in Cluster 1,
-# cumulative daily light is greatest in Cluster 2,
-# the effect of wind is not as clearly significant,
-# and deeper depths typically correspond to Neither.
+# light greater in cluster 2
+# temp greater in cluster 1
+# wind greater in cluster 2
+# discharge lower in cluster 2
 
 ##### Visualization #####
+
+# Create conditional effects object to better customize plots.
+# https://discourse.mc-stan.org/t/change-linetype-aestetics-conditional-effects/14962
+c_eff <- conditional_effects(fit_2022, categorical = T)
+
+# Light prediction plot.
+c_eff_light <- as.data.frame(c_eff$`scale_light`)
+
+(figSI_light <- ggplot(c_eff_light,
+                   aes(x = scale_light,
+                       y = estimate__, 
+                       group = cats__)) +
+  geom_ribbon(aes(ymin = lower__, 
+                  ymax = upper__, 
+                  fill = cats__), alpha = 0.2) +
+  geom_line(size = 1, aes(color = cats__))+
+  scale_fill_manual(values = c("Cluster 1"= "#FABA39FF", 
+                               "Cluster 2"= "#D46F10", 
+                               "Neither"= "gray70"),
+                    guide = "none") +
+  scale_color_manual(values = c("Cluster 1"= "#FABA39FF", 
+                                "Cluster 2"= "#D46F10", 
+                                "Neither"= "gray70"),
+                     guide = "none")+
+  labs(y = "Probability", 
+       x = "Scaled Light") +
+  theme_bw())
+
+# Temperature prediction plot.
+c_eff_temp <- as.data.frame(c_eff$`scale_temp`)
+
+(figSI_temp <- ggplot(c_eff_temp,
+                       aes(x = scale_temp,
+                           y = estimate__, 
+                           group = cats__)) +
+    geom_ribbon(aes(ymin = lower__, 
+                    ymax = upper__, 
+                    fill = cats__), alpha = 0.2) +
+    geom_line(size = 1, aes(color = cats__))+
+    scale_fill_manual(values = c("Cluster 1"= "#FABA39FF", 
+                                 "Cluster 2"= "#D46F10", 
+                                 "Neither"= "gray70"),
+                      guide = "none") +
+    scale_color_manual(values = c("Cluster 1"= "#FABA39FF", 
+                                  "Cluster 2"= "#D46F10", 
+                                  "Neither"= "gray70"),
+                       guide = "none")+
+    labs(y = "Probability", 
+         x = "Scaled Temperature") +
+    theme_bw())
+
+# Wind prediction plot.
+c_eff_wind <- as.data.frame(c_eff$`scale_wind`)
+
+(figSI_wind <- ggplot(c_eff_wind,
+                      aes(x = scale_wind,
+                          y = estimate__, 
+                          group = cats__)) +
+    geom_ribbon(aes(ymin = lower__, 
+                    ymax = upper__, 
+                    fill = cats__), alpha = 0.2) +
+    geom_line(size = 1, aes(color = cats__))+
+    scale_fill_manual(values = c("Cluster 1"= "#FABA39FF", 
+                                 "Cluster 2"= "#D46F10", 
+                                 "Neither"= "gray70")) +
+    scale_color_manual(values = c("Cluster 1"= "#FABA39FF", 
+                                  "Cluster 2"= "#D46F10", 
+                                  "Neither"= "gray70"))+
+    labs(y = "Probability", 
+         x = "Scaled Windspeed",
+         color = "Membership",
+         fill = "Membership") +
+    theme_bw()) # +
+    #theme(legend.position = c(0.8, 0.8)))
+
+# Discharge prediction plot.
+c_eff_q <- as.data.frame(c_eff$`scale_q`)
+
+(figSI_q <- ggplot(c_eff_q, 
+                   aes(x = scale_q,
+                       y = estimate__, 
+                       group = cats__)) +
+    geom_ribbon(aes(ymin = lower__, 
+                    ymax = upper__, 
+                    fill = cats__), alpha = 0.2) +
+    geom_line(size = 1, aes(color = cats__))+
+    scale_fill_manual(values = c("Cluster 1"= "#FABA39FF", 
+                                 "Cluster 2"= "#D46F10", 
+                                 "Neither"= "gray70"),
+                      guide = "none") +
+    scale_color_manual(values = c("Cluster 1"= "#FABA39FF", 
+                                  "Cluster 2"= "#D46F10", 
+                                  "Neither"= "gray70"),
+                       guide = "none")+
+    labs(y = "Probability", 
+         x = "Scaled Discharge") +
+    theme_bw())
+
+# Combine posterior predictive plots into a single figure
+# to be included in the supplemental information.
+(figSI_StageI <- figSI_temp | figSI_light | figSI_q | figSI_wind)
+
+# ggsave(figSI_StageI,
+#        filename = "figures/S9_StageI_PredPlots.jpg",
+#        height = 10,
+#        width = 40,
+#        units = "cm")
 
 # Examine the posterior data.
 post_data <- mcmc_intervals_data(fit_2022,
@@ -192,47 +301,41 @@ View(post_data)
 
 (fig_custom <- ggplot(post_data %>%
                           filter(parameter %in% c("b_muCluster1_scale_light",
+                                                  "b_muCluster1_scale_temp",
                                                   "b_muCluster1_scale_wind",
                                                   "b_muCluster1_scale_q",
-                                                  "b_muCluster1_scale_depth",
-                                                  "b_muCluster1_scale_q:scale_depth",
                                                   "b_muCluster2_scale_light",
+                                                  "b_muCluster2_scale_temp",
                                                   "b_muCluster2_scale_wind",
-                                                  "b_muCluster2_scale_q",
-                                                  "b_muCluster2_scale_depth",
-                                                  "b_muCluster2_scale_q:scale_depth")) %>%
+                                                  "b_muCluster2_scale_q")) %>%
                           mutate(par_f = factor(parameter, 
-                                                levels = c("b_muCluster1_scale_light",
-                                                           "b_muCluster2_scale_light",
-                                                           "b_muCluster1_scale_wind",
+                                                levels = c("b_muCluster1_scale_wind",
                                                            "b_muCluster2_scale_wind",
                                                            "b_muCluster1_scale_q",
                                                            "b_muCluster2_scale_q",
-                                                           "b_muCluster1_scale_depth",
-                                                           "b_muCluster2_scale_depth",
-                                                           "b_muCluster1_scale_q:scale_depth",
-                                                           "b_muCluster2_scale_q:scale_depth"))), 
+                                                           "b_muCluster1_scale_light",
+                                                           "b_muCluster2_scale_light",
+                                                           "b_muCluster1_scale_temp",
+                                                           "b_muCluster2_scale_temp"))), 
                         aes(x = m, y = par_f, color = par_f)) +
     geom_linerange(aes(xmin = ll, xmax = hh),
-                   size = 3, alpha = 0.5) +
+                   linewidth = 3, alpha = 0.5) +
     geom_point(size = 6) +
     vline_at(v = 0) +
-    scale_x_continuous(breaks = c(-2, -1, 0, 1, 2)) +
+    scale_x_continuous(breaks = c(-8, -6, -4, -2, 0, 2, 4, 6, 8)) +
     labs(x = "Posterior Estimates",
-         y = "Predictors") +
+         y = "Predictors",
+         title = "Stage I") +
     scale_y_discrete(labels = c("b_muCluster1_scale_light" = "Cluster 1 Light",
+                                "b_muCluster1_scale_temp" = "Cluster 1 Temp.",
                                 "b_muCluster1_scale_wind" = "Cluster 1 Wind",
                                 "b_muCluster1_scale_q" = "Cluster 1 Q",
-                                "b_muCluster1_scale_depth" = "Cluster 1 Depth",
-                                "b_muCluster1_scale_q:scale_depth" = "Cluster 1 Q x Depth",
                                 "b_muCluster2_scale_light" = "Cluster 2 Light",
+                                "b_muCluster2_scale_temp" = "Cluster 2 Temp.",
                                 "b_muCluster2_scale_wind" = "Cluster 2 Wind",
-                                "b_muCluster2_scale_q" = "Cluster 2 Q",
-                                "b_muCluster2_scale_depth" = "Cluster 2 Depth",
-                                "b_muCluster2_scale_q:scale_depth" = "Cluster 2 Q x Depth")) +
+                                "b_muCluster2_scale_q" = "Cluster 2 Q")) +
     theme_bw() +
     scale_color_manual(values = c("#FABA39FF", "#D46F10",
-                                  "#FABA39FF", "#D46F10",
                                   "#FABA39FF", "#D46F10",
                                   "#FABA39FF", "#D46F10",
                                   "#FABA39FF", "#D46F10")) +
@@ -240,7 +343,7 @@ View(post_data)
           legend.position = "none"))
 
 # ggsave(fig_custom,
-#        filename = "figures/brms_2022_121724.jpg",
+#        filename = "figures/brms_2022_050425.jpg",
 #        height = 20,
 #        width = 20,
 #        units = "cm")
@@ -268,10 +371,12 @@ covs23 <- ggpairs(data_2023 %>%
 # for this analysis, namely:
 # - clustering group (dependent variable)
 # - cumulative daily light
-# - maximum daily windspeed
+# - mean daily temperature
+# - mean daily windspeed
 # - mean daily discharge
+
 # Ensured, using plot above, that none were correlated
-# i.e., above 0.6.
+# i.e., above 0.7.
 
 data_2023_select <- data_2023 %>%
   # make new "sensor" column
@@ -280,7 +385,7 @@ data_2023_select <- data_2023 %>%
                             replicate == "NS3" ~ "NS3",
                             TRUE ~ NA)) %>%
   select(group, site, sensor,
-         sum_light, max_ws, mean_q) %>%
+         sum_light, mean_wtemp, mean_ws, mean_q) %>%
   # and creating new column with edited Q data
   # to delineate no flow at SS/SH sites
   # making this a small number rather than zero
@@ -291,16 +396,20 @@ data_2023_select <- data_2023 %>%
 # Examine plots for covariates of interest vs.
 # cluster assignments.
 boxplot(sum_light ~ group, data = data_2023_select)
-boxplot(max_ws ~ group, data = data_2023_select)
+boxplot(mean_wtemp ~ group, data = data_2023_select)
+boxplot(mean_ws ~ group, data = data_2023_select)
 boxplot(log(mean_q_ed) ~ group, data = data_2023_select)
 
 # Also examine across sites & sensors.
 boxplot(sum_light ~ site, data = data_2023_select)
-boxplot(max_ws ~ site, data = data_2023_select)
+boxplot(mean_wtemp ~ site, data = data_2023_select)
+boxplot(mean_ws ~ site, data = data_2023_select)
 boxplot(log(mean_q_ed) ~ site, data = data_2023_select)
 # again expecting this since BW is a much larger creek
+
 boxplot(sum_light ~ sensor, data = data_2023_select)
-boxplot(max_ws ~ sensor, data = data_2023_select)
+boxplot(mean_wtemp ~ sensor, data = data_2023_select)
+boxplot(mean_ws ~ sensor, data = data_2023_select)
 boxplot(log(mean_q_ed) ~ sensor, data = data_2023_select)
 # Ok, these look alright to include as nested random effects.
 
@@ -316,20 +425,22 @@ data_2023_select <- data_2023_select %>%
          sensor = factor(sensor)) %>%
   mutate(log_mean_q = log(mean_q_ed)) %>%
   mutate(scale_light = scale(sum_light),
-         scale_wind = scale(max_ws),
+         scale_temp = scale(mean_wtemp),
+         scale_wind = scale(mean_ws),
          scale_q = scale(log_mean_q))
 
 # Create and export data for model fit.
 data_2023_multireg <- data_2023_select %>%
   select(group, site, sensor,
-         scale_light, scale_wind, scale_q)
+         scale_light, scale_temp, scale_wind, scale_q)
 
-# saveRDS(data_2023_multireg, "data_working/clustering_multireg23_011025.rds")
+# saveRDS(data_2023_multireg, "data_working/clustering_multireg23_050425.rds")
 
 ##### Model Fit #####
 
 # Fit multilevel multinomial logistic regression model.
 fit_2023 <- brm(group ~ scale_light + 
+                  scale_temp + 
                   scale_wind + 
                   scale_q +
                   (1|site/sensor), # nested random effect
@@ -338,43 +449,155 @@ fit_2023 <- brm(group ~ scale_light +
                 # specify multinomial if data is a matrix
                 family = categorical())
 
-# Runs in ~3 minutes on laptop.
-# Started at 3:37 pm. Finished at 3:40.
+# Runs in ~4 minutes on laptop.
+# Started at 1:19 pm. Finished at 1:23.
 
 # Save model fit.
-saveRDS(fit_2023,
-        "data_model_outputs/brms_2023_011025.rds")
+# saveRDS(fit_2023, "data_model_outputs/brms_2023_050425.rds")
 
 ##### Diagnostics #####
 
 # Examine model fit.
 summary(fit_2023)
-# Only 2 divergent transitions, Rhats look good!
+# Has 205 divergent transitions, but Rhats look good!
 
 plot(fit_2023, variable = c("b_muCluster1_scale_light",
+                            "b_muCluster1_scale_temp",
                             "b_muCluster1_scale_wind",
                             "b_muCluster1_scale_q",
                             "b_muCluster2_scale_light",
+                            "b_muCluster2_scale_temp",
                             "b_muCluster2_scale_wind",
                             "b_muCluster2_scale_q"))
 # Chain mixing looking good!
 
 # Be sure no n_eff are < 0.1
 mcmc_plot(fit_2023, type = "neff")
+# Hmm some Neffs are < 0.1
+# 
 
 # Examine relationships for each predictor.
 plot(conditional_effects(fit_2023, effects = "scale_light",
+                         categorical = TRUE))
+plot(conditional_effects(fit_2023, effects = "scale_temp",
                          categorical = TRUE))
 plot(conditional_effects(fit_2023, effects = "scale_wind",
                          categorical = TRUE))
 plot(conditional_effects(fit_2023, effects = "scale_q",
                          categorical = TRUE))
 
-# Appears cumulative daily light is greatest in
-# Cluster 1, high discharge most strongly predicts
-# Neither/Cluster 1, and max windspeed is not significant.
+# Appears cumulative daily light is lowest and temperature
+# is greatest in Cluster 1, high discharge most strongly predicts
+# Cluster 1, and windspeed is equivocal.
 
 ##### Visualization #####
+
+# Create conditional effects object to better customize plots.
+# https://discourse.mc-stan.org/t/change-linetype-aestetics-conditional-effects/14962
+c_eff23 <- conditional_effects(fit_2023, categorical = T)
+
+# Light prediction plot.
+c_eff23_light <- as.data.frame(c_eff23$`scale_light`)
+
+(figSI23_light <- ggplot(c_eff23_light,
+                       aes(x = scale_light,
+                           y = estimate__, 
+                           group = cats__)) +
+    geom_ribbon(aes(ymin = lower__, 
+                    ymax = upper__, 
+                    fill = cats__), alpha = 0.2) +
+    geom_line(size = 1, aes(color = cats__))+
+    scale_fill_manual(values = c("Cluster 1"= "#0FB2D3",
+                                 "Cluster 2"= "#026779",
+                                 "Neither"= "gray70"),
+                      guide = "none") +
+    scale_color_manual(values = c("Cluster 1"= "#0FB2D3",
+                                  "Cluster 2"= "#026779",
+                                  "Neither"= "gray70"),
+                       guide = "none")+
+    labs(y = "Probability", 
+         x = "Scaled Light") +
+    theme_bw())
+
+# Temperature prediction plot.
+c_eff23_temp <- as.data.frame(c_eff23$`scale_temp`)
+
+(figSI23_temp <- ggplot(c_eff23_temp,
+                      aes(x = scale_temp,
+                          y = estimate__, 
+                          group = cats__)) +
+    geom_ribbon(aes(ymin = lower__, 
+                    ymax = upper__, 
+                    fill = cats__), alpha = 0.2) +
+    geom_line(size = 1, aes(color = cats__))+
+    scale_fill_manual(values = c("Cluster 1"= "#0FB2D3",
+                                 "Cluster 2"= "#026779",
+                                 "Neither"= "gray70"),
+                      guide = "none") +
+    scale_color_manual(values = c("Cluster 1"= "#0FB2D3",
+                                  "Cluster 2"= "#026779",
+                                  "Neither"= "gray70"),
+                       guide = "none")+
+    labs(y = "Probability", 
+         x = "Scaled Temperature") +
+    theme_bw())
+
+# Wind prediction plot.
+c_eff23_wind <- as.data.frame(c_eff23$`scale_wind`)
+
+(figSI23_wind <- ggplot(c_eff23_wind,
+                      aes(x = scale_wind,
+                          y = estimate__, 
+                          group = cats__)) +
+    geom_ribbon(aes(ymin = lower__, 
+                    ymax = upper__, 
+                    fill = cats__), alpha = 0.2) +
+    geom_line(size = 1, aes(color = cats__))+
+    scale_fill_manual(values = c("Cluster 1"= "#0FB2D3",
+                                 "Cluster 2"= "#026779",
+                                 "Neither"= "gray70")) +
+    scale_color_manual(values = c("Cluster 1"= "#0FB2D3",
+                                  "Cluster 2"= "#026779",
+                                  "Neither"= "gray70"))+
+    labs(y = "Probability", 
+         x = "Scaled Windspeed",
+         color = "Membership",
+         fill = "Membership") +
+    theme_bw()) # +
+#theme(legend.position = c(0.8, 0.8)))
+
+# Discharge prediction plot.
+c_eff23_q <- as.data.frame(c_eff23$`scale_q`)
+
+(figSI23_q <- ggplot(c_eff23_q, 
+                   aes(x = scale_q,
+                       y = estimate__, 
+                       group = cats__)) +
+    geom_ribbon(aes(ymin = lower__, 
+                    ymax = upper__, 
+                    fill = cats__), alpha = 0.2) +
+    geom_line(size = 1, aes(color = cats__))+
+    scale_fill_manual(values = c("Cluster 1"= "#0FB2D3",
+                                 "Cluster 2"= "#026779",
+                                 "Neither"= "gray70"),
+                      guide = "none") +
+    scale_color_manual(values = c("Cluster 1"= "#0FB2D3",
+                                  "Cluster 2"= "#026779",
+                                  "Neither"= "gray70"),
+                       guide = "none")+
+    labs(y = "Probability", 
+         x = "Scaled Discharge") +
+    theme_bw())
+
+# Combine posterior predictive plots into a single figure
+# to be included in the supplemental information.
+(figSI_StageII <- figSI23_temp | figSI23_light | figSI23_q | figSI23_wind)
+
+# ggsave(figSI_StageII,
+#        filename = "figures/S10_StageII_PredPlots.jpg",
+#        height = 10,
+#        width = 40,
+#        units = "cm")
 
 # Examine the posterior data.
 post_data23 <- mcmc_intervals_data(fit_2023,
@@ -386,41 +609,49 @@ View(post_data23)
 
 (fig_custom23 <- ggplot(post_data23 %>%
                         filter(parameter %in% c("b_muCluster1_scale_light",
+                                                "b_muCluster1_scale_temp",
                                                 "b_muCluster1_scale_wind",
                                                 "b_muCluster1_scale_q",
                                                 "b_muCluster2_scale_light",
+                                                "b_muCluster2_scale_temp",
                                                 "b_muCluster2_scale_wind",
                                                 "b_muCluster2_scale_q")) %>%
                         mutate(par_f = factor(parameter, 
-                                              levels = c("b_muCluster1_scale_light",
-                                                         "b_muCluster2_scale_light",
-                                                         "b_muCluster1_scale_wind",
+                                              levels = c("b_muCluster1_scale_wind",
                                                          "b_muCluster2_scale_wind",
                                                          "b_muCluster1_scale_q",
-                                                         "b_muCluster2_scale_q"))), 
+                                                         "b_muCluster2_scale_q",
+                                                         "b_muCluster1_scale_light",
+                                                         "b_muCluster2_scale_light",
+                                                         "b_muCluster1_scale_temp",
+                                                         "b_muCluster2_scale_temp"))), 
                       aes(x = m, y = par_f, color = par_f)) +
     geom_linerange(aes(xmin = ll, xmax = hh),
                    size = 3, alpha = 0.5) +
     geom_point(size = 6) +
     vline_at(v = 0) +
-    scale_x_continuous(breaks = c(-4, -3, -2, -1, 0, 1)) +
+    scale_x_continuous(breaks = c(-8, -6, -4, -2, 0, 2, 4, 6, 8, 10, 12, 14, 16)) +
     labs(x = "Posterior Estimates",
-         y = "Predictors") +
+         y = "Predictors",
+         title = "Stage II") +
     scale_y_discrete(labels = c("b_muCluster1_scale_light" = "Cluster 1 Light",
+                                "b_muCluster1_scale_temp" = "Cluster 1 Temp.",
                                 "b_muCluster1_scale_wind" = "Cluster 1 Wind",
                                 "b_muCluster1_scale_q" = "Cluster 1 Q",
                                 "b_muCluster2_scale_light" = "Cluster 2 Light",
+                                "b_muCluster2_scale_temp" = "Cluster 2 Temp.",
                                 "b_muCluster2_scale_wind" = "Cluster 2 Wind",
                                 "b_muCluster2_scale_q" = "Cluster 2 Q")) +
     theme_bw() +
     scale_color_manual(values = c("#0FB2D3", "#026779",
+                                  "#0FB2D3", "#026779",
                                   "#0FB2D3", "#026779",
                                   "#0FB2D3", "#026779")) +
     theme(text = element_text(size = 20),
           legend.position = "none"))
 
 # ggsave(fig_custom23,
-#        filename = "figures/brms_2023_011025.jpg",
+#        filename = "figures/brms_2023_050425.jpg",
 #        height = 15,
 #        width = 20,
 #        units = "cm")
@@ -432,25 +663,10 @@ View(post_data23)
    plot_annotation(tag_levels = 'A'))
 
 # ggsave(fig_custom_both,
-#        filename = "figures/brms_bothyrs_011025.jpg",
+#        filename = "figures/brms_bothyrs_050425.jpg",
 #        height = 20,
 #        width = 40,
 #        units = "cm")
-
-#### Supp. Code ####
-
-# Make dataframe with all possible combinations of values.
-all_data <- data_2022_multireg %>%
-  expand(scale_light, scale_wind, scale_q, site)
-
-# And generate predicted draws.
-all_predictions <- fit_2022 %>%
-  epred_draws(newdata = all_data)
-
-# Note for next time - the above made too large of a dataset,
-# so I'll need to make epred draws similar to how I did for the
-# biomass project and take it from there...
-# see: https://github.com/hlowman/ContinentalRiverBiomass/blob/main/code/beartooth_spring23/13_Posthoc_analyses.R
 
 #### Sources ####
 
