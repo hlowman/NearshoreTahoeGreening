@@ -348,6 +348,71 @@ View(post_data)
 #        width = 20,
 #        units = "cm")
 
+# Also making supplementary figure for model including depth.
+fit_2022_wdepth <- readRDS("data_model_outputs/brms_2022_050425_nointeract.rds")
+
+# Examine the posterior data.
+post_data_wdepth <- mcmc_intervals_data(fit_2022_wdepth,
+                                 point_est = "median", # default = "median"
+                                 prob = 0.66, # default = 0.5
+                                 prob_outer = 0.95) # default = 0.9
+
+(fig_custom_SI <- ggplot(post_data_wdepth %>%
+                        filter(parameter %in% c("b_muCluster1_scale_light",
+                                                "b_muCluster1_scale_temp",
+                                                "b_muCluster1_scale_wind",
+                                                "b_muCluster1_scale_q",
+                                                "b_muCluster1_scale_depth",
+                                                "b_muCluster2_scale_light",
+                                                "b_muCluster2_scale_temp",
+                                                "b_muCluster2_scale_wind",
+                                                "b_muCluster2_scale_q",
+                                                "b_muCluster2_scale_depth")) %>%
+                        mutate(par_f = factor(parameter, 
+                                              levels = c("b_muCluster1_scale_depth",
+                                                         "b_muCluster2_scale_depth",
+                                                         "b_muCluster1_scale_wind",
+                                                         "b_muCluster2_scale_wind",
+                                                         "b_muCluster1_scale_q",
+                                                         "b_muCluster2_scale_q",
+                                                         "b_muCluster1_scale_light",
+                                                         "b_muCluster2_scale_light",
+                                                         "b_muCluster1_scale_temp",
+                                                         "b_muCluster2_scale_temp"))), 
+                      aes(x = m, y = par_f, color = par_f)) +
+    geom_linerange(aes(xmin = ll, xmax = hh),
+                   linewidth = 3, alpha = 0.5) +
+    geom_point(size = 6) +
+    vline_at(v = 0) +
+    scale_x_continuous(breaks = c(-8, -6, -4, -2, 0, 2, 4, 6, 8)) +
+    labs(x = "Posterior Estimates",
+         y = "Predictors",
+         title = "Stage I") +
+    scale_y_discrete(labels = c("b_muCluster1_scale_light" = "Cluster 1 Light",
+                                "b_muCluster1_scale_temp" = "Cluster 1 Temp.",
+                                "b_muCluster1_scale_wind" = "Cluster 1 Wind",
+                                "b_muCluster1_scale_q" = "Cluster 1 Q",
+                                "b_muCluster1_scale_depth" = "Cluster 1 Depth",
+                                "b_muCluster2_scale_light" = "Cluster 2 Light",
+                                "b_muCluster2_scale_temp" = "Cluster 2 Temp.",
+                                "b_muCluster2_scale_wind" = "Cluster 2 Wind",
+                                "b_muCluster2_scale_q" = "Cluster 2 Q",
+                                "b_muCluster2_scale_depth" = "Cluster 2 Depth")) +
+    theme_bw() +
+    scale_color_manual(values = c("#FABA39FF", "#D46F10",
+                                  "#FABA39FF", "#D46F10",
+                                  "#FABA39FF", "#D46F10",
+                                  "#FABA39FF", "#D46F10",
+                                  "#FABA39FF", "#D46F10")) +
+    theme(text = element_text(size = 20),
+          legend.position = "none"))
+
+# ggsave(fig_custom_SI,
+#        filename = "figures/brms_2022_wdepth_050525.jpg",
+#        height = 20,
+#        width = 20,
+#        units = "cm")
+
 #### 2023 Fit ####
 
 ##### Data QAQC #####
