@@ -50,7 +50,7 @@ baro_near_data <- bpns_data %>%
   rename(datetime_bp = datetime,
          site_bp = site)
 
-# since data is 4km resolution, using "nearshore" data for all buoys
+# using "nearshore" data for all buoys
 # in each of the 4 locations monitored.
 do_data <- data %>%
   mutate(date = date(Pacific_Standard_Time),
