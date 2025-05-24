@@ -565,7 +565,7 @@ summary_df_sat <- full_df_sat %>%
                                  "#D46F10",
                                  "gray70")) +
     labs(x = "Hour of Day", 
-         y = "Dissolved Oxygen (% saturation)") +
+         y = "DO (% saturation)") +
     scale_x_continuous(breaks = c(0,5,10,15,20),
                        labels = c(4,9,14,19,24)) +
     theme_bw() +
@@ -614,7 +614,7 @@ mean(full_df_sat$solar_noon) # 45597.65 secs or 12:39:58
                                  "#D46F10",
                                  "gray70")) +
     labs(x = "Hour of Day", 
-         y = "Dissolved Oxygen (% saturation)") +
+         y = "DO (scaled)") +
     scale_x_continuous(limits = c(2,15),
                        breaks = c(2,6,10,14),
                        labels = c(6,10,14,18)) +
