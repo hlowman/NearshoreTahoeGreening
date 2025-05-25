@@ -19,8 +19,8 @@ library(tidybayes)
 library(bayesplot)
 
 # Load data.
-data_2022 <- readRDS("data_working/do_covariate_daily_data_2022_050425.rds")
-data_2023 <- readRDS("data_working/do_covariate_daily_data_2023_050425.rds")
+data_2022 <- readRDS("data_working/do_covariate_daily_data_2022_052525.rds")
+data_2023 <- readRDS("data_working/do_covariate_daily_data_2023_052525.rds")
 
 # Adding water depth column to both.
 data_2022 <- data_2022 %>%
@@ -35,7 +35,7 @@ data_2023 <- data_2023 %>%
                              location == "15m" ~ 15,
                              location == "20m" ~ 20))
 
-#### 2022 Fit ####
+#### 2022 DO Fit ####
 
 ##### Data QAQC #####
 
@@ -413,7 +413,294 @@ post_data_wdepth <- mcmc_intervals_data(fit_2022_wdepth,
 #        width = 20,
 #        units = "cm")
 
-#### 2023 Fit ####
+#### 2022 DOsat Fit ####
+
+##### Data QAQC #####
+
+# First, we would typically check data missingness,
+# but since we've created this dataset in the
+# script prior, this has already been done.
+
+# Examined correlated variables above.
+
+# Next, we will select the columns of interest:
+# - clustering group (dependent variable)
+# - water depth
+# - cumulative daily light
+# - mean daily windspeed
+# - mean daily discharge
+
+data_2022_select_dosat <- data_2022 %>%
+  # make new "sensor" column
+  mutate(sensor = case_when(replicate == "NS1" ~ "NS1",
+                            replicate == "NS2" ~ "NS2",
+                            replicate == "NS3" ~ "NS3",
+                            location == "10m" ~ "10m",
+                            location == "15m" ~ "15m",
+                            location == "20m" ~ "20m",
+                            TRUE ~ NA)) %>%
+  select(group_dosat, site, sensor, w_depth,
+         sum_light, mean_ws, mean_q)
+
+# Examine plots for covariates of interest vs.
+# cluster assignments.
+boxplot(sum_light ~ group_dosat, data = data_2022_select_dosat)
+boxplot(w_depth ~ group_dosat, data = data_2022_select_dosat)
+boxplot(mean_ws ~ group_dosat, data = data_2022_select_dosat)
+boxplot(log(mean_q) ~ group_dosat, data = data_2022_select_dosat)
+
+# Also examine across sites & sensors.
+# Want these to be roughly similar variance since using as random intercepts.
+boxplot(sum_light ~ site, data = data_2022_select_dosat)
+boxplot(w_depth ~ site, data = data_2022_select_dosat)
+boxplot(mean_ws ~ site, data = data_2022_select_dosat)
+boxplot(log(mean_q) ~ site, data = data_2022_select_dosat)
+# expecting this since BW is a much larger creek
+boxplot(sum_light ~ sensor, data = data_2022_select_dosat)
+boxplot(w_depth ~ sensor, data = data_2022_select_dosat)
+boxplot(mean_ws ~ sensor, data = data_2022_select_dosat)
+boxplot(log(mean_q) ~ sensor, data = data_2022_select_dosat)
+# Ok, these look alright to include as nested random effects.
+
+# Need to make factors, log scale q, and scale transform
+# numeric variables.
+data_2022_select_dosat <- data_2022_select_dosat %>%
+  mutate(group_dosat = factor(group_dosat,
+                        # making the "Neither" group the reference variable
+                        levels = c("Neither",
+                                   "Cluster 1",
+                                   "Cluster 2")),
+         site = factor(site),
+         sensor = factor(sensor)) %>%
+  mutate(log_mean_q = log(mean_q)) %>%
+  mutate(scale_depth = scale(w_depth),
+         scale_light = scale(sum_light),
+         scale_wind = scale(mean_ws),
+         scale_q = scale(log_mean_q))
+
+# Create and export data for model fit.
+data_2022_multireg_dosat <- data_2022_select_dosat %>%
+  select(group_dosat, site, sensor,
+         scale_depth, scale_light, scale_wind, scale_q)
+
+# saveRDS(data_2022_multireg_dosat, 
+#         "data_working/clustering_dosat_multireg_052525.rds")
+
+##### Model Fit #####
+
+# Fit multilevel multinomial logistic regression model.
+fit_2022_dosat <- brm(group_dosat ~ scale_depth + 
+                  scale_light +
+                  scale_wind + 
+                  scale_q +
+                  (1|site/sensor), # nested random effect
+                data = data_2022_multireg_dosat,
+                # specify categorical if vectorized data
+                # specify multinomial if data is a matrix
+                family = categorical())
+
+# Runs in ~60 minutes on laptop.
+# Started at 11:05 pm. Finished at 12:08.
+
+# Save model fit.
+saveRDS(fit_2022_dosat,
+        "data_model_outputs/brms_dosat_2022_052525.rds")
+
+##### Diagnostics #####
+
+# Examine model fit.
+summary(fit_2022_dosat)
+# Only 54 divergent transitions, Rhats look good!
+
+plot(fit_2022_dosat, variable = c("b_muCluster1_scale_depth",
+                            "b_muCluster1_scale_light",
+                            "b_muCluster1_scale_wind",
+                            "b_muCluster1_scale_q",
+                            "b_muCluster2_scale_depth",
+                            "b_muCluster2_scale_light",
+                            "b_muCluster2_scale_wind",
+                            "b_muCluster2_scale_q"))
+# Chain mixing looking good!
+
+# Be sure no n_eff are < 0.1
+mcmc_plot(fit_2022_dosat, type = "neff")
+# All good!
+
+# Examine relationships for each predictor. 
+plot(conditional_effects(fit_2022_dosat, effects = "scale_depth",
+                         categorical = TRUE))
+plot(conditional_effects(fit_2022_dosat, effects = "scale_light",
+                         categorical = TRUE))
+plot(conditional_effects(fit_2022_dosat, effects = "scale_wind",
+                         categorical = TRUE))
+plot(conditional_effects(fit_2022_dosat, effects = "scale_q",
+                         categorical = TRUE))
+# depth effect is meh
+# light greater in cluster 2
+# wind greater in cluster 2
+# discharge greater in cluster 1
+
+##### Visualization #####
+
+# Create conditional effects object to better customize plots.
+# https://discourse.mc-stan.org/t/change-linetype-aestetics-conditional-effects/14962
+c_eff_sat <- conditional_effects(fit_2022_dosat, categorical = T)
+
+# Light prediction plot.
+c_eff_sat_light <- as.data.frame(c_eff_sat$`scale_light`)
+
+(figSI_light_sat <- ggplot(c_eff_sat_light,
+                       aes(x = scale_light,
+                           y = estimate__, 
+                           group = cats__)) +
+    geom_ribbon(aes(ymin = lower__, 
+                    ymax = upper__, 
+                    fill = cats__), alpha = 0.2) +
+    geom_line(size = 1, aes(color = cats__))+
+    scale_fill_manual(values = c("Cluster 1"= "#FABA39FF", 
+                                 "Cluster 2"= "#D46F10", 
+                                 "Neither"= "gray70"),
+                      guide = "none") +
+    scale_color_manual(values = c("Cluster 1"= "#FABA39FF", 
+                                  "Cluster 2"= "#D46F10", 
+                                  "Neither"= "gray70"),
+                       guide = "none")+
+    labs(y = "Probability", 
+         x = "Scaled Light") +
+    theme_bw())
+
+# Depth prediction plot.
+c_eff_sat_depth <- as.data.frame(c_eff_sat$`scale_depth`)
+
+(figSI_depth_sat <- ggplot(c_eff_sat_depth,
+                      aes(x = scale_depth,
+                          y = estimate__, 
+                          group = cats__)) +
+    geom_ribbon(aes(ymin = lower__, 
+                    ymax = upper__, 
+                    fill = cats__), alpha = 0.2) +
+    geom_line(size = 1, aes(color = cats__))+
+    scale_fill_manual(values = c("Cluster 1"= "#FABA39FF", 
+                                 "Cluster 2"= "#D46F10", 
+                                 "Neither"= "gray70"),
+                      guide = "none") +
+    scale_color_manual(values = c("Cluster 1"= "#FABA39FF", 
+                                  "Cluster 2"= "#D46F10", 
+                                  "Neither"= "gray70"),
+                       guide = "none")+
+    labs(y = "Probability", 
+         x = "Scaled Depth") +
+    theme_bw())
+
+# Wind prediction plot.
+c_eff_sat_wind <- as.data.frame(c_eff_sat$`scale_wind`)
+
+(figSI_wind_sat <- ggplot(c_eff_sat_wind,
+                      aes(x = scale_wind,
+                          y = estimate__, 
+                          group = cats__)) +
+    geom_ribbon(aes(ymin = lower__, 
+                    ymax = upper__, 
+                    fill = cats__), alpha = 0.2) +
+    geom_line(size = 1, aes(color = cats__))+
+    scale_fill_manual(values = c("Cluster 1"= "#FABA39FF", 
+                                 "Cluster 2"= "#D46F10", 
+                                 "Neither"= "gray70")) +
+    scale_color_manual(values = c("Cluster 1"= "#FABA39FF", 
+                                  "Cluster 2"= "#D46F10", 
+                                  "Neither"= "gray70"))+
+    labs(y = "Probability", 
+         x = "Scaled Windspeed",
+         color = "Membership",
+         fill = "Membership") +
+    theme_bw())
+
+# Discharge prediction plot.
+c_eff_sat_q <- as.data.frame(c_eff_sat$`scale_q`)
+
+(figSI_q_sat <- ggplot(c_eff_sat_q, 
+                   aes(x = scale_q,
+                       y = estimate__, 
+                       group = cats__)) +
+    geom_ribbon(aes(ymin = lower__, 
+                    ymax = upper__, 
+                    fill = cats__), alpha = 0.2) +
+    geom_line(size = 1, aes(color = cats__))+
+    scale_fill_manual(values = c("Cluster 1"= "#FABA39FF", 
+                                 "Cluster 2"= "#D46F10", 
+                                 "Neither"= "gray70"),
+                      guide = "none") +
+    scale_color_manual(values = c("Cluster 1"= "#FABA39FF", 
+                                  "Cluster 2"= "#D46F10", 
+                                  "Neither"= "gray70"),
+                       guide = "none")+
+    labs(y = "Probability", 
+         x = "Scaled Discharge") +
+    theme_bw())
+
+# Combine posterior predictive plots into a single figure
+# to be included in the supplemental information.
+(figSI_StageI_sat <- figSI_depth_sat | figSI_light_sat | figSI_q_sat | figSI_wind_sat)
+
+# ggsave(figSI_StageI_sat,
+#        filename = "figures/S9_DOsat_StageI_PredPlots.jpg",
+#        height = 10,
+#        width = 40,
+#        units = "cm")
+
+# Examine the posterior data.
+post_data_sat <- mcmc_intervals_data(fit_2022_dosat,
+                                 point_est = "median", # default = "median"
+                                 prob = 0.66, # default = 0.5
+                                 prob_outer = 0.95) # default = 0.9
+
+View(post_data_sat)
+
+(fig_custom_dosat <- ggplot(post_data_sat %>%
+                        filter(parameter %in% c("b_muCluster1_scale_depth",
+                                                "b_muCluster1_scale_light",
+                                                "b_muCluster1_scale_wind",
+                                                "b_muCluster1_scale_q",
+                                                "b_muCluster2_scale_depth",
+                                                "b_muCluster2_scale_light",
+                                                "b_muCluster2_scale_wind",
+                                                "b_muCluster2_scale_q")) %>%
+                        mutate(par_f = factor(parameter, 
+                                              levels = c("b_muCluster1_scale_wind",
+                                                         "b_muCluster2_scale_wind",
+                                                         "b_muCluster1_scale_q",
+                                                         "b_muCluster2_scale_q",
+                                                         "b_muCluster1_scale_light",
+                                                         "b_muCluster2_scale_light",
+                                                         "b_muCluster1_scale_depth",
+                                                         "b_muCluster2_scale_depth"))), 
+                      aes(x = m, y = par_f, color = par_f)) +
+    geom_linerange(aes(xmin = ll, xmax = hh),
+                   linewidth = 3, alpha = 0.5) +
+    geom_point(size = 6) +
+    vline_at(v = 0) +
+    scale_x_continuous(limits = c(-2.5,2.5),
+                       breaks = c(-2, -1, 0, 1, 2)) +
+    labs(x = "Posterior Estimates",
+         y = "Predictors",
+         title = "Stage I") +
+    scale_y_discrete(labels = c("b_muCluster1_scale_light" = "Cluster 1 Light",
+                                "b_muCluster1_scale_depth" = "Cluster 1 Depth",
+                                "b_muCluster1_scale_wind" = "Cluster 1 Wind",
+                                "b_muCluster1_scale_q" = "Cluster 1 Q",
+                                "b_muCluster2_scale_light" = "Cluster 2 Light",
+                                "b_muCluster2_scale_depth" = "Cluster 2 Depth",
+                                "b_muCluster2_scale_wind" = "Cluster 2 Wind",
+                                "b_muCluster2_scale_q" = "Cluster 2 Q")) +
+    theme_bw() +
+    scale_color_manual(values = c("#FABA39FF", "#D46F10",
+                                  "#FABA39FF", "#D46F10",
+                                  "#FABA39FF", "#D46F10",
+                                  "#FABA39FF", "#D46F10")) +
+    theme(text = element_text(size = 20),
+          legend.position = "none"))
+
+#### 2023 DO Fit ####
 
 ##### Data QAQC #####
 
@@ -721,7 +1008,259 @@ View(post_data23)
 #        width = 20,
 #        units = "cm")
 
-#### Manuscript Figure ####
+#### 2023 DOsat Fit ####
+
+##### Data QAQC #####
+
+# First, we would typically check data missingness,
+# but since we've created this dataset in the
+# script prior, this has already been done.
+
+# Checked correlated variables above.
+
+# Next, we will select only the columns of interest:
+# - clustering group (dependent variable)
+# - cumulative daily light
+# - mean daily windspeed
+# - mean daily discharge
+
+# Ensured, using plot above, that none were correlated
+# i.e., above 0.7.
+
+data_2023_select_dosat <- data_2023 %>%
+  # make new "sensor" column
+  mutate(sensor = case_when(replicate == "NS1" ~ "NS1",
+                            replicate == "NS2" ~ "NS2",
+                            replicate == "NS3" ~ "NS3",
+                            TRUE ~ NA)) %>%
+  select(group_dosat, site, sensor,
+         sum_light, mean_ws, mean_q) %>%
+  # and creating new column with edited Q data
+  # to delineate no flow at SS/SH sites
+  # making this a small number rather than zero
+  # so log scaling will still work below
+  mutate(mean_q_ed = case_when(site %in% c("BW", "GB") ~ mean_q,
+                               site %in% c("SH", "SS") ~ 0.0001))
+
+# Examine plots for covariates of interest vs.
+# cluster assignments.
+boxplot(sum_light ~ group_dosat, data = data_2023_select_dosat)
+boxplot(mean_ws ~ group_dosat, data = data_2023_select_dosat)
+boxplot(log(mean_q_ed) ~ group_dosat, data = data_2023_select_dosat)
+
+# Also examine across sites & sensors.
+boxplot(sum_light ~ site, data = data_2023_select_dosat)
+boxplot(mean_ws ~ site, data = data_2023_select_dosat)
+boxplot(log(mean_q_ed) ~ site, data = data_2023_select_dosat)
+# again expecting this since BW is a much larger creek
+boxplot(sum_light ~ sensor, data = data_2023_select_dosat)
+boxplot(mean_ws ~ sensor, data = data_2023_select_dosat)
+boxplot(log(mean_q_ed) ~ sensor, data = data_2023_select_dosat)
+# Ok, these look alright to include as nested random effects.
+
+# Need to make factors, log scale q, and scale transform
+# numeric variables.
+data_2023_select_dosat <- data_2023_select_dosat %>%
+  mutate(group_dosat = factor(group_dosat,
+                        # making base the "Neither" group
+                        levels = c("Neither",
+                                   "Cluster 1",
+                                   "Cluster 2")),
+         site = factor(site),
+         sensor = factor(sensor)) %>%
+  mutate(log_mean_q = log(mean_q_ed)) %>%
+  mutate(scale_light = scale(sum_light),
+         scale_wind = scale(mean_ws),
+         scale_q = scale(log_mean_q))
+
+# Create and export data for model fit.
+data_2023_multireg_dosat <- data_2023_select_dosat %>%
+  select(group_dosat, site, sensor,
+         scale_light, scale_wind, scale_q)
+
+# saveRDS(data_2023_multireg_dosat, 
+#         "data_working/clustering_dosat_multireg23_052525.rds")
+
+##### Model Fit #####
+
+# Fit multilevel multinomial logistic regression model.
+fit_2023_dosat <- brm(group_dosat ~ scale_light + 
+                  scale_wind + 
+                  scale_q +
+                  (1|site/sensor), # nested random effect
+                data = data_2023_multireg_dosat,
+                # specify categorical if vectorized data
+                # specify multinomial if data is a matrix
+                family = categorical())
+
+# Runs in ~10 minutes on laptop.
+# Started at 12:49 pm. Finished at 12:57.
+
+# Save model fit.
+saveRDS(fit_2023_dosat, "data_model_outputs/brms_dosat_2023_052525.rds")
+
+##### Diagnostics #####
+
+# Examine model fit.
+summary(fit_2023_dosat)
+# Only 1 divergent transition, and Rhats look good!
+
+plot(fit_2023_dosat, variable = c("b_muCluster1_scale_light",
+                            "b_muCluster1_scale_wind",
+                            "b_muCluster1_scale_q",
+                            "b_muCluster2_scale_light",
+                            "b_muCluster2_scale_wind",
+                            "b_muCluster2_scale_q"))
+# Chain mixing looking good!
+
+# Be sure no n_eff are < 0.1
+mcmc_plot(fit_2023_dosat, type = "neff")
+# No Neffs are < 0.1
+
+# Examine relationships for each predictor.
+plot(conditional_effects(fit_2023_dosat, effects = "scale_light",
+                         categorical = TRUE))
+plot(conditional_effects(fit_2023_dosat, effects = "scale_wind",
+                         categorical = TRUE))
+plot(conditional_effects(fit_2023_dosat, effects = "scale_q",
+                         categorical = TRUE))
+
+# Appears cumulative daily light is lowest in Cluster 1, 
+# high discharge most strongly predicts Cluster 2, 
+# and windspeed is equivocal.
+
+##### Visualization #####
+
+# Create conditional effects object to better customize plots.
+# https://discourse.mc-stan.org/t/change-linetype-aestetics-conditional-effects/14962
+c_eff23_sat <- conditional_effects(fit_2023_dosat, categorical = T)
+
+# Light prediction plot.
+c_eff23_sat_light <- as.data.frame(c_eff23_sat$`scale_light`)
+
+(figSI23_light_sat <- ggplot(c_eff23_sat_light,
+                         aes(x = scale_light,
+                             y = estimate__, 
+                             group = cats__)) +
+    geom_ribbon(aes(ymin = lower__, 
+                    ymax = upper__, 
+                    fill = cats__), alpha = 0.2) +
+    geom_line(size = 1, aes(color = cats__))+
+    scale_fill_manual(values = c("Cluster 1"= "#0FB2D3",
+                                 "Cluster 2"= "#026779",
+                                 "Neither"= "gray70"),
+                      guide = "none") +
+    scale_color_manual(values = c("Cluster 1"= "#0FB2D3",
+                                  "Cluster 2"= "#026779",
+                                  "Neither"= "gray70"),
+                       guide = "none")+
+    labs(y = "Probability", 
+         x = "Scaled Light") +
+    theme_bw())
+
+# Wind prediction plot.
+c_eff23_sat_wind <- as.data.frame(c_eff23_sat$`scale_wind`)
+
+(figSI23_wind_sat <- ggplot(c_eff23_sat_wind,
+                        aes(x = scale_wind,
+                            y = estimate__, 
+                            group = cats__)) +
+    geom_ribbon(aes(ymin = lower__, 
+                    ymax = upper__, 
+                    fill = cats__), alpha = 0.2) +
+    geom_line(size = 1, aes(color = cats__))+
+    scale_fill_manual(values = c("Cluster 1"= "#0FB2D3",
+                                 "Cluster 2"= "#026779",
+                                 "Neither"= "gray70")) +
+    scale_color_manual(values = c("Cluster 1"= "#0FB2D3",
+                                  "Cluster 2"= "#026779",
+                                  "Neither"= "gray70"))+
+    labs(y = "Probability", 
+         x = "Scaled Windspeed",
+         color = "Membership",
+         fill = "Membership") +
+    theme_bw()) # +
+#theme(legend.position = c(0.8, 0.8)))
+
+# Discharge prediction plot.
+c_eff23_sat_q <- as.data.frame(c_eff23_sat$`scale_q`)
+
+(figSI23_q_sat <- ggplot(c_eff23_sat_q, 
+                     aes(x = scale_q,
+                         y = estimate__, 
+                         group = cats__)) +
+    geom_ribbon(aes(ymin = lower__, 
+                    ymax = upper__, 
+                    fill = cats__), alpha = 0.2) +
+    geom_line(size = 1, aes(color = cats__))+
+    scale_fill_manual(values = c("Cluster 1"= "#0FB2D3",
+                                 "Cluster 2"= "#026779",
+                                 "Neither"= "gray70"),
+                      guide = "none") +
+    scale_color_manual(values = c("Cluster 1"= "#0FB2D3",
+                                  "Cluster 2"= "#026779",
+                                  "Neither"= "gray70"),
+                       guide = "none")+
+    labs(y = "Probability", 
+         x = "Scaled Discharge") +
+    theme_bw())
+
+# Combine posterior predictive plots into a single figure
+# to be included in the supplemental information.
+(figSI_StageII_sat <- figSI23_light_sat | figSI23_q_sat | figSI23_wind_sat)
+
+# ggsave(figSI_StageII_sat,
+#        filename = "figures/S10_DOsat_StageII_PredPlots.jpg",
+#        height = 10,
+#        width = 30,
+#        units = "cm")
+
+# Examine the posterior data.
+post_data23_sat <- mcmc_intervals_data(fit_2023_dosat,
+                                   point_est = "median", # default = "median"
+                                   prob = 0.66, # default = 0.5
+                                   prob_outer = 0.95) # default = 0.9
+
+View(post_data23_sat)
+
+(fig_custom23_dosat <- ggplot(post_data23_sat %>%
+                          filter(parameter %in% c("b_muCluster1_scale_light",
+                                                  "b_muCluster1_scale_wind",
+                                                  "b_muCluster1_scale_q",
+                                                  "b_muCluster2_scale_light",
+                                                  "b_muCluster2_scale_wind",
+                                                  "b_muCluster2_scale_q")) %>%
+                          mutate(par_f = factor(parameter, 
+                                                levels = c("b_muCluster1_scale_wind",
+                                                           "b_muCluster2_scale_wind",
+                                                           "b_muCluster1_scale_q",
+                                                           "b_muCluster2_scale_q",
+                                                           "b_muCluster1_scale_light",
+                                                           "b_muCluster2_scale_light"))), 
+                        aes(x = m, y = par_f, color = par_f)) +
+    geom_linerange(aes(xmin = ll, xmax = hh),
+                   size = 3, alpha = 0.5) +
+    geom_point(size = 6) +
+    vline_at(v = 0) +
+    scale_x_continuous(limits = c(-6, 6),
+                       breaks = c(-6, -4, -2, 0, 2, 4, 6)) +
+    labs(x = "Posterior Estimates",
+         y = "Predictors",
+         title = "Stage II") +
+    scale_y_discrete(labels = c("b_muCluster1_scale_light" = "Cluster 1 Light",
+                                "b_muCluster1_scale_wind" = "Cluster 1 Wind",
+                                "b_muCluster1_scale_q" = "Cluster 1 Q",
+                                "b_muCluster2_scale_light" = "Cluster 2 Light",
+                                "b_muCluster2_scale_wind" = "Cluster 2 Wind",
+                                "b_muCluster2_scale_q" = "Cluster 2 Q")) +
+    theme_bw() +
+    scale_color_manual(values = c("#0FB2D3", "#026779",
+                                  "#0FB2D3", "#026779",
+                                  "#0FB2D3", "#026779")) +
+    theme(text = element_text(size = 20),
+          legend.position = "none"))
+
+#### Manuscript Figures ####
 
 # Join the plots above into a single figure.
 (fig_custom_both <- (fig_custom + fig_custom23) +
@@ -733,7 +1272,17 @@ View(post_data23)
 #        width = 40,
 #        units = "cm")
 
-#### Sources ####
+# Join the % saturation plots above into a single figure.
+(fig_custom_both_dosat <- (fig_custom_dosat + fig_custom23_dosat) +
+    plot_annotation(tag_levels = 'A'))
+
+# ggsave(fig_custom_both_dosat,
+#        filename = "figures/brms_dosat_bothyrs_052525.jpg",
+#        height = 20,
+#        width = 40,
+#        units = "cm")
+
+#### Resources ####
 
 # Online Resources:
 
