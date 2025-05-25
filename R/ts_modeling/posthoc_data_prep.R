@@ -21,13 +21,14 @@ library(patchwork)
 
 # First load in raw DO lists.
 # hourly timestep
-dosat_2022 <- readRDS("data_working/do_data_2022_dailylist_050225.rds")
-dosat_2023 <- readRDS("data_working/do_data_2023_dailylist_050225.rds")
+data_2022 <- readRDS("data_working/do_data_2022_dailylist_052325.rds")
+data_2023 <- readRDS("data_working/do_data_2023_dailylist_052325.rds")
 
-# As well as clusters resulting from
-# dynamic time warping analysis.
-clusters_2022 <- readRDS("data_working/dtw_clusters_2022_050225.rds")
-clusters_2023 <- readRDS("data_working/dtw_clusters_2023_050325.rds")
+# As well as clusters resulting from DTW.
+do_clusters_2022 <- readRDS("data_working/dtw_clusters_2022_050225.rds")
+dosat_clusters_2022 <- readRDS("data_working/dtw_clusters_2022_052425.rds")
+do_clusters_2023 <- readRDS("data_working/dtw_clusters_2023_050325.rds")
+dosat_clusters_2023 <- readRDS("data_working/dtw_clusters_2023_052525.rds")
 
 # Next load in precip.
 # daily timestep
@@ -53,8 +54,8 @@ q_data <- readRDS("data_working/discharge_aggregated_121223.rds")
 #### Tidy ####
 
 # Need to collapse lists into dataframes.
-dosat_2022_df <- do.call(rbind.data.frame, dosat_2022)
-dosat_2023_df <- do.call(rbind.data.frame, dosat_2023)
+data_2022_df <- do.call(rbind.data.frame, data_2022)
+data_2023_df <- do.call(rbind.data.frame, data_2023)
 
 # Trim the precipitation dataset.
 ppt_trim <- ppt_data %>%
@@ -97,18 +98,37 @@ q_trim <- q_data %>%
 
 ##### Clusters #####
 
+# Need to rename some columns for the dosat DTW analysis
+dosat_clusters_2022 <- dosat_clusters_2022 %>%
+  rename(cluster_1_dosat = cluster_1,
+         cluster_2_dosat = cluster_2,
+         clusters_dosat = clusters,
+         group_dosat = group)
+dosat_clusters_2023 <- dosat_clusters_2023 %>%
+  rename(cluster_1_dosat = cluster_1,
+         cluster_2_dosat = cluster_2,
+         clusters_dosat = clusters,
+         group_dosat = group)
+
 # Need to join with cluster assignments, which will
 # be the response variable in my logistic regression.
-dosat_2022_df <- full_join(dosat_2022_df,
-                            clusters_2022,
+data_2022_df <- full_join(data_2022_df,
+                            do_clusters_2022,
                             by = c("ID_index" = "uniqueID"))
-dosat_2023_df <- full_join(dosat_2023_df,
-                           clusters_2023,
+data_2022_df <- full_join(data_2022_df,
+                           dosat_clusters_2022,
+                           by = c("ID_index" = "uniqueID"))
+
+data_2023_df <- full_join(data_2023_df,
+                           do_clusters_2023,
+                           by = c("ID_index" = "uniqueID"))
+data_2023_df <- full_join(data_2023_df,
+                           dosat_clusters_2023,
                            by = c("ID_index" = "uniqueID"))
 
 ##### Precip #####
 
-dosat_2022_df <- dosat_2022_df %>%
+data_2022_df <- data_2022_df %>%
   # create new column for joining with precip data
   mutate(precip_site = case_when(site == "BW" &
                                    replicate == "NS1" ~ "BWNS1",
@@ -131,7 +151,7 @@ dosat_2022_df <- dosat_2022_df %>%
                                                    "15m",
                                                    "20m") ~ "GB10m"))
 
-dosat_2023_df <- dosat_2023_df %>%
+data_2023_df <- data_2023_df %>%
   # create new column for joining with precip data
   mutate(precip_site = case_when(site == "BW" &
                                    replicate == "NS1" ~ "BWNS1",
@@ -158,20 +178,20 @@ dosat_2023_df <- dosat_2023_df %>%
                                  site == "SH" &
                                    replicate == "NS3" ~ "SHNS3"))
 
-dosat_ppt_22 <- left_join(dosat_2022_df, ppt_trim,
+data_ppt_22 <- left_join(data_2022_df, ppt_trim,
                           by = c("precip_site" = "site",
                                  "date"))
-dosat_ppt_23 <- left_join(dosat_2023_df, ppt_trim,
+data_ppt_23 <- left_join(data_2023_df, ppt_trim,
                           by = c("precip_site" = "site",
                                  "date"))
 
 # quick test plot to be sure this joined as it should
-ggplot(dosat_ppt_23, aes(x = date, y = ppt_mm)) +
+ggplot(data_ppt_23, aes(x = date, y = ppt_mm)) +
   geom_line() + theme_bw() + facet_wrap(.~precip_site)
 
 
 ##### Light #####
-dosat_ppt_22 <- dosat_ppt_22 %>%
+data_ppt_22 <- data_ppt_22 %>%
   # create new column for joining with light data
   mutate(light_site = case_when(site == "BW" &
                                    replicate %in% c("NS1",
@@ -193,7 +213,7 @@ dosat_ppt_22 <- dosat_ppt_22 %>%
                                  site == "GB" &
                                    location == "20m" ~ "GB20m"))
 
-dosat_ppt_23 <- dosat_ppt_23 %>%
+data_ppt_23 <- data_ppt_23 %>%
   # create new column for joining with light data
   mutate(light_site = case_when(site == "BW" &
                                   replicate %in% c("NS1",
@@ -212,15 +232,15 @@ dosat_ppt_23 <- dosat_ppt_23 %>%
                                                    "NS2",
                                                    "NS3") ~ "SHNS2"))
 
-dosat_ppt_lt_22 <- left_join(dosat_ppt_22, light_trim,
+data_ppt_lt_22 <- left_join(data_ppt_22, light_trim,
                           by = c("light_site" = "site",
                                  "date", "hour"))
-dosat_ppt_lt_23 <- left_join(dosat_ppt_23, light_trim,
+data_ppt_lt_23 <- left_join(data_ppt_23, light_trim,
                              by = c("light_site" = "site",
                                     "date", "hour"))
 
 ##### Baro P #####
-dosat_ppt_lt_22 <- dosat_ppt_lt_22 %>%
+data_ppt_lt_22 <- data_ppt_lt_22 %>%
   # create new column for joining with pressure data
   mutate(bp_site = case_when(site == "BW" &
                                   replicate %in% c("NS1",
@@ -242,7 +262,7 @@ dosat_ppt_lt_22 <- dosat_ppt_lt_22 %>%
                                 site == "GB" &
                                   location == "20m" ~ "GB20m"))
 
-dosat_ppt_lt_23 <- dosat_ppt_lt_23 %>%
+data_ppt_lt_23 <- data_ppt_lt_23 %>%
   # create new column for joining with pressure data
   mutate(bp_site = case_when(site == "BW" &
                                   replicate %in% c("NS1",
@@ -261,15 +281,15 @@ dosat_ppt_lt_23 <- dosat_ppt_lt_23 %>%
                                                    "NS2",
                                                    "NS3") ~ "SHNS2"))
 
-dosat_ppt_lt_bp_22 <- left_join(dosat_ppt_lt_22, bp_trim,
+data_ppt_lt_bp_22 <- left_join(data_ppt_lt_22, bp_trim,
                              by = c("bp_site" = "site",
                                     "date", "hour"))
-dosat_ppt_lt_bp_23 <- left_join(dosat_ppt_lt_23, bp_trim,
+data_ppt_lt_bp_23 <- left_join(data_ppt_lt_23, bp_trim,
                              by = c("bp_site" = "site",
                                     "date", "hour"))
 
 ##### Wind #####
-dosat_ppt_lt_bp_22 <- dosat_ppt_lt_bp_22 %>%
+data_ppt_lt_bp_22 <- data_ppt_lt_bp_22 %>%
   # create new column for joining with windspeed data
   mutate(ws_site = case_when(site == "BW" &
                                replicate %in% c("NS1",
@@ -291,7 +311,7 @@ dosat_ppt_lt_bp_22 <- dosat_ppt_lt_bp_22 %>%
                              site == "GB" &
                                location == "20m" ~ "GB20m"))
 
-dosat_ppt_lt_bp_23 <- dosat_ppt_lt_bp_23 %>%
+data_ppt_lt_bp_23 <- data_ppt_lt_bp_23 %>%
   # create new column for joining with windspeed data
   mutate(ws_site = case_when(site == "BW" &
                                replicate %in% c("NS1",
@@ -310,32 +330,32 @@ dosat_ppt_lt_bp_23 <- dosat_ppt_lt_bp_23 %>%
                                                 "NS2",
                                                 "NS3") ~ "SHNS2"))
 
-dosat_ppt_lt_bp_ws_22 <- left_join(dosat_ppt_lt_bp_22, ws_trim,
+data_ppt_lt_bp_ws_22 <- left_join(data_ppt_lt_bp_22, ws_trim,
                                 by = c("ws_site" = "site",
                                        "date", "hour"))
-dosat_ppt_lt_bp_ws_23 <- left_join(dosat_ppt_lt_bp_23, ws_trim,
+data_ppt_lt_bp_ws_23 <- left_join(data_ppt_lt_bp_23, ws_trim,
                                 by = c("ws_site" = "site",
                                        "date", "hour"))
 
 # quick test plot to be sure this joined as it should
-ggplot(dosat_ppt_lt_bp_ws_22, aes(x = date_times, 
+ggplot(data_ppt_lt_bp_ws_22, aes(x = date_times, 
                                   y = windsp_ms)) +
   geom_point() + theme_bw() + facet_wrap(location~site)
 
 ##### Discharge #####
 # Join the first dataset with Q data.
-dosat_ppt_lt_bp_ws_q_22 <- left_join(dosat_ppt_lt_bp_ws_22,
+data_ppt_lt_bp_ws_q_22 <- left_join(data_ppt_lt_bp_ws_22,
                                      q_trim,
                                    by = c("site" = "Site",
                                           "date", "hour"))
 
-dosat_ppt_lt_bp_ws_23 <- dosat_ppt_lt_bp_ws_23 %>%
+data_ppt_lt_bp_ws_23 <- data_ppt_lt_bp_ws_23 %>%
   # create new column for joining with windspeed data
   mutate(q_site = case_when(site %in% c("BW", "SS") ~ "BW",
                             site %in% c("GB", "SH") ~ "GB"))
 
 # Join the second dataset with Q data.
-dosat_ppt_lt_bp_ws_q_23 <- left_join(dosat_ppt_lt_bp_ws_23,
+data_ppt_lt_bp_ws_q_23 <- left_join(data_ppt_lt_bp_ws_23,
                                      q_trim,
                                      by = c("q_site" = "Site",
                                             "date", "hour"))
@@ -346,12 +366,15 @@ dosat_ppt_lt_bp_ws_q_23 <- left_join(dosat_ppt_lt_bp_ws_23,
 
 # This will properly group days (from 4am to 4am) by index
 # rather than by date to aggregate covariates.
-summary_22 <- dosat_ppt_lt_bp_ws_q_22 %>%
+summary_22 <- data_ppt_lt_bp_ws_q_22 %>%
   group_by(site, location, replicate, 
            ID, index, ID_index) %>%
   summarize(cluster_1 = cluster_1[1],
             cluster_2 = cluster_2[1],
+            cluster_1_dosat = cluster_1_dosat[1],
+            cluster_2_dosat = cluster_2_dosat[1],
             group = group[1],
+            group_dosat = group_dosat[1],
             min_dosat = min(DO_sat, na.rm = TRUE),
             max_dosat = max(DO_sat, na.rm = TRUE),
             mean_dosat = mean(DO_sat, na.rm = TRUE),
@@ -385,12 +408,15 @@ summary_22 <- dosat_ppt_lt_bp_ws_q_22 %>%
          delta_ws = max_ws - min_ws,
          delta_q = max_q - min_q)
 
-summary_23 <- dosat_ppt_lt_bp_ws_q_23 %>%
+summary_23 <- data_ppt_lt_bp_ws_q_23 %>%
   group_by(site, location, replicate, 
            ID, index, ID_index) %>%
   summarize(cluster_1 = cluster_1[1],
             cluster_2 = cluster_2[1],
+            cluster_1_dosat = cluster_1_dosat[1],
+            cluster_2_dosat = cluster_2_dosat[1],
             group = group[1],
+            group_dosat = group_dosat[1],
             min_dosat = min(DO_sat, na.rm = TRUE),
             max_dosat = max(DO_sat, na.rm = TRUE),
             mean_dosat = mean(DO_sat, na.rm = TRUE),
@@ -427,9 +453,9 @@ summary_23 <- dosat_ppt_lt_bp_ws_q_23 %>%
 #### Export ####
 
 # Export both datasets.
-# saveRDS(summary_22,
-#         "data_working/do_covariate_daily_data_2022_050425.rds")
-# saveRDS(summary_23,
-#         "data_working/do_covariate_daily_data_2023_050425.rds")
+saveRDS(summary_22,
+        "data_working/do_covariate_daily_data_2022_052525.rds")
+saveRDS(summary_23,
+        "data_working/do_covariate_daily_data_2023_052525.rds")
 
 # End of script.
