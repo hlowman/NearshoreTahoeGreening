@@ -1282,6 +1282,1198 @@ View(post_data23_sat)
 #        width = 40,
 #        units = "cm")
 
+#### Site-Level Fits ####
+
+# Fitting models to each sensor by stage
+# for DO % sat data to create final regression figure for SI
+# with points separated out by site.
+
+##### 2022 GBNS Fit #####
+
+# Select the data & columns of interest:
+data_2022_gbns <- data_2022 %>%
+  filter(site == "GB") %>%
+  filter(location == "3m") %>%
+  # make new "sensor" column
+  mutate(sensor = case_when(replicate == "NS1" ~ "NS1",
+                            replicate == "NS2" ~ "NS2",
+                            replicate == "NS3" ~ "NS3",
+                            TRUE ~ NA)) %>%
+  select(group_dosat, site, sensor, 
+         sum_light, mean_ws, mean_q)
+
+# Need to make proper transformations.
+data_2022_gbns <- data_2022_gbns %>%
+  mutate(group_dosat = factor(group_dosat,
+                              # "Neither" group as reference
+                              levels = c("Neither",
+                                         "Cluster 1",
+                                         "Cluster 2")),
+         site = factor(site),
+         sensor = factor(sensor)) %>%
+  mutate(log_mean_q = log(mean_q)) %>%
+  mutate(scale_light = scale(sum_light),
+         scale_wind = scale(mean_ws),
+         scale_q = scale(log_mean_q))
+
+# Create dataset for model fit.
+data_2022_multireg_gbns <- data_2022_gbns %>%
+  select(group_dosat, site, sensor,
+         scale_light, scale_wind, scale_q)
+
+# Fit multilevel multinomial logistic regression model.
+fit_2022_gbns <- brm(group_dosat ~ scale_light +
+                        scale_wind + 
+                        scale_q +
+                        (1|sensor), # single random effect
+                      data = data_2022_multireg_gbns,
+                      # specify categorical if vectorized data
+                      family = categorical())
+
+# Runs in ~3 minutes on laptop.
+# Started at 3:50 pm. Finished at 3:52.
+
+# Save model fit.
+saveRDS(fit_2022_gbns,
+        "data_model_outputs/brms_dosat_2022_gbns_052625.rds")
+
+# Examine model fit.
+summary(fit_2022_gbns)
+# 2 divergent transitions, Rhats look good!
+
+plot(fit_2022_gbns, variable = c("b_muCluster1_scale_light",
+                                  "b_muCluster1_scale_wind",
+                                  "b_muCluster1_scale_q",
+                                  "b_muCluster2_scale_light",
+                                  "b_muCluster2_scale_wind",
+                                  "b_muCluster2_scale_q"))
+# Chain mixing looking good!
+
+# Be sure no n_eff are < 0.1
+mcmc_plot(fit_2022_gbns, type = "neff")
+# Nope!
+
+# Examine the posterior data.
+post_data_gbns <- mcmc_intervals_data(fit_2022_gbns,
+                                     point_est = "median",
+                                     prob = 0.66, # default = 0.5
+                                     prob_outer = 0.95) # default = 0.9
+
+# Pull out necessary data for final, combined figure.
+est_gbns <- post_data_gbns %>%
+  select(parameter, ll, m, hh) %>%
+  filter(parameter %in% c("b_muCluster1_scale_light",
+                          "b_muCluster1_scale_wind",
+                          "b_muCluster1_scale_q",
+                          "b_muCluster2_scale_light",
+                          "b_muCluster2_scale_wind",
+                          "b_muCluster2_scale_q")) %>%
+  rename("CIlower" = ll,
+         "median" = m,
+         "CIupper" = hh) %>%
+  mutate(site = "GB",
+         location = "NS")
+
+##### 2022 GBSL Fit #####
+
+# Select the data & columns of interest:
+data_2022_gbsl <- data_2022 %>%
+  filter(site == "GB") %>%
+  filter(location == "10m") %>%
+  # make new "sensor" column
+  mutate(sensor = case_when(location == "10m" ~ "10m",
+                            TRUE ~ NA)) %>%
+  select(group_dosat, site, sensor, 
+         sum_light, mean_ws, mean_q)
+
+# Need to make proper transformations.
+data_2022_gbsl <- data_2022_gbsl %>%
+  mutate(group_dosat = factor(group_dosat,
+                              # "Neither" group as reference
+                              levels = c("Neither",
+                                         "Cluster 1",
+                                         "Cluster 2")),
+         site = factor(site),
+         sensor = factor(sensor)) %>%
+  mutate(log_mean_q = log(mean_q)) %>%
+  mutate(scale_light = scale(sum_light),
+         scale_wind = scale(mean_ws),
+         scale_q = scale(log_mean_q))
+
+# Create dataset for model fit.
+data_2022_multireg_gbsl <- data_2022_gbsl %>%
+  select(group_dosat, site, sensor,
+         scale_light, scale_wind, scale_q)
+
+# Fit multilevel multinomial logistic regression model.
+fit_2022_gbsl <- brm(group_dosat ~ scale_light +
+                       scale_wind + 
+                       scale_q +
+                       (1|sensor), # single random effect
+                     data = data_2022_multireg_gbsl,
+                     # specify categorical if vectorized data
+                     family = categorical())
+
+# Runs in ~2 minutes on laptop.
+
+# Save model fit.
+saveRDS(fit_2022_gbsl,
+        "data_model_outputs/brms_dosat_2022_gbsl_052625.rds")
+
+# Examine model fit.
+summary(fit_2022_gbsl)
+# 337 divergent transitions, Rhats look meh
+
+plot(fit_2022_gbsl, variable = c("b_muCluster1_scale_light",
+                                 "b_muCluster1_scale_wind",
+                                 "b_muCluster1_scale_q",
+                                 "b_muCluster2_scale_light",
+                                 "b_muCluster2_scale_wind",
+                                 "b_muCluster2_scale_q"))
+# Chain mixing looks alright!
+
+# Be sure no n_eff are < 0.1
+mcmc_plot(fit_2022_gbsl, type = "neff")
+# Lots below 0.1...
+
+# Examine the posterior data.
+post_data_gbsl <- mcmc_intervals_data(fit_2022_gbsl,
+                                      point_est = "median",
+                                      prob = 0.66, # default = 0.5
+                                      prob_outer = 0.95) # default = 0.9
+
+# Pull out necessary data for final, combined figure.
+est_gbsl <- post_data_gbsl %>%
+  select(parameter, ll, m, hh) %>%
+  filter(parameter %in% c("b_muCluster1_scale_light",
+                          "b_muCluster1_scale_wind",
+                          "b_muCluster1_scale_q",
+                          "b_muCluster2_scale_light",
+                          "b_muCluster2_scale_wind",
+                          "b_muCluster2_scale_q")) %>%
+  rename("CIlower" = ll,
+         "median" = m,
+         "CIupper" = hh) %>%
+  mutate(site = "GB",
+         location = "SL")
+
+##### 2022 GBML Fit #####
+
+# Select the data & columns of interest:
+data_2022_gbml <- data_2022 %>%
+  filter(site == "GB") %>%
+  filter(location == "15m") %>%
+  # make new "sensor" column
+  mutate(sensor = case_when(location == "15m" ~ "15m",
+                            TRUE ~ NA)) %>%
+  select(group_dosat, site, sensor, 
+         sum_light, mean_ws, mean_q)
+
+# Need to make proper transformations.
+data_2022_gbml <- data_2022_gbml %>%
+  mutate(group_dosat = factor(group_dosat,
+                              # "Neither" group as reference
+                              levels = c("Neither",
+                                         "Cluster 1",
+                                         "Cluster 2")),
+         site = factor(site),
+         sensor = factor(sensor)) %>%
+  mutate(log_mean_q = log(mean_q)) %>%
+  mutate(scale_light = scale(sum_light),
+         scale_wind = scale(mean_ws),
+         scale_q = scale(log_mean_q))
+
+# Create dataset for model fit.
+data_2022_multireg_gbml <- data_2022_gbml %>%
+  select(group_dosat, site, sensor,
+         scale_light, scale_wind, scale_q)
+
+# Fit multilevel multinomial logistic regression model.
+fit_2022_gbml <- brm(group_dosat ~ scale_light +
+                       scale_wind + 
+                       scale_q +
+                       (1|sensor), # single random effect
+                     data = data_2022_multireg_gbml,
+                     # specify categorical if vectorized data
+                     family = categorical())
+
+# Runs in ~2 minutes on laptop.
+
+# Save model fit.
+saveRDS(fit_2022_gbml,
+        "data_model_outputs/brms_dosat_2022_gbml_052625.rds")
+
+# Examine model fit.
+summary(fit_2022_gbml)
+# 55 divergent transitions, Rhats look good!
+
+plot(fit_2022_gbml, variable = c("b_muCluster1_scale_light",
+                                 "b_muCluster1_scale_wind",
+                                 "b_muCluster1_scale_q",
+                                 "b_muCluster2_scale_light",
+                                 "b_muCluster2_scale_wind",
+                                 "b_muCluster2_scale_q"))
+# Chain mixing looks alright!
+
+# Be sure no n_eff are < 0.1
+mcmc_plot(fit_2022_gbml, type = "neff")
+# 2 below 0.1...
+
+# Examine the posterior data.
+post_data_gbml <- mcmc_intervals_data(fit_2022_gbml,
+                                      point_est = "median",
+                                      prob = 0.66, # default = 0.5
+                                      prob_outer = 0.95) # default = 0.9
+
+# Pull out necessary data for final, combined figure.
+est_gbml <- post_data_gbml %>%
+  select(parameter, ll, m, hh) %>%
+  filter(parameter %in% c("b_muCluster1_scale_light",
+                          "b_muCluster1_scale_wind",
+                          "b_muCluster1_scale_q",
+                          "b_muCluster2_scale_light",
+                          "b_muCluster2_scale_wind",
+                          "b_muCluster2_scale_q")) %>%
+  rename("CIlower" = ll,
+         "median" = m,
+         "CIupper" = hh) %>%
+  mutate(site = "GB",
+         location = "ML")
+
+##### 2022 GBDL Fit #####
+
+# Select the data & columns of interest:
+data_2022_gbdl <- data_2022 %>%
+  filter(site == "GB") %>%
+  filter(location == "20m") %>%
+  # make new "sensor" column
+  mutate(sensor = case_when(location == "20m" ~ "20m",
+                            TRUE ~ NA)) %>%
+  select(group_dosat, site, sensor, 
+         sum_light, mean_ws, mean_q)
+
+# Need to make proper transformations.
+data_2022_gbdl <- data_2022_gbdl %>%
+  mutate(group_dosat = factor(group_dosat,
+                              # "Neither" group as reference
+                              levels = c("Neither",
+                                         "Cluster 1",
+                                         "Cluster 2")),
+         site = factor(site),
+         sensor = factor(sensor)) %>%
+  mutate(log_mean_q = log(mean_q)) %>%
+  mutate(scale_light = scale(sum_light),
+         scale_wind = scale(mean_ws),
+         scale_q = scale(log_mean_q))
+
+# Create dataset for model fit.
+data_2022_multireg_gbdl <- data_2022_gbdl %>%
+  select(group_dosat, site, sensor,
+         scale_light, scale_wind, scale_q)
+
+# Fit multilevel multinomial logistic regression model.
+fit_2022_gbdl <- brm(group_dosat ~ scale_light +
+                       scale_wind + 
+                       scale_q +
+                       (1|sensor), # single random effect
+                     data = data_2022_multireg_gbdl,
+                     # specify categorical if vectorized data
+                     family = categorical())
+
+# Runs in ~2 minutes on laptop.
+
+# Save model fit.
+saveRDS(fit_2022_gbdl,
+        "data_model_outputs/brms_dosat_2022_gbdl_052625.rds")
+
+# Examine model fit.
+summary(fit_2022_gbdl)
+# 25 divergent transitions, Rhats look good!
+
+plot(fit_2022_gbdl, variable = c("b_muCluster1_scale_light",
+                                 "b_muCluster1_scale_wind",
+                                 "b_muCluster1_scale_q",
+                                 "b_muCluster2_scale_light",
+                                 "b_muCluster2_scale_wind",
+                                 "b_muCluster2_scale_q"))
+# Chain mixing looks alright!
+
+# Be sure no n_eff are < 0.1
+mcmc_plot(fit_2022_gbdl, type = "neff")
+# Nope!
+
+# Examine the posterior data.
+post_data_gbdl <- mcmc_intervals_data(fit_2022_gbdl,
+                                      point_est = "median",
+                                      prob = 0.66, # default = 0.5
+                                      prob_outer = 0.95) # default = 0.9
+
+# Pull out necessary data for final, combined figure.
+est_gbdl <- post_data_gbdl %>%
+  select(parameter, ll, m, hh) %>%
+  filter(parameter %in% c("b_muCluster1_scale_light",
+                          "b_muCluster1_scale_wind",
+                          "b_muCluster1_scale_q",
+                          "b_muCluster2_scale_light",
+                          "b_muCluster2_scale_wind",
+                          "b_muCluster2_scale_q")) %>%
+  rename("CIlower" = ll,
+         "median" = m,
+         "CIupper" = hh) %>%
+  mutate(site = "GB",
+         location = "DL")
+
+##### 2022 BWNS Fit #####
+
+# Select the data & columns of interest:
+data_2022_bwns <- data_2022 %>%
+  filter(site == "BW") %>%
+  filter(location == "3m") %>%
+  # make new "sensor" column
+  mutate(sensor = case_when(replicate == "NS1" ~ "NS1",
+                            replicate == "NS2" ~ "NS2",
+                            replicate == "NS3" ~ "NS3",
+                            TRUE ~ NA)) %>%
+  select(group_dosat, site, sensor, 
+         sum_light, mean_ws, mean_q)
+
+# Need to make proper transformations.
+data_2022_bwns <- data_2022_bwns %>%
+  mutate(group_dosat = factor(group_dosat,
+                              # "Neither" group as reference
+                              levels = c("Neither",
+                                         "Cluster 1",
+                                         "Cluster 2")),
+         site = factor(site),
+         sensor = factor(sensor)) %>%
+  mutate(log_mean_q = log(mean_q)) %>%
+  mutate(scale_light = scale(sum_light),
+         scale_wind = scale(mean_ws),
+         scale_q = scale(log_mean_q))
+
+# Create dataset for model fit.
+data_2022_multireg_bwns <- data_2022_bwns %>%
+  select(group_dosat, site, sensor,
+         scale_light, scale_wind, scale_q)
+
+# Fit multilevel multinomial logistic regression model.
+fit_2022_bwns <- brm(group_dosat ~ scale_light +
+                       scale_wind + 
+                       scale_q +
+                       (1|sensor), # single random effect
+                     data = data_2022_multireg_bwns,
+                     # specify categorical if vectorized data
+                     family = categorical())
+
+# Runs in ~3 minutes on laptop.
+
+# Save model fit.
+saveRDS(fit_2022_bwns,
+        "data_model_outputs/brms_dosat_2022_bwns_052625.rds")
+
+# Examine model fit.
+summary(fit_2022_bwns)
+# 9 divergent transitions, Rhats look good!
+
+plot(fit_2022_bwns, variable = c("b_muCluster1_scale_light",
+                                 "b_muCluster1_scale_wind",
+                                 "b_muCluster1_scale_q",
+                                 "b_muCluster2_scale_light",
+                                 "b_muCluster2_scale_wind",
+                                 "b_muCluster2_scale_q"))
+# Chain mixing looking good!
+
+# Be sure no n_eff are < 0.1
+mcmc_plot(fit_2022_bwns, type = "neff")
+# Nope!
+
+# Examine the posterior data.
+post_data_bwns <- mcmc_intervals_data(fit_2022_bwns,
+                                      point_est = "median",
+                                      prob = 0.66, # default = 0.5
+                                      prob_outer = 0.95) # default = 0.9
+
+# Pull out necessary data for final, combined figure.
+est_bwns <- post_data_bwns %>%
+  select(parameter, ll, m, hh) %>%
+  filter(parameter %in% c("b_muCluster1_scale_light",
+                          "b_muCluster1_scale_wind",
+                          "b_muCluster1_scale_q",
+                          "b_muCluster2_scale_light",
+                          "b_muCluster2_scale_wind",
+                          "b_muCluster2_scale_q")) %>%
+  rename("CIlower" = ll,
+         "median" = m,
+         "CIupper" = hh) %>%
+  mutate(site = "BW",
+         location = "NS")
+
+##### 2022 BWSL Fit #####
+
+# Select the data & columns of interest:
+data_2022_bwsl <- data_2022 %>%
+  filter(site == "BW") %>%
+  filter(location == "10m") %>%
+  # make new "sensor" column
+  mutate(sensor = case_when(location == "10m" ~ "10m",
+                            TRUE ~ NA)) %>%
+  select(group_dosat, site, sensor, 
+         sum_light, mean_ws, mean_q)
+
+# Need to make proper transformations.
+data_2022_bwsl <- data_2022_bwsl %>%
+  mutate(group_dosat = factor(group_dosat,
+                              # "Neither" group as reference
+                              levels = c("Neither",
+                                         "Cluster 1",
+                                         "Cluster 2")),
+         site = factor(site),
+         sensor = factor(sensor)) %>%
+  mutate(log_mean_q = log(mean_q)) %>%
+  mutate(scale_light = scale(sum_light),
+         scale_wind = scale(mean_ws),
+         scale_q = scale(log_mean_q))
+
+# Create dataset for model fit.
+data_2022_multireg_bwsl <- data_2022_bwsl %>%
+  select(group_dosat, site, sensor,
+         scale_light, scale_wind, scale_q)
+
+# Fit multilevel multinomial logistic regression model.
+fit_2022_bwsl <- brm(group_dosat ~ scale_light +
+                       scale_wind + 
+                       scale_q +
+                       (1|sensor), # single random effect
+                     data = data_2022_multireg_bwsl,
+                     # specify categorical if vectorized data
+                     family = categorical())
+
+# Runs in ~2 minutes on laptop.
+
+# Save model fit.
+saveRDS(fit_2022_bwsl,
+        "data_model_outputs/brms_dosat_2022_bwsl_052625.rds")
+
+# Examine model fit.
+summary(fit_2022_bwsl)
+# 90 divergent transitions, Rhats look fine
+
+plot(fit_2022_bwsl, variable = c("b_muCluster1_scale_light",
+                                 "b_muCluster1_scale_wind",
+                                 "b_muCluster1_scale_q",
+                                 "b_muCluster2_scale_light",
+                                 "b_muCluster2_scale_wind",
+                                 "b_muCluster2_scale_q"))
+# Chain mixing looks alright!
+
+# Be sure no n_eff are < 0.1
+mcmc_plot(fit_2022_bwsl, type = "neff")
+# Lots below 0.1...
+
+# Examine the posterior data.
+post_data_bwsl <- mcmc_intervals_data(fit_2022_bwsl,
+                                      point_est = "median",
+                                      prob = 0.66, # default = 0.5
+                                      prob_outer = 0.95) # default = 0.9
+
+# Pull out necessary data for final, combined figure.
+est_bwsl <- post_data_bwsl %>%
+  select(parameter, ll, m, hh) %>%
+  filter(parameter %in% c("b_muCluster1_scale_light",
+                          "b_muCluster1_scale_wind",
+                          "b_muCluster1_scale_q",
+                          "b_muCluster2_scale_light",
+                          "b_muCluster2_scale_wind",
+                          "b_muCluster2_scale_q")) %>%
+  rename("CIlower" = ll,
+         "median" = m,
+         "CIupper" = hh) %>%
+  mutate(site = "BW",
+         location = "SL")
+
+##### 2022 BWML Fit #####
+
+# Select the data & columns of interest:
+data_2022_bwml <- data_2022 %>%
+  filter(site == "BW") %>%
+  filter(location == "15m") %>%
+  # make new "sensor" column
+  mutate(sensor = case_when(location == "15m" ~ "15m",
+                            TRUE ~ NA)) %>%
+  select(group_dosat, site, sensor, 
+         sum_light, mean_ws, mean_q)
+
+# Need to make proper transformations.
+data_2022_bwml <- data_2022_bwml %>%
+  mutate(group_dosat = factor(group_dosat,
+                              # "Neither" group as reference
+                              levels = c("Neither",
+                                         "Cluster 1",
+                                         "Cluster 2")),
+         site = factor(site),
+         sensor = factor(sensor)) %>%
+  mutate(log_mean_q = log(mean_q)) %>%
+  mutate(scale_light = scale(sum_light),
+         scale_wind = scale(mean_ws),
+         scale_q = scale(log_mean_q))
+
+# Create dataset for model fit.
+data_2022_multireg_bwml <- data_2022_bwml %>%
+  select(group_dosat, site, sensor,
+         scale_light, scale_wind, scale_q)
+
+# Fit multilevel multinomial logistic regression model.
+fit_2022_bwml <- brm(group_dosat ~ scale_light +
+                       scale_wind + 
+                       scale_q +
+                       (1|sensor), # single random effect
+                     data = data_2022_multireg_bwml,
+                     # specify categorical if vectorized data
+                     family = categorical())
+
+# Runs in ~2 minutes on laptop.
+
+# Save model fit.
+saveRDS(fit_2022_bwml,
+        "data_model_outputs/brms_dosat_2022_bwml_052625.rds")
+
+# Examine model fit.
+summary(fit_2022_bwml)
+# 12 divergent transitions, Rhats look good!
+
+plot(fit_2022_bwml, variable = c("b_muCluster1_scale_light",
+                                 "b_muCluster1_scale_wind",
+                                 "b_muCluster1_scale_q",
+                                 "b_muCluster2_scale_light",
+                                 "b_muCluster2_scale_wind",
+                                 "b_muCluster2_scale_q"))
+# Chain mixing looks alright!
+
+# Be sure no n_eff are < 0.1
+mcmc_plot(fit_2022_bwml, type = "neff")
+# Nope!
+
+# Examine the posterior data.
+post_data_bwml <- mcmc_intervals_data(fit_2022_bwml,
+                                      point_est = "median",
+                                      prob = 0.66, # default = 0.5
+                                      prob_outer = 0.95) # default = 0.9
+
+# Pull out necessary data for final, combined figure.
+est_bwml <- post_data_bwml %>%
+  select(parameter, ll, m, hh) %>%
+  filter(parameter %in% c("b_muCluster1_scale_light",
+                          "b_muCluster1_scale_wind",
+                          "b_muCluster1_scale_q",
+                          "b_muCluster2_scale_light",
+                          "b_muCluster2_scale_wind",
+                          "b_muCluster2_scale_q")) %>%
+  rename("CIlower" = ll,
+         "median" = m,
+         "CIupper" = hh) %>%
+  mutate(site = "BW",
+         location = "ML")
+
+##### 2022 BWDL Fit #####
+
+# Select the data & columns of interest:
+data_2022_bwdl <- data_2022 %>%
+  filter(site == "BW") %>%
+  filter(location == "20m") %>%
+  # make new "sensor" column
+  mutate(sensor = case_when(location == "20m" ~ "20m",
+                            TRUE ~ NA)) %>%
+  select(group_dosat, site, sensor, 
+         sum_light, mean_ws, mean_q)
+
+# Need to make proper transformations.
+data_2022_bwdl <- data_2022_bwdl %>%
+  mutate(group_dosat = factor(group_dosat,
+                              # "Neither" group as reference
+                              levels = c("Neither",
+                                         "Cluster 1",
+                                         "Cluster 2")),
+         site = factor(site),
+         sensor = factor(sensor)) %>%
+  mutate(log_mean_q = log(mean_q)) %>%
+  mutate(scale_light = scale(sum_light),
+         scale_wind = scale(mean_ws),
+         scale_q = scale(log_mean_q))
+
+# Create dataset for model fit.
+data_2022_multireg_bwdl <- data_2022_bwdl %>%
+  select(group_dosat, site, sensor,
+         scale_light, scale_wind, scale_q)
+
+# Fit multilevel multinomial logistic regression model.
+fit_2022_bwdl <- brm(group_dosat ~ scale_light +
+                       scale_wind + 
+                       scale_q +
+                       (1|sensor), # single random effect
+                     data = data_2022_multireg_bwdl,
+                     # specify categorical if vectorized data
+                     family = categorical())
+
+# Runs in ~2 minutes on laptop.
+
+# Save model fit.
+saveRDS(fit_2022_bwdl,
+        "data_model_outputs/brms_dosat_2022_bwdl_052625.rds")
+
+# Examine model fit.
+summary(fit_2022_bwdl)
+# 10 divergent transitions, Rhats look good!
+
+plot(fit_2022_bwdl, variable = c("b_muCluster1_scale_light",
+                                 "b_muCluster1_scale_wind",
+                                 "b_muCluster1_scale_q",
+                                 "b_muCluster2_scale_light",
+                                 "b_muCluster2_scale_wind",
+                                 "b_muCluster2_scale_q"))
+# Chain mixing looks alright!
+
+# Be sure no n_eff are < 0.1
+mcmc_plot(fit_2022_bwdl, type = "neff")
+# Nope!
+
+# Examine the posterior data.
+post_data_bwdl <- mcmc_intervals_data(fit_2022_bwdl,
+                                      point_est = "median",
+                                      prob = 0.66, # default = 0.5
+                                      prob_outer = 0.95) # default = 0.9
+
+# Pull out necessary data for final, combined figure.
+est_bwdl <- post_data_bwdl %>%
+  select(parameter, ll, m, hh) %>%
+  filter(parameter %in% c("b_muCluster1_scale_light",
+                          "b_muCluster1_scale_wind",
+                          "b_muCluster1_scale_q",
+                          "b_muCluster2_scale_light",
+                          "b_muCluster2_scale_wind",
+                          "b_muCluster2_scale_q")) %>%
+  rename("CIlower" = ll,
+         "median" = m,
+         "CIupper" = hh) %>%
+  mutate(site = "BW",
+         location = "DL")
+
+##### 2023 GBNS Fit #####
+
+# Select the data & columns of interest:
+data_2023_gbns <- data_2023 %>%
+  filter(site == "GB") %>%
+  filter(location == "3m") %>%
+  # make new "sensor" column
+  mutate(sensor = case_when(replicate == "NS1" ~ "NS1",
+                            replicate == "NS2" ~ "NS2",
+                            replicate == "NS3" ~ "NS3",
+                            TRUE ~ NA)) %>%
+  select(group_dosat, site, sensor, 
+         sum_light, mean_ws, mean_q)
+
+# Need to make proper transformations.
+data_2023_gbns <- data_2023_gbns %>%
+  mutate(group_dosat = factor(group_dosat,
+                              # "Neither" group as reference
+                              levels = c("Neither",
+                                         "Cluster 1",
+                                         "Cluster 2")),
+         site = factor(site),
+         sensor = factor(sensor)) %>%
+  mutate(log_mean_q = log(mean_q)) %>%
+  mutate(scale_light = scale(sum_light),
+         scale_wind = scale(mean_ws),
+         scale_q = scale(log_mean_q))
+
+# Create dataset for model fit.
+data_2023_multireg_gbns <- data_2023_gbns %>%
+  select(group_dosat, site, sensor,
+         scale_light, scale_wind, scale_q)
+
+# Fit multilevel multinomial logistic regression model.
+fit_2023_gbns <- brm(group_dosat ~ scale_light +
+                       scale_wind + 
+                       scale_q +
+                       (1|sensor), # single random effect
+                     data = data_2023_multireg_gbns,
+                     # specify categorical if vectorized data
+                     family = categorical())
+
+# Runs in ~1 minute on laptop.
+
+# Save model fit.
+saveRDS(fit_2023_gbns,
+        "data_model_outputs/brms_dosat_2023_gbns_052625.rds")
+
+# Examine model fit.
+summary(fit_2023_gbns)
+# 4 divergent transitions, Rhats look good!
+
+plot(fit_2023_gbns, variable = c("b_muCluster1_scale_light",
+                                 "b_muCluster1_scale_wind",
+                                 "b_muCluster1_scale_q",
+                                 "b_muCluster2_scale_light",
+                                 "b_muCluster2_scale_wind",
+                                 "b_muCluster2_scale_q"))
+# Chain mixing looking good!
+
+# Be sure no n_eff are < 0.1
+mcmc_plot(fit_2023_gbns, type = "neff")
+# Nope!
+
+# Examine the posterior data.
+post_data_gbns23 <- mcmc_intervals_data(fit_2023_gbns,
+                                      point_est = "median",
+                                      prob = 0.66, # default = 0.5
+                                      prob_outer = 0.95) # default = 0.9
+
+# Pull out necessary data for final, combined figure.
+est_gbns23 <- post_data_gbns23 %>%
+  select(parameter, ll, m, hh) %>%
+  filter(parameter %in% c("b_muCluster1_scale_light",
+                          "b_muCluster1_scale_wind",
+                          "b_muCluster1_scale_q",
+                          "b_muCluster2_scale_light",
+                          "b_muCluster2_scale_wind",
+                          "b_muCluster2_scale_q")) %>%
+  rename("CIlower" = ll,
+         "median" = m,
+         "CIupper" = hh) %>%
+  mutate(site = "GB",
+         location = "NS")
+
+##### 2023 SHNS Fit #####
+
+# Select the data & columns of interest:
+data_2023_shns <- data_2023 %>%
+  filter(site == "SH") %>%
+  filter(location == "3m") %>%
+  # make new "sensor" column
+  mutate(sensor = case_when(replicate == "NS1" ~ "NS1",
+                            replicate == "NS2" ~ "NS2",
+                            replicate == "NS3" ~ "NS3",
+                            TRUE ~ NA)) %>%
+  select(group_dosat, site, sensor, 
+         sum_light, mean_ws, mean_q)
+
+# Need to make proper transformations.
+data_2023_shns <- data_2023_shns %>%
+  mutate(group_dosat = factor(group_dosat,
+                              # "Neither" group as reference
+                              levels = c("Neither",
+                                         "Cluster 1",
+                                         "Cluster 2")),
+         site = factor(site),
+         sensor = factor(sensor)) %>%
+  mutate(log_mean_q = log(mean_q)) %>%
+  mutate(scale_light = scale(sum_light),
+         scale_wind = scale(mean_ws),
+         scale_q = scale(log_mean_q))
+
+# Create dataset for model fit.
+data_2023_multireg_shns <- data_2023_shns %>%
+  select(group_dosat, site, sensor,
+         scale_light, scale_wind, scale_q)
+
+# Fit multilevel multinomial logistic regression model.
+fit_2023_shns <- brm(group_dosat ~ scale_light +
+                       scale_wind + 
+                       scale_q +
+                       (1|sensor), # single random effect
+                     data = data_2023_multireg_shns,
+                     # specify categorical if vectorized data
+                     family = categorical())
+
+# Runs in ~1 minute on laptop.
+
+# Save model fit.
+saveRDS(fit_2023_shns,
+        "data_model_outputs/brms_dosat_2023_shns_052625.rds")
+
+# Examine model fit.
+summary(fit_2023_shns)
+# 21 divergent transitions, Rhats look good!
+
+plot(fit_2023_shns, variable = c("b_muCluster1_scale_light",
+                                 "b_muCluster1_scale_wind",
+                                 "b_muCluster1_scale_q",
+                                 "b_muCluster2_scale_light",
+                                 "b_muCluster2_scale_wind",
+                                 "b_muCluster2_scale_q"))
+# Chain mixing looking good!
+
+# Be sure no n_eff are < 0.1
+mcmc_plot(fit_2023_shns, type = "neff")
+# Quite a few...
+
+# Examine the posterior data.
+post_data_shns23 <- mcmc_intervals_data(fit_2023_shns,
+                                        point_est = "median",
+                                        prob = 0.66, # default = 0.5
+                                        prob_outer = 0.95) # default = 0.9
+
+# Pull out necessary data for final, combined figure.
+est_shns23 <- post_data_shns23 %>%
+  select(parameter, ll, m, hh) %>%
+  filter(parameter %in% c("b_muCluster1_scale_light",
+                          "b_muCluster1_scale_wind",
+                          "b_muCluster1_scale_q",
+                          "b_muCluster2_scale_light",
+                          "b_muCluster2_scale_wind",
+                          "b_muCluster2_scale_q")) %>%
+  rename("CIlower" = ll,
+         "median" = m,
+         "CIupper" = hh) %>%
+  mutate(site = "SH",
+         location = "NS")
+
+##### 2023 BWNS Fit #####
+
+# Select the data & columns of interest:
+data_2023_bwns <- data_2023 %>%
+  filter(site == "BW") %>%
+  filter(location == "3m") %>%
+  # make new "sensor" column
+  mutate(sensor = case_when(replicate == "NS1" ~ "NS1",
+                            replicate == "NS2" ~ "NS2",
+                            replicate == "NS3" ~ "NS3",
+                            TRUE ~ NA)) %>%
+  select(group_dosat, site, sensor, 
+         sum_light, mean_ws, mean_q)
+
+# Need to make proper transformations.
+data_2023_bwns <- data_2023_bwns %>%
+  mutate(group_dosat = factor(group_dosat,
+                              # "Neither" group as reference
+                              levels = c("Neither",
+                                         "Cluster 1",
+                                         "Cluster 2")),
+         site = factor(site),
+         sensor = factor(sensor)) %>%
+  mutate(log_mean_q = log(mean_q)) %>%
+  mutate(scale_light = scale(sum_light),
+         scale_wind = scale(mean_ws),
+         scale_q = scale(log_mean_q))
+
+# Create dataset for model fit.
+data_2023_multireg_bwns <- data_2023_bwns %>%
+  select(group_dosat, site, sensor,
+         scale_light, scale_wind, scale_q)
+
+# Fit multilevel multinomial logistic regression model.
+fit_2023_bwns <- brm(group_dosat ~ scale_light +
+                       scale_wind + 
+                       scale_q +
+                       (1|sensor), # single random effect
+                     data = data_2023_multireg_bwns,
+                     # specify categorical if vectorized data
+                     family = categorical())
+
+# Runs in ~1 minute on laptop.
+
+# Save model fit.
+saveRDS(fit_2023_bwns,
+        "data_model_outputs/brms_dosat_2023_bwns_052625.rds")
+
+# Examine model fit.
+summary(fit_2023_bwns)
+# No divergent transitions and Rhats look good!
+
+plot(fit_2023_bwns, variable = c("b_muCluster1_scale_light",
+                                 "b_muCluster1_scale_wind",
+                                 "b_muCluster1_scale_q",
+                                 "b_muCluster2_scale_light",
+                                 "b_muCluster2_scale_wind",
+                                 "b_muCluster2_scale_q"))
+# Chain mixing looks pretty crummy...
+
+# Be sure no n_eff are < 0.1
+mcmc_plot(fit_2023_bwns, type = "neff")
+# Quite a few...
+
+# Examine the posterior data.
+post_data_bwns23 <- mcmc_intervals_data(fit_2023_bwns,
+                                        point_est = "median",
+                                        prob = 0.66, # default = 0.5
+                                        prob_outer = 0.95) # default = 0.9
+
+# Pull out necessary data for final, combined figure.
+est_bwns23 <- post_data_bwns23 %>%
+  select(parameter, ll, m, hh) %>%
+  filter(parameter %in% c("b_muCluster1_scale_light",
+                          "b_muCluster1_scale_wind",
+                          "b_muCluster1_scale_q",
+                          "b_muCluster2_scale_light",
+                          "b_muCluster2_scale_wind",
+                          "b_muCluster2_scale_q")) %>%
+  rename("CIlower" = ll,
+         "median" = m,
+         "CIupper" = hh) %>%
+  mutate(site = "BW",
+         location = "NS")
+
+##### 2023 SSNS Fit #####
+
+# Select the data & columns of interest:
+data_2023_ssns <- data_2023 %>%
+  filter(site == "SS") %>%
+  filter(location == "3m") %>%
+  # make new "sensor" column
+  mutate(sensor = case_when(replicate == "NS1" ~ "NS1",
+                            replicate == "NS2" ~ "NS2",
+                            replicate == "NS3" ~ "NS3",
+                            TRUE ~ NA)) %>%
+  select(group_dosat, site, sensor, 
+         sum_light, mean_ws, mean_q)
+
+# Need to make proper transformations.
+data_2023_ssns <- data_2023_ssns %>%
+  mutate(group_dosat = factor(group_dosat,
+                              # "Neither" group as reference
+                              levels = c("Neither",
+                                         "Cluster 1",
+                                         "Cluster 2")),
+         site = factor(site),
+         sensor = factor(sensor)) %>%
+  mutate(log_mean_q = log(mean_q)) %>%
+  mutate(scale_light = scale(sum_light),
+         scale_wind = scale(mean_ws),
+         scale_q = scale(log_mean_q))
+
+# Create dataset for model fit.
+data_2023_multireg_ssns <- data_2023_ssns %>%
+  select(group_dosat, site, sensor,
+         scale_light, scale_wind, scale_q)
+
+# Fit multilevel multinomial logistic regression model.
+fit_2023_ssns <- brm(group_dosat ~ scale_light +
+                       scale_wind + 
+                       scale_q +
+                       (1|sensor), # single random effect
+                     data = data_2023_multireg_ssns,
+                     # specify categorical if vectorized data
+                     family = categorical())
+
+# Runs in ~1 minute on laptop.
+
+# Save model fit.
+saveRDS(fit_2023_ssns,
+        "data_model_outputs/brms_dosat_2023_ssns_052625.rds")
+
+# Examine model fit.
+summary(fit_2023_ssns)
+# 53 divergent transitions and Rhats look good!
+
+plot(fit_2023_ssns, variable = c("b_muCluster1_scale_light",
+                                 "b_muCluster1_scale_wind",
+                                 "b_muCluster1_scale_q",
+                                 "b_muCluster2_scale_light",
+                                 "b_muCluster2_scale_wind",
+                                 "b_muCluster2_scale_q"))
+# Chain mixing looks pretty crummy...
+
+# Be sure no n_eff are < 0.1
+mcmc_plot(fit_2023_ssns, type = "neff")
+# Quite a few...
+
+# Examine the posterior data.
+post_data_ssns23 <- mcmc_intervals_data(fit_2023_ssns,
+                                        point_est = "median",
+                                        prob = 0.66, # default = 0.5
+                                        prob_outer = 0.95) # default = 0.9
+
+# Pull out necessary data for final, combined figure.
+est_ssns23 <- post_data_ssns23 %>%
+  select(parameter, ll, m, hh) %>%
+  filter(parameter %in% c("b_muCluster1_scale_light",
+                          "b_muCluster1_scale_wind",
+                          "b_muCluster1_scale_q",
+                          "b_muCluster2_scale_light",
+                          "b_muCluster2_scale_wind",
+                          "b_muCluster2_scale_q")) %>%
+  rename("CIlower" = ll,
+         "median" = m,
+         "CIupper" = hh) %>%
+  mutate(site = "SS",
+         location = "NS")
+
+##### SI Figure #####
+
+# Join all datasets with parameter estimates.
+s1_est <- rbind(est_gbns, est_gbsl, est_gbml, est_gbdl,
+                est_bwns, est_bwsl, est_bwml, est_bwdl)
+s2_est <- rbind(est_gbns23, est_shns23,
+                est_bwns23, est_ssns23)
+
+# Save out.
+saveRDS(s1_est, "data_model_outputs/brms_dosat_2022_estbysite_052625.rds")
+saveRDS(s2_est, "data_model_outputs/brms_dosat_2023_estbysite_052625.rds")
+
+# And edit for figure customization.
+s1_est <- s1_est %>%
+  mutate(par_f = factor(parameter, 
+                        levels = c("b_muCluster1_scale_wind",
+                                   "b_muCluster2_scale_wind",
+                                   "b_muCluster1_scale_q",
+                                   "b_muCluster2_scale_q",
+                                   "b_muCluster1_scale_light",
+                                   "b_muCluster2_scale_light"))) %>%
+  mutate(depth_f = factor(location, levels = c("NS", "SL", "ML", "DL"))) %>%
+  mutate(fill_f = factor(case_when(site == "GB" & 
+                                     par_f %in% c("b_muCluster1_scale_wind",
+                                                  "b_muCluster1_scale_q",
+                                                  "b_muCluster1_scale_light") ~ "GBfill1",
+                                   site == "GB" &
+                                     par_f %in% c("b_muCluster2_scale_wind",
+                                                  "b_muCluster2_scale_q",
+                                                  "b_muCluster2_scale_light") ~ "GBfill2",
+                                   site == "BW" & 
+                                     par_f %in% c("b_muCluster1_scale_wind",
+                                                  "b_muCluster1_scale_q",
+                                                  "b_muCluster1_scale_light") ~ "BWfill1",
+                                   site == "BW" &
+                                     par_f %in% c("b_muCluster2_scale_wind",
+                                                  "b_muCluster2_scale_q",
+                                                  "b_muCluster2_scale_light") ~ "BWfill2"),
+                         levels = c("BWfill1", "BWfill2", "GBfill1", "GBfill2")))
+
+s2_est <- s2_est %>%
+  mutate(site_f = factor(site,
+                         levels = c("GB", "SH",
+                                    "BW", "SS"))) %>%
+  mutate(par_f = factor(parameter, 
+                        levels = c("b_muCluster1_scale_wind",
+                                   "b_muCluster2_scale_wind",
+                                   "b_muCluster1_scale_q",
+                                   "b_muCluster2_scale_q",
+                                   "b_muCluster1_scale_light",
+                                   "b_muCluster2_scale_light"))) %>%
+  mutate(stream_f = factor(case_when(site %in% c("GB", "BW") ~ "near",
+                                     site %in% c("SH", "SS") ~ "far"),
+                                     levels = c("near", "far"))) %>%
+  mutate(fill_f = factor(case_when(site == "GB" & 
+                                     par_f %in% c("b_muCluster1_scale_wind",
+                                                  "b_muCluster1_scale_q",
+                                                  "b_muCluster1_scale_light") ~ "GBfill1",
+                                   site == "GB" &
+                                     par_f %in% c("b_muCluster2_scale_wind",
+                                                  "b_muCluster2_scale_q",
+                                                  "b_muCluster2_scale_light") ~ "GBfill2",
+                                   site == "BW" & 
+                                     par_f %in% c("b_muCluster1_scale_wind",
+                                                  "b_muCluster1_scale_q",
+                                                  "b_muCluster1_scale_light") ~ "BWfill1",
+                                   site == "BW" &
+                                     par_f %in% c("b_muCluster2_scale_wind",
+                                                  "b_muCluster2_scale_q",
+                                                  "b_muCluster2_scale_light") ~ "BWfill2",
+                                   site == "SH" & 
+                                     par_f %in% c("b_muCluster1_scale_wind",
+                                                  "b_muCluster1_scale_q",
+                                                  "b_muCluster1_scale_light") ~ "SHfill1",
+                                   site == "SH" &
+                                     par_f %in% c("b_muCluster2_scale_wind",
+                                                  "b_muCluster2_scale_q",
+                                                  "b_muCluster2_scale_light") ~ "SHfill2",
+                                   site == "SS" & 
+                                     par_f %in% c("b_muCluster1_scale_wind",
+                                                  "b_muCluster1_scale_q",
+                                                  "b_muCluster1_scale_light") ~ "SSfill1",
+                                   site == "SS" &
+                                     par_f %in% c("b_muCluster2_scale_wind",
+                                                  "b_muCluster2_scale_q",
+                                                  "b_muCluster2_scale_light") ~ "SSfill2"),
+                         levels = c("BWfill1", "BWfill2", "GBfill1", "GBfill2",
+                                    "SSfill1", "SSfill2", "SHfill1", "SHfill2"))) %>%
+  mutate(CIlower_ed = case_when(CIlower < -10 ~ -10,
+                                TRUE ~ CIlower))
+
+# First, the Stage I figure with points by site & depth.
+(figSI_custom_dosat22 <- ggplot(s1_est %>%
+                                arrange(desc(depth_f), site), 
+                            aes(x = median, y = par_f, 
+                                color = par_f, 
+                                shape = depth_f,
+                                fill = fill_f)) +
+    geom_linerange(position = position_dodge(width = 0.5),
+                   aes(xmin = CIlower, xmax = CIupper),
+                   linewidth = 1, alpha = 0.6) +
+    geom_point(position = position_dodge(width = 0.5),
+                size = 3, stroke = 1) +
+    vline_at(v = 0) +
+    scale_x_continuous(limits = c(-6,6),
+                       breaks = c(-4, -2, 0, 2, 4)) +
+    scale_color_manual(values = c("#FABA39FF", "#D46F10",
+                                  "#FABA39FF", "#D46F10",
+                                  "#FABA39FF", "#D46F10"),
+                       guide = FALSE) +
+    scale_shape_manual(values = c(21, 22, 23, 24)) +
+    scale_fill_manual(values = c("#FABA39FF", "#D46F10",
+                                 "white", "white"),
+                      guide = FALSE) +
+    labs(x = "Posterior Estimates",
+         y = "Predictors",
+         title = "Stage I",
+         shape = "Location") +
+    scale_y_discrete(labels = c("b_muCluster1_scale_light" = "Cluster 1 Light",
+                                "b_muCluster1_scale_wind" = "Cluster 1 Wind",
+                                "b_muCluster1_scale_q" = "Cluster 1 Q",
+                                "b_muCluster2_scale_light" = "Cluster 2 Light",
+                                "b_muCluster2_scale_wind" = "Cluster 2 Wind",
+                                "b_muCluster2_scale_q" = "Cluster 2 Q")) +
+    theme_bw() +
+    theme(text = element_text(size = 20),
+          legend.position = "bottom"))
+
+# Then, the Stage II figure with points by site & depth.
+(figSI_custom_dosat23 <- ggplot(s2_est %>%
+                                arrange(site_f), 
+                              aes(x = median, y = par_f, 
+                                  color = par_f, 
+                                  shape = stream_f,
+                                  fill = fill_f)) +
+    geom_linerange(position = position_dodge(width = 0.5),
+                   aes(xmin = CIlower_ed, xmax = CIupper),
+                   linewidth = 1, alpha = 0.6) +
+    geom_point(position = position_dodge(width = 0.5),
+               size = 3, stroke = 1) +
+    vline_at(v = 0) +
+    scale_x_continuous(limits = c(-10,10),
+                       breaks = c(-9, -6, -3, 0, 3, 6, 9)) +
+    scale_color_manual(values = c("#0FB2D3", "#026779",
+                                  "#0FB2D3", "#026779",
+                                  "#0FB2D3", "#026779"),
+                       guide = FALSE) +
+    scale_shape_manual(values = c(21, 22)) +
+    scale_fill_manual(values = c("#0FB2D3", "#026779",
+                                 "white", "white",
+                                 "#0FB2D3", "#026779",
+                                 "white", "white"),
+                      guide = FALSE) +
+    labs(x = "Posterior Estimates",
+         y = "Predictors",
+         title = "Stage II",
+         shape = "Distance from stream") +
+    scale_y_discrete(labels = c("b_muCluster1_scale_light" = "Cluster 1 Light",
+                                "b_muCluster1_scale_wind" = "Cluster 1 Wind",
+                                "b_muCluster1_scale_q" = "Cluster 1 Q",
+                                "b_muCluster2_scale_light" = "Cluster 2 Light",
+                                "b_muCluster2_scale_wind" = "Cluster 2 Wind",
+                                "b_muCluster2_scale_q" = "Cluster 2 Q")) +
+    theme_bw() +
+    theme(text = element_text(size = 20),
+          legend.position = "bottom"))
+
+# Join the plots above into a single figure.
+(figSI_custom_dosat <- (figSI_custom_dosat22 + figSI_custom_dosat23) +
+    plot_annotation(tag_levels = 'A'))
+
+# ggsave(figSI_custom_dosat,
+#        filename = "figures/brms_dosat_sepsites_052625.jpg",
+#        height = 30,
+#        width = 40,
+#        units = "cm")
+
 #### Resources ####
 
 # Online Resources:
