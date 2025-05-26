@@ -2178,6 +2178,7 @@ saveRDS(fit_2023_bwns,
 # Examine model fit.
 summary(fit_2023_bwns)
 # No divergent transitions and Rhats look good!
+# but lots of exceedances of maximum tree depth
 
 plot(fit_2023_bwns, variable = c("b_muCluster1_scale_light",
                                  "b_muCluster1_scale_wind",
