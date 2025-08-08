@@ -5,6 +5,11 @@
 # ---------------------------- README ---------------------------------
 # The following script will fit logistic regressions.
 
+# NOTE - DO (% saturation) is what is included in the main portion of the
+# manuscript, so these are the models that will fit what is present in
+# the text. The DO concentrations in mg/L include temperature as a covariate,
+# and these regressions are instead presented in the SI.
+
 #### Setup ####
 
 # Load packages.
@@ -679,8 +684,8 @@ View(post_data_sat)
                    linewidth = 3, alpha = 0.5) +
     geom_point(size = 6) +
     vline_at(v = 0) +
-    scale_x_continuous(limits = c(-2.5,2.5),
-                       breaks = c(-2, -1, 0, 1, 2)) +
+    scale_x_continuous(limits = c(-6,6),
+                       breaks = c(-6, -4, -2, 0, 2, 4, 6)) +
     labs(x = "Posterior Estimates",
          y = "Predictors",
          title = "Stage I") +
@@ -826,7 +831,6 @@ plot(fit_2023, variable = c("b_muCluster1_scale_light",
 # Be sure no n_eff are < 0.1
 mcmc_plot(fit_2023, type = "neff")
 # Hmm some Neffs are < 0.1
-# 
 
 # Examine relationships for each predictor.
 plot(conditional_effects(fit_2023, effects = "scale_light",
@@ -1239,7 +1243,7 @@ View(post_data23_sat)
                                                            "b_muCluster2_scale_light"))), 
                         aes(x = m, y = par_f, color = par_f)) +
     geom_linerange(aes(xmin = ll, xmax = hh),
-                   size = 3, alpha = 0.5) +
+                   linewidth = 3, alpha = 0.5) +
     geom_point(size = 6) +
     vline_at(v = 0) +
     scale_x_continuous(limits = c(-6, 6),
@@ -1258,6 +1262,7 @@ View(post_data23_sat)
                                   "#0FB2D3", "#026779",
                                   "#0FB2D3", "#026779")) +
     theme(text = element_text(size = 20),
+          axis.title.y = element_blank(),
           legend.position = "none"))
 
 #### Manuscript Figures ####
@@ -1277,7 +1282,7 @@ View(post_data23_sat)
     plot_annotation(tag_levels = 'A'))
 
 # ggsave(fig_custom_both_dosat,
-#        filename = "figures/brms_dosat_bothyrs_052525.jpg",
+#        filename = "figures/brms_dosat_bothyrs_080825.jpg",
 #        height = 20,
 #        width = 40,
 #        units = "cm")
