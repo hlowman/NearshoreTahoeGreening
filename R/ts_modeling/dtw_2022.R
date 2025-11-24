@@ -569,13 +569,28 @@ summary_df_sat <- full_df_sat %>%
     scale_x_continuous(breaks = c(0,5,10,15,20),
                        labels = c(4,9,14,19,24)) +
     theme_bw() +
-    facet_wrap(group~.) +
+    facet_wrap(group~.,
+               labeller = labeller(
+                 group = c('Cluster 1' = "Synchronous",
+                           'Cluster 2' = "Lagged",
+                           'Neither' = "Neither")
+               )) +
     theme(legend.position = "none",
           text = element_text(size = 18)))
 
-# Calculate mean solar noon across dataset to add a solar
-# maxima line to the plot below.
-mean(full_df_sat$solar_noon) # 45597.65 secs or 12:39:58
+# Calculate solar noon across dataset to add a solar
+# line to the plot below.
+# Trim down to unique days.
+trim_df_sat <- full_df_sat %>%
+  group_by(ID_index) %>%
+  slice_head()
+
+median(trim_df_sat$solar_noon) # 46536 secs or 12:55:36
+quantile(trim_df_sat$solar_noon, prob = 0.025) # 11:44:33 
+quantile(trim_df_sat$solar_noon, prob = 0.975) # 13:06:55
+
+mean(trim_df_sat$solar_noon) # 45599.2 secs or 12.66645 hrs
+sd(trim_df_sat$solar_noon) # 1695.047 secs or 0.4708 hrs
 
 (fig2_scaled_sat <- ggplot(summary_df_sat %>%
                          filter(group %in% c("Cluster 1",
@@ -596,11 +611,16 @@ mean(full_df_sat$solar_noon) # 45597.65 secs or 12:39:58
     geom_line(linewidth = 2) +
     geom_ribbon(alpha = 0.5,
                 linewidth = 0.1) +
-    # adding annotation to more clearly delineate solar maxima
-    geom_vline(xintercept = 8.66601, color = "#FFAA00",
+    # adding annotation to more clearly delineate mean solar noon
+    # 12.66645 - 4 hours
+    geom_vline(xintercept = 8.66645, color = "#FFAA00",
                linetype = "dashed", linewidth = 2) +
+    # 8.66645 - 0.4708 hours and 8.66645 + 0.4708 hours
+    annotate('rect', xmin = 8.1956, xmax = 9.1373,
+             ymin = -1.5, ymax = 1.5,
+             alpha = 0.15, fill = "#FFAA00") + # +/- 1 S.D.
     # adding annotation to more clearly delineate DO maxima
-    # values calculated below
+    # values calculated below on line 782
     geom_point(x = 9.20580, y = -0.5, 
                shape = 8, size = 5, stroke = 1.5,
                color = "gray20") + # Cluster 1
@@ -678,12 +698,15 @@ names(site.labs) <- c("BW", "GB")
     geom_bar(aes(fill = factor(group))) +
     scale_fill_manual(values = c("#FABA39FF", 
                                  "#D46F10",
-                                 "gray80")) +
+                                 "gray80"),
+                      labels = c("Cluster 1" = "Synchronous", 
+                                 "Cluster 2" = "Lagged", 
+                                 "Neither" = "Neither")) +
     # customizing which months print below the x axis
     scale_x_discrete(breaks = levels(full_df_sat_daily$month)[c(T, F, F, T, F, F, T, F, F, T, F)]) +
     labs(x = "Month of Year",
          y = "Timeseries count (days)",
-         fill = "Cluster ID") +
+         fill = "Cluster") +
     theme_bw() +
     facet_grid(location_f~site, scales = "free",
                labeller = labeller(site = site.labs)) +
@@ -694,7 +717,7 @@ names(site.labs) <- c("BW", "GB")
     plot_annotation(tag_levels = 'A'))
 
 # ggsave(plot = fig_all_sat,
-#        filename = "figures/dtw_2022_052425.png",
+#        filename = "figures/dtw_2022_112425.png",
 #        width = 30,
 #        height = 20,
 #        units = "cm")

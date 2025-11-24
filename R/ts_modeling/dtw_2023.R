@@ -491,13 +491,16 @@ summary_df_sat <- full_df_sat %>%
                                       probs = 0.75)) %>%
   ungroup()
 
-(fig2_curves_sat <- ggplot(summary_df_sat, 
+(fig2_curves_sat <- ggplot(summary_df_sat %>%
+                             mutate(group_f = factor(group,
+                                                     levels = c("Cluster 2",
+                                                     "Cluster 1", "Neither"))), 
                        aes(x = hour_index, 
                            y = medianDO_sat,
                            ymin = q25DO_sat, 
                            ymax = q75DO_sat,
-                           color = group, 
-                           fill = group)) +
+                           color = group_f, 
+                           fill = group_f)) +
     # adding annotation to better delineate time of day
     annotate('rect', xmin = 0, xmax = 3,
              ymin = 98, ymax = 115,
@@ -519,23 +522,36 @@ summary_df_sat <- full_df_sat %>%
     scale_x_continuous(breaks = c(0,5,10,15,20),
                        labels = c(4,9,14,19,24)) +
     theme_bw() +
-    facet_wrap(group~.) +
+    facet_wrap(group_f~.,
+               labeller = labeller(
+                 group_f = c('Cluster 1' = "Lagged",
+                           'Cluster 2' = "Synchronous",
+                           'Neither' = "Neither"))) +
     theme(legend.position = "none",
           text = element_text(size = 18)))
 
-# Calculate mean solar noon across dataset to add a solar
-# maxima line to the plot below.
-mean(full_df_sat$solar_noon) # 47019.9 secs or 13:03:04
+# Calculate solar noon across dataset to add a solar
+# line to the plot below.
+# Trim down to unique days.
+trim_df_sat <- full_df_sat %>%
+  group_by(ID_index) %>%
+  slice_head()
+
+mean(trim_df_sat$solar_noon) # 47020.07 secs or 13.06113 hrs
+sd(trim_df_sat$solar_noon) # 155.7972 secs or 0.043277 hrs
 
 (fig2_scaled_sat <- ggplot(summary_df_sat %>%
                          filter(group %in% c("Cluster 1",
-                                             "Cluster 2")), 
+                                             "Cluster 2")) %>%
+                           mutate(group_f = factor(group,
+                                                   levels = c("Cluster 2",
+                                                              "Cluster 1"))), 
                        aes(x = hour_index, 
                            y = medianDOscale_sat,
                            ymin = q25DOscale_sat, 
                            ymax = q75DOscale_sat,
-                           color = group, 
-                           fill = group)) +
+                           color = group_f, 
+                           fill = group_f)) +
     # adding annotation to better delineate time of day
     annotate('rect', xmin = 2, xmax = 3,
              ymin = -1.5, ymax = 1.5,
@@ -547,8 +563,13 @@ mean(full_df_sat$solar_noon) # 47019.9 secs or 13:03:04
     geom_ribbon(alpha = 0.5,
                 linewidth = 0.1) + 
     # adding annotation to more clearly delineate DO maxima
-    geom_vline(xintercept = 9.06108, color = "#FFAA00",
+    geom_vline(xintercept = 9.06113, color = "#FFAA00",
                linetype = "dashed", linewidth = 2) +
+    # 9.06113 - 0.043277 hours and 9.06113 + 0.043277 hours
+    # But so small, chose to instead scale to line width
+    annotate('rect', xmin = 8.99, xmax = 9.13,
+             ymin = -1.5, ymax = 1.5,
+             alpha = 0.15, fill = "#FFAA00") + # +/- 1 S.D.
     geom_point(x = 11.68037, y = -0.07,
                shape = 8, size = 5, stroke = 1.5,
                color = "gray20") +
@@ -614,17 +635,24 @@ site.labs <- c("W Near Stream",
 names(site.labs) <- c("BW", "SS", "GB", "SH")
 
 (fig_months_sat <- ggplot(full_df_sat_daily %>%
+                        mutate(group_f = factor(group,
+                                                levels = c("Cluster 2",
+                                                           "Cluster 1",
+                                                           "Neither"))) %>%
                         mutate(site_f = factor(site,
                                                levels = c("BW", "GB", 
                                                           "SS", "SH"))), 
                       aes(x = month)) +
-    geom_bar(aes(fill = factor(group))) +
+    geom_bar(aes(fill = factor(group_f))) +
     scale_fill_manual(values = c("#0FB2D3", 
                                  "#026779",
-                                 "gray80")) +
+                                 "gray80"),
+                      labels = c("Cluster 2" = "Synchronous", 
+                                 "Cluster 1" = "Lagged", 
+                                 "Neither" = "Neither")) +
     labs(x = "Month of Year",
          y = "Timeseries count (days)",
-         fill = "Cluster ID") +
+         fill = "Cluster") +
     theme_bw() +
     facet_wrap(.~site_f, scales = "free_y",
                labeller = labeller(site_f = site.labs)) +
@@ -635,7 +663,7 @@ names(site.labs) <- c("BW", "SS", "GB", "SH")
     plot_annotation(tag_levels = 'A'))
 
 # ggsave(plot = fig_all_sat,
-#        filename = "figures/dtw_2023_052525.png",
+#        filename = "figures/dtw_2023_112425.png",
 #        width = 30,
 #        height = 20,
 #        units = "cm")

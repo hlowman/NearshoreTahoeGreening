@@ -689,14 +689,14 @@ View(post_data_sat)
     labs(x = "Posterior Estimates",
          y = "Predictors",
          title = "Stage I") +
-    scale_y_discrete(labels = c("b_muCluster1_scale_light" = "Cluster 1 Light",
-                                "b_muCluster1_scale_depth" = "Cluster 1 Depth",
-                                "b_muCluster1_scale_wind" = "Cluster 1 Wind",
-                                "b_muCluster1_scale_q" = "Cluster 1 Q",
-                                "b_muCluster2_scale_light" = "Cluster 2 Light",
-                                "b_muCluster2_scale_depth" = "Cluster 2 Depth",
-                                "b_muCluster2_scale_wind" = "Cluster 2 Wind",
-                                "b_muCluster2_scale_q" = "Cluster 2 Q")) +
+    scale_y_discrete(labels = c("b_muCluster1_scale_light" = "Light (Syn.)",
+                                "b_muCluster1_scale_depth" = "Depth (Syn.)",
+                                "b_muCluster1_scale_wind" = "Wind (Syn.",
+                                "b_muCluster1_scale_q" = "Q (Syn.)",
+                                "b_muCluster2_scale_light" = "Light (Lag)",
+                                "b_muCluster2_scale_depth" = "Depth (Lag)",
+                                "b_muCluster2_scale_wind" = "Wind (Lag)",
+                                "b_muCluster2_scale_q" = "Q (Lag)")) +
     theme_bw() +
     scale_color_manual(values = c("#FABA39FF", "#D46F10",
                                   "#FABA39FF", "#D46F10",
@@ -1235,12 +1235,12 @@ View(post_data23_sat)
                                                   "b_muCluster2_scale_wind",
                                                   "b_muCluster2_scale_q")) %>%
                           mutate(par_f = factor(parameter, 
-                                                levels = c("b_muCluster1_scale_wind",
-                                                           "b_muCluster2_scale_wind",
-                                                           "b_muCluster1_scale_q",
+                                                levels = c("b_muCluster2_scale_wind",
+                                                           "b_muCluster1_scale_wind",
                                                            "b_muCluster2_scale_q",
-                                                           "b_muCluster1_scale_light",
-                                                           "b_muCluster2_scale_light"))), 
+                                                           "b_muCluster1_scale_q",
+                                                           "b_muCluster2_scale_light",
+                                                           "b_muCluster1_scale_light"))), 
                         aes(x = m, y = par_f, color = par_f)) +
     geom_linerange(aes(xmin = ll, xmax = hh),
                    linewidth = 3, alpha = 0.5) +
@@ -1251,12 +1251,12 @@ View(post_data23_sat)
     labs(x = "Posterior Estimates",
          y = "Predictors",
          title = "Stage II") +
-    scale_y_discrete(labels = c("b_muCluster1_scale_light" = "Cluster 1 Light",
-                                "b_muCluster1_scale_wind" = "Cluster 1 Wind",
-                                "b_muCluster1_scale_q" = "Cluster 1 Q",
-                                "b_muCluster2_scale_light" = "Cluster 2 Light",
-                                "b_muCluster2_scale_wind" = "Cluster 2 Wind",
-                                "b_muCluster2_scale_q" = "Cluster 2 Q")) +
+    scale_y_discrete(labels = c("b_muCluster1_scale_light" = "Light (Lag)",
+                                "b_muCluster1_scale_wind" = "Wind (Lag)",
+                                "b_muCluster1_scale_q" = "Q (Lag)",
+                                "b_muCluster2_scale_light" = "Light (Syn)",
+                                "b_muCluster2_scale_wind" = "Wind (Syn)",
+                                "b_muCluster2_scale_q" = "Q (Syn)")) +
     theme_bw() +
     scale_color_manual(values = c("#0FB2D3", "#026779",
                                   "#0FB2D3", "#026779",
@@ -1282,7 +1282,7 @@ View(post_data23_sat)
     plot_annotation(tag_levels = 'A'))
 
 # ggsave(fig_custom_both_dosat,
-#        filename = "figures/brms_dosat_bothyrs_080825.jpg",
+#        filename = "figures/brms_dosat_bothyrs_112425.jpg",
 #        height = 20,
 #        width = 40,
 #        units = "cm")
