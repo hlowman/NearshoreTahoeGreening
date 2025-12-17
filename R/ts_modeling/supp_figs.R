@@ -842,11 +842,11 @@ data_2023 <- data_2023 %>%
 
 #### %DO v Temp ####
 
-##### S5 #####
-
 Date_F <- function(x){
   format(as.Date(x, origin = '1970-01-01',"%Y-%m-%d"),"%m-%Y")
 }
+
+##### S5 #####
 
 # Stage I, Glenbrook sites
 (fig_S5 <- ggplot(data_2022 %>%
