@@ -746,12 +746,16 @@ full_df_sat_daily_summary <- full_df_sat %>%
 full_df_sat_group_summary <- full_df_sat_daily_summary %>%
   group_by(group) %>%
   summarize(no_days = n(),
-            median_mean_DOsat = median(mean_DOsat),
+            mean_mean_DOsat = mean(mean_DOsat),
+            sd_mean_DOsat = sd(mean_DOsat),
             mean_range_DOsat = mean(range_DOsat),
+            sd_range_DOsat = sd(range_DOsat),
             median_mean_DOmgL = median(mean_DOmgL),
             mean_range_DOmgL = mean(range_DOmgL),
-            median_mean_Temp = median(mean_Temp),
-            mean_range_Temp = mean(range_Temp)) %>%
+            mean_mean_Temp = mean(mean_Temp),
+            sd_mean_Temp = sd(mean_Temp),
+            mean_range_Temp = mean(range_Temp),
+            sd_range_Temp = sd(range_Temp)) %>%
   ungroup()
 
 # Need to calculate the difference between max DO 
