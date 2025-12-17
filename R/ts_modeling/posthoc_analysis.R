@@ -610,14 +610,20 @@ c_eff_sat_wind <- as.data.frame(c_eff_sat$`scale_wind`)
     geom_line(size = 1, aes(color = cats__))+
     scale_fill_manual(values = c("Cluster 1"= "#FABA39FF", 
                                  "Cluster 2"= "#D46F10", 
-                                 "Neither"= "gray70")) +
+                                 "Neither"= "gray70"),
+                      labels = c("Cluster 1" = "Synchronous", 
+                                 "Cluster 2" = "Lagged", 
+                                 "Neither" = "Neither")) +
     scale_color_manual(values = c("Cluster 1"= "#FABA39FF", 
                                   "Cluster 2"= "#D46F10", 
-                                  "Neither"= "gray70"))+
+                                  "Neither"= "gray70"),
+                       labels = c("Cluster 1" = "Synchronous", 
+                                  "Cluster 2" = "Lagged", 
+                                  "Neither" = "Neither"))+
     labs(y = "Probability", 
          x = "Scaled Windspeed",
-         color = "Membership",
-         fill = "Membership") +
+         color = "Cluster",
+         fill = "Cluster") +
     theme_bw())
 
 # Discharge prediction plot.
@@ -688,7 +694,7 @@ View(post_data_sat)
                        breaks = c(-6, -4, -2, 0, 2, 4, 6)) +
     labs(x = "Posterior Estimates",
          y = "Predictors",
-         title = "Stage I") +
+         title = "Stage I: Across Depths") +
     scale_y_discrete(labels = c("b_muCluster1_scale_light" = "Light (Syn.)",
                                 "b_muCluster1_scale_depth" = "Depth (Syn.)",
                                 "b_muCluster1_scale_wind" = "Wind (Syn.",
@@ -1150,12 +1156,12 @@ c_eff23_sat_light <- as.data.frame(c_eff23_sat$`scale_light`)
                     ymax = upper__, 
                     fill = cats__), alpha = 0.2) +
     geom_line(size = 1, aes(color = cats__))+
-    scale_fill_manual(values = c("Cluster 1"= "#0FB2D3",
-                                 "Cluster 2"= "#026779",
+    scale_fill_manual(values = c("Cluster 2"= "#0FB2D3",
+                                 "Cluster 1"= "#026779",
                                  "Neither"= "gray70"),
                       guide = "none") +
-    scale_color_manual(values = c("Cluster 1"= "#0FB2D3",
-                                  "Cluster 2"= "#026779",
+    scale_color_manual(values = c("Cluster 2"= "#0FB2D3",
+                                  "Cluster 1"= "#026779",
                                   "Neither"= "gray70"),
                        guide = "none")+
     labs(y = "Probability", 
@@ -1173,12 +1179,18 @@ c_eff23_sat_wind <- as.data.frame(c_eff23_sat$`scale_wind`)
                     ymax = upper__, 
                     fill = cats__), alpha = 0.2) +
     geom_line(size = 1, aes(color = cats__))+
-    scale_fill_manual(values = c("Cluster 1"= "#0FB2D3",
-                                 "Cluster 2"= "#026779",
-                                 "Neither"= "gray70")) +
-    scale_color_manual(values = c("Cluster 1"= "#0FB2D3",
-                                  "Cluster 2"= "#026779",
-                                  "Neither"= "gray70"))+
+    scale_fill_manual(values = c("Cluster 2"= "#0FB2D3",
+                                 "Cluster 1"= "#026779",
+                                 "Neither"= "gray70"),
+                      labels = c("Cluster 2" = "Synchronous", 
+                                 "Cluster 1" = "Lagged", 
+                                 "Neither" = "Neither")) +
+    scale_color_manual(values = c("Cluster 2"= "#0FB2D3",
+                                  "Cluster 1"= "#026779",
+                                  "Neither"= "gray70"),
+                       labels = c("Cluster 2" = "Synchronous", 
+                                  "Cluster 1" = "Lagged", 
+                                  "Neither" = "Neither"))+
     labs(y = "Probability", 
          x = "Scaled Windspeed",
          color = "Membership",
@@ -1197,12 +1209,12 @@ c_eff23_sat_q <- as.data.frame(c_eff23_sat$`scale_q`)
                     ymax = upper__, 
                     fill = cats__), alpha = 0.2) +
     geom_line(size = 1, aes(color = cats__))+
-    scale_fill_manual(values = c("Cluster 1"= "#0FB2D3",
-                                 "Cluster 2"= "#026779",
+    scale_fill_manual(values = c("Cluster 2"= "#0FB2D3",
+                                 "Cluster 1"= "#026779",
                                  "Neither"= "gray70"),
                       guide = "none") +
-    scale_color_manual(values = c("Cluster 1"= "#0FB2D3",
-                                  "Cluster 2"= "#026779",
+    scale_color_manual(values = c("Cluster 2"= "#0FB2D3",
+                                  "Cluster 1"= "#026779",
                                   "Neither"= "gray70"),
                        guide = "none")+
     labs(y = "Probability", 
@@ -1250,7 +1262,7 @@ View(post_data23_sat)
                        breaks = c(-6, -4, -2, 0, 2, 4, 6)) +
     labs(x = "Posterior Estimates",
          y = "Predictors",
-         title = "Stage II") +
+         title = "Stage II: Stream Proximity") +
     scale_y_discrete(labels = c("b_muCluster1_scale_light" = "Light (Lag)",
                                 "b_muCluster1_scale_wind" = "Wind (Lag)",
                                 "b_muCluster1_scale_q" = "Q (Lag)",
