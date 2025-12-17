@@ -682,7 +682,7 @@ View(post_data_sat)
                       aes(x = m, y = par_f, color = par_f)) +
     geom_linerange(aes(xmin = ll, xmax = hh),
                    linewidth = 3, alpha = 0.5) +
-    geom_point(size = 6) +
+    geom_point(size = 8) +
     vline_at(v = 0) +
     scale_x_continuous(limits = c(-6,6),
                        breaks = c(-6, -4, -2, 0, 2, 4, 6)) +
@@ -702,7 +702,7 @@ View(post_data_sat)
                                   "#FABA39FF", "#D46F10",
                                   "#FABA39FF", "#D46F10",
                                   "#FABA39FF", "#D46F10")) +
-    theme(text = element_text(size = 20),
+    theme(text = element_text(size = 28),
           legend.position = "none"))
 
 #### 2023 DO Fit ####
@@ -1244,7 +1244,7 @@ View(post_data23_sat)
                         aes(x = m, y = par_f, color = par_f)) +
     geom_linerange(aes(xmin = ll, xmax = hh),
                    linewidth = 3, alpha = 0.5) +
-    geom_point(size = 6) +
+    geom_point(size = 8) +
     vline_at(v = 0) +
     scale_x_continuous(limits = c(-6, 6),
                        breaks = c(-6, -4, -2, 0, 2, 4, 6)) +
@@ -1261,7 +1261,7 @@ View(post_data23_sat)
     scale_color_manual(values = c("#0FB2D3", "#026779",
                                   "#0FB2D3", "#026779",
                                   "#0FB2D3", "#026779")) +
-    theme(text = element_text(size = 20),
+    theme(text = element_text(size = 28),
           axis.title.y = element_blank(),
           legend.position = "none"))
 
@@ -1281,11 +1281,11 @@ View(post_data23_sat)
 (fig_custom_both_dosat <- (fig_custom_dosat + fig_custom23_dosat) +
     plot_annotation(tag_levels = 'A'))
 
-# ggsave(fig_custom_both_dosat,
-#        filename = "figures/brms_dosat_bothyrs_112425.jpg",
-#        height = 20,
-#        width = 40,
-#        units = "cm")
+ggsave(fig_custom_both_dosat,
+       filename = "figures/brms_dosat_bothyrs_121725.jpg",
+       height = 20,
+       width = 40,
+       units = "cm")
 
 #### Site-Level Fits ####
 
