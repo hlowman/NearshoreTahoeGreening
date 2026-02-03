@@ -114,7 +114,7 @@ dates_all <- dates_all %>%
   mutate(ID = sites,
          date = date(date_times))
 
-##### Solar Noon #####
+##### Solar Noon & Day Length #####
 
 # Making custom solar noon function to pull out
 # only the value I want.
@@ -127,6 +127,28 @@ solar_noon_fx <- function(Longitude, Latitude, Date){
   solar_noon_time <- x$time[1]
   
   return(solar_noon_time)
+  
+}
+
+# And custom day length function to calculate day length.
+day_length_fx <- function(Longitude, Latitude, Date){
+  
+  sunrise_df <- sunriset(crds = matrix(c(Longitude, Latitude), nrow = 1),
+                                    dateTime = as.POSIXct(as.character(Date),
+                                                          tz = "America/Los_Angeles"),
+                                    direction = "sunrise",
+                                    POSIXct.out = TRUE)
+  
+  sunset_df <- sunriset(crds = matrix(c(Longitude, Latitude), nrow = 1),
+                        dateTime = as.POSIXct(as.character(Date),
+                                              tz = "America/Los_Angeles"),
+                        direction = "sunset",
+                        POSIXct.out = TRUE)
+  
+  day_length <- as.numeric(sunset_df$time - sunrise_df$time,
+                           units = "hours")
+  
+  return(day_length)
   
 }
 
@@ -175,7 +197,22 @@ solar_noon_mx <- solarnoon(matrix(c(lon_vec, lat_vec),
 
 dates_all$solar_noon_time <- solar_noon_mx$time
 
-dates_all <- dates_all %>%
+sunrise_mx <- sunriset(crds = matrix(c(lon_vec, lat_vec), 
+                                     nrow = 429912),
+                       dateTime = as.POSIXct(date_vec),
+                       direction = "sunrise",
+                       POSIXct.out = TRUE)
+
+sunset_mx <- sunriset(crds = matrix(c(lon_vec, lat_vec), 
+                                     nrow = 429912),
+                       dateTime = as.POSIXct(date_vec),
+                       direction = "sunset",
+                       POSIXct.out = TRUE)
+
+day_length <- as.numeric(sunset_mx$time - sunrise_mx$time,
+                         units = "hours")
+
+dates_all <- cbind(dates_all, day_length) %>%
   mutate(solar_noon_hour = hour(solar_noon_time),
          solar_noon_minutes = minute(solar_noon_time),
          solar_noon_seconds = second(solar_noon_time)) %>%
@@ -187,7 +224,7 @@ dates_all <- dates_all %>%
 # Just trimming down to columns of interest
 dates_all <- dates_all %>%
   select(date_times, hour, index, ID, 
-         date, lat, lon, solar_noon)
+         date, lat, lon, solar_noon, day_length)
   
 # Now, to combine the maximum possible date-times
 # with the actual data.
@@ -260,9 +297,9 @@ data_2023_l <- split(data_2023, data_2023$ID_index)
 
 # Save out these datasets for use in analyses and figure making.
 saveRDS(data_2022,
-        "data_working/do_data_2022_052325.rds")
+        "data_working/do_data_2022_020226.rds")
 saveRDS(data_2023,
-        "data_working/do_data_2023_052325.rds")
+        "data_working/do_data_2023_020226.rds")
 saveRDS(data_2022_l,
         "data_working/do_data_2022_dailylist_052325.rds")
 saveRDS(data_2023_l,

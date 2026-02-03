@@ -40,6 +40,19 @@ data_2023 <- data_2023 %>%
                              location == "15m" ~ 15,
                              location == "20m" ~ 20))
 
+# Adding AR(1) for measured DO to satisfy reviewer comments.
+data_2022 <- data_2022 %>%
+  group_by(ID) %>%
+  arrange(index, .by_group = TRUE) %>%
+  mutate(group_dosat_lag1 = lag(group_dosat, n = 1)) %>%
+  ungroup()
+
+data_2023 <- data_2023 %>%
+  group_by(ID) %>%
+  arrange(index, .by_group = TRUE) %>%
+  mutate(group_dosat_lag1 = lag(group_dosat, n = 1)) %>%
+  ungroup()
+
 #### 2022 DO Fit ####
 
 ##### Data QAQC #####
@@ -444,7 +457,7 @@ data_2022_select_dosat <- data_2022 %>%
                             location == "15m" ~ "15m",
                             location == "20m" ~ "20m",
                             TRUE ~ NA)) %>%
-  select(group_dosat, site, sensor, w_depth,
+  select(group_dosat, group_dosat_lag1, site, sensor, w_depth,
          sum_light, mean_ws, mean_q)
 
 # Examine plots for covariates of interest vs.
@@ -475,6 +488,11 @@ data_2022_select_dosat <- data_2022_select_dosat %>%
                         levels = c("Neither",
                                    "Cluster 1",
                                    "Cluster 2")),
+         group_dosat_lag1 = factor(group_dosat_lag1,
+                              # making the "Neither" group the reference variable
+                              levels = c("Neither",
+                                         "Cluster 1",
+                                         "Cluster 2")),
          site = factor(site),
          sensor = factor(sensor)) %>%
   mutate(log_mean_q = log(mean_q)) %>%
@@ -485,11 +503,11 @@ data_2022_select_dosat <- data_2022_select_dosat %>%
 
 # Create and export data for model fit.
 data_2022_multireg_dosat <- data_2022_select_dosat %>%
-  select(group_dosat, site, sensor,
+  select(group_dosat, group_dosat_lag1, site, sensor,
          scale_depth, scale_light, scale_wind, scale_q)
 
-# saveRDS(data_2022_multireg_dosat, 
-#         "data_working/clustering_dosat_multireg_052525.rds")
+# saveRDS(data_2022_multireg_dosat,
+#         "data_working/clustering_dosat_multireg_020326.rds")
 
 ##### Model Fit #####
 
@@ -510,6 +528,44 @@ fit_2022_dosat <- brm(group_dosat ~ scale_depth +
 # Save model fit.
 saveRDS(fit_2022_dosat,
         "data_model_outputs/brms_dosat_2022_052525.rds")
+
+# Fit alternative model (with site as covariate).
+fit_2022_dosat_alt1 <- brm(group_dosat ~ scale_depth + 
+                        scale_light +
+                        scale_wind + 
+                        scale_q +
+                        site +
+                        (1|sensor), # random effect
+                      data = data_2022_multireg_dosat,
+                      # specify categorical if vectorized data
+                      # specify multinomial if data is a matrix
+                      family = categorical())
+
+# Runs in ~5 minutes on laptop.
+# Started at 5:49 pm. Finished at 5:54.
+
+# Save model fit.
+saveRDS(fit_2022_dosat_alt1,
+        "data_model_outputs/brms_dosat_alt1_2022_020226.rds")
+
+# Fit second alternative model (with autoregressive term).
+fit_2022_dosat_alt2 <- brm(group_dosat ~ group_dosat_lag1 +
+                             scale_depth + 
+                             scale_light +
+                             scale_wind + 
+                             scale_q +
+                             (1|site/sensor), # random effect
+                           data = data_2022_multireg_dosat,
+                           # specify categorical if vectorized data
+                           # specify multinomial if data is a matrix
+                           family = categorical())
+
+# Runs in ~20 minutes on laptop.
+# Started at 4:39 pm. Finished at 5:02pm.
+
+# Save model fit.
+saveRDS(fit_2022_dosat_alt2,
+        "data_model_outputs/brms_dosat_alt2_2022_020326.rds")
 
 ##### Diagnostics #####
 
@@ -705,6 +761,127 @@ View(post_data_sat)
                                 "b_muCluster2_scale_q" = "Q (Lag)")) +
     theme_bw() +
     scale_color_manual(values = c("#FABA39FF", "#D46F10",
+                                  "#FABA39FF", "#D46F10",
+                                  "#FABA39FF", "#D46F10",
+                                  "#FABA39FF", "#D46F10")) +
+    theme(text = element_text(size = 28),
+          legend.position = "none"))
+
+# Also for the alternative model structure.
+post_data_sat_alt1 <- mcmc_intervals_data(fit_2022_dosat_alt1,
+                                     point_est = "median", # default = "median"
+                                     prob = 0.66, # default = 0.5
+                                     prob_outer = 0.95) # default = 0.9
+
+(fig_custom_dosat_alt1 <- ggplot(post_data_sat_alt1 %>%
+                              filter(parameter %in% c("b_muCluster1_scale_depth",
+                                                      "b_muCluster1_scale_light",
+                                                      "b_muCluster1_scale_wind",
+                                                      "b_muCluster1_scale_q",
+                                                      "b_muCluster1_siteGB",
+                                                      "b_muCluster2_scale_depth",
+                                                      "b_muCluster2_scale_light",
+                                                      "b_muCluster2_scale_wind",
+                                                      "b_muCluster2_scale_q",
+                                                      "b_muCluster2_siteGB")) %>%
+                              mutate(par_f = factor(parameter, 
+                                                    levels = c("b_muCluster1_scale_wind",
+                                                               "b_muCluster2_scale_wind",
+                                                               "b_muCluster1_scale_q",
+                                                               "b_muCluster2_scale_q",
+                                                               "b_muCluster1_scale_light",
+                                                               "b_muCluster2_scale_light",
+                                                               "b_muCluster1_scale_depth",
+                                                               "b_muCluster2_scale_depth",
+                                                               "b_muCluster1_siteGB",
+                                                               "b_muCluster2_siteGB"))), 
+                            aes(x = m, y = par_f, color = par_f)) +
+    geom_linerange(aes(xmin = ll, xmax = hh),
+                   linewidth = 3, alpha = 0.5) +
+    geom_point(size = 8) +
+    vline_at(v = 0) +
+    scale_x_continuous(limits = c(-6,6),
+                       breaks = c(-6, -4, -2, 0, 2, 4, 6)) +
+    labs(x = "Posterior Estimates",
+         y = "Predictors",
+         title = "Stage I: Across Depths") +
+    scale_y_discrete(labels = c("b_muCluster1_scale_light" = "Light (Syn.)",
+                                "b_muCluster1_scale_depth" = "Depth (Syn.)",
+                                "b_muCluster1_scale_wind" = "Wind (Syn.",
+                                "b_muCluster1_scale_q" = "Q (Syn.)",
+                                "b_muCluster1_siteGB" = "East (Syn.)",
+                                "b_muCluster2_scale_light" = "Light (Lag)",
+                                "b_muCluster2_scale_depth" = "Depth (Lag)",
+                                "b_muCluster2_scale_wind" = "Wind (Lag)",
+                                "b_muCluster2_scale_q" = "Q (Lag)",
+                                "b_muCluster2_siteGB" = "East (Lag)")) +
+    theme_bw() +
+    scale_color_manual(values = c("#FABA39FF", "#D46F10",
+                                  "#FABA39FF", "#D46F10",
+                                  "#FABA39FF", "#D46F10",
+                                  "#FABA39FF", "#D46F10",
+                                  "#FABA39FF", "#D46F10")) +
+    theme(text = element_text(size = 28),
+          legend.position = "none"))
+
+# Also for the second alternative model structure.
+post_data_sat_alt2 <- mcmc_intervals_data(fit_2022_dosat_alt2,
+                                          point_est = "median", # default = "median"
+                                          prob = 0.66, # default = 0.5
+                                          prob_outer = 0.95) # default = 0.9
+
+(fig_custom_dosat_alt2 <- ggplot(post_data_sat_alt2 %>%
+                                   filter(parameter %in% c("b_muCluster1_scale_depth",
+                                                           "b_muCluster1_scale_light",
+                                                           "b_muCluster1_scale_wind",
+                                                           "b_muCluster1_scale_q",
+                                                           "b_muCluster1_group_dosat_lag1Cluster1",
+                                                           "b_muCluster1_group_dosat_lag1Cluster2",
+                                                           "b_muCluster2_scale_depth",
+                                                           "b_muCluster2_scale_light",
+                                                           "b_muCluster2_scale_wind",
+                                                           "b_muCluster2_scale_q",
+                                                           "b_muCluster2_group_dosat_lag1Cluster1",
+                                                           "b_muCluster2_group_dosat_lag1Cluster2")) %>%
+                                   mutate(par_f = factor(parameter, 
+                                                         levels = c("b_muCluster1_scale_wind",
+                                                                    "b_muCluster2_scale_wind",
+                                                                    "b_muCluster1_scale_q",
+                                                                    "b_muCluster2_scale_q",
+                                                                    "b_muCluster1_scale_light",
+                                                                    "b_muCluster2_scale_light",
+                                                                    "b_muCluster1_scale_depth",
+                                                                    "b_muCluster2_scale_depth",
+                                                                    "b_muCluster1_group_dosat_lag1Cluster1",
+                                                                    "b_muCluster2_group_dosat_lag1Cluster1",
+                                                                    "b_muCluster1_group_dosat_lag1Cluster2",
+                                                                    "b_muCluster2_group_dosat_lag1Cluster2"))), 
+                                 aes(x = m, y = par_f, color = par_f)) +
+    geom_linerange(aes(xmin = ll, xmax = hh),
+                   linewidth = 3, alpha = 0.5) +
+    geom_point(size = 8) +
+    vline_at(v = 0) +
+    scale_x_continuous(limits = c(-50,50),
+                       breaks = c(-45, -35, -25, -15, -5, 0, 5, 15, 25, 35, 45)) +
+    labs(x = "Posterior Estimates",
+         y = "Predictors",
+         title = "Stage I: Across Depths") +
+    scale_y_discrete(labels = c("b_muCluster1_scale_light" = "Light (Syn.)",
+                                "b_muCluster1_scale_depth" = "Depth (Syn.)",
+                                "b_muCluster1_scale_wind" = "Wind (Syn.)",
+                                "b_muCluster1_scale_q" = "Q (Syn.)",
+                                "b_muCluster1_group_dosat_lag1Cluster1" = "AR(1) Syn. (Syn.)",
+                                "b_muCluster1_group_dosat_lag1Cluster2" = "AR(1) Lag (Syn.)",
+                                "b_muCluster2_scale_light" = "Light (Lag)",
+                                "b_muCluster2_scale_depth" = "Depth (Lag)",
+                                "b_muCluster2_scale_wind" = "Wind (Lag)",
+                                "b_muCluster2_scale_q" = "Q (Lag)",
+                                "b_muCluster2_group_dosat_lag1Cluster1" = "AR(1) Syn. (Lag)",
+                                "b_muCluster2_group_dosat_lag1Cluster2" = "AR(1) Lag (Lag)")) +
+    theme_bw() +
+    scale_color_manual(values = c("#FABA39FF", "#D46F10",
+                                  "#FABA39FF", "#D46F10",
+                                  "#FABA39FF", "#D46F10",
                                   "#FABA39FF", "#D46F10",
                                   "#FABA39FF", "#D46F10",
                                   "#FABA39FF", "#D46F10")) +
@@ -1043,7 +1220,7 @@ data_2023_select_dosat <- data_2023 %>%
                             replicate == "NS2" ~ "NS2",
                             replicate == "NS3" ~ "NS3",
                             TRUE ~ NA)) %>%
-  select(group_dosat, site, sensor,
+  select(group_dosat, group_dosat_lag1, site, sensor,
          sum_light, mean_ws, mean_q) %>%
   # and creating new column with edited Q data
   # to delineate no flow at SS/SH sites
@@ -1076,6 +1253,11 @@ data_2023_select_dosat <- data_2023_select_dosat %>%
                         levels = c("Neither",
                                    "Cluster 1",
                                    "Cluster 2")),
+         group_dosat_lag1 = factor(group_dosat_lag1,
+                                   # making base the "Neither" group
+                                   levels = c("Neither",
+                                              "Cluster 1",
+                                              "Cluster 2")),
          site = factor(site),
          sensor = factor(sensor)) %>%
   mutate(log_mean_q = log(mean_q_ed)) %>%
@@ -1085,11 +1267,11 @@ data_2023_select_dosat <- data_2023_select_dosat %>%
 
 # Create and export data for model fit.
 data_2023_multireg_dosat <- data_2023_select_dosat %>%
-  select(group_dosat, site, sensor,
+  select(group_dosat, group_dosat_lag1, site, sensor,
          scale_light, scale_wind, scale_q)
 
-# saveRDS(data_2023_multireg_dosat, 
-#         "data_working/clustering_dosat_multireg23_052525.rds")
+# saveRDS(data_2023_multireg_dosat,
+#         "data_working/clustering_dosat_multireg23_020326.rds")
 
 ##### Model Fit #####
 
@@ -1108,6 +1290,44 @@ fit_2023_dosat <- brm(group_dosat ~ scale_light +
 
 # Save model fit.
 saveRDS(fit_2023_dosat, "data_model_outputs/brms_dosat_2023_052525.rds")
+
+# Fit alternative model (with shore as covariate).
+data_2023_multireg_dosat <- data_2022_multireg_dosat %>%
+  mutate(shore = factor(case_when(site %in% c("BW", "SS") ~ "BW",
+                           site %in% c("GB", "SH") ~ "GB")))
+
+fit_2023_dosat_alt1 <- brm(group_dosat ~ scale_light + 
+                        scale_wind + 
+                        scale_q +
+                        shore +
+                        (1|sensor), # random effect
+                      data = data_2023_multireg_dosat,
+                      # specify categorical if vectorized data
+                      # specify multinomial if data is a matrix
+                      family = categorical())
+
+# Runs in ~3 minutes on laptop.
+# Started at 5:37 pm. Finished at 5:40.
+
+# Save model fit.
+saveRDS(fit_2023_dosat_alt1, "data_model_outputs/brms_dosat_alt_2023_020226.rds")
+
+# Fit second alternative model (with autoregressive term).
+fit_2023_dosat_alt2 <- brm(group_dosat ~ group_dosat_lag1 +
+                        scale_light + 
+                        scale_wind + 
+                        scale_q +
+                        (1|site/sensor), # nested random effect
+                      data = data_2023_multireg_dosat,
+                      # specify categorical if vectorized data
+                      # specify multinomial if data is a matrix
+                      family = categorical())
+
+# Runs in ~5 minutes on laptop.
+# Started at 4:17 pm. Finished at 4:23.
+
+# Save model fit.
+saveRDS(fit_2023_dosat_alt2, "data_model_outputs/brms_dosat_alt2_2023_020326.rds")
 
 ##### Diagnostics #####
 
@@ -1277,6 +1497,115 @@ View(post_data23_sat)
           axis.title.y = element_blank(),
           legend.position = "none"))
 
+# For the first alternative model fit.
+post_data23_alt1_sat <- mcmc_intervals_data(fit_2023_dosat_alt1,
+                                       point_est = "median", # default = "median"
+                                       prob = 0.66, # default = 0.5
+                                       prob_outer = 0.95) # default = 0.9
+
+(fig_custom23_dosat_alt1 <- ggplot(post_data23_alt1_sat %>%
+                                filter(parameter %in% c("b_muCluster1_scale_light",
+                                                        "b_muCluster1_scale_wind",
+                                                        "b_muCluster1_scale_q",
+                                                        "b_muCluster1_shoreGB",
+                                                        "b_muCluster2_scale_light",
+                                                        "b_muCluster2_scale_wind",
+                                                        "b_muCluster2_scale_q",
+                                                        "b_muCluster2_shoreGB")) %>%
+                                mutate(par_f = factor(parameter, 
+                                                      levels = c("b_muCluster2_scale_wind",
+                                                                 "b_muCluster1_scale_wind",
+                                                                 "b_muCluster2_scale_q",
+                                                                 "b_muCluster1_scale_q",
+                                                                 "b_muCluster2_scale_light",
+                                                                 "b_muCluster1_scale_light",
+                                                                 "b_muCluster2_shoreGB",
+                                                                 "b_muCluster1_shoreGB"))), 
+                              aes(x = m, y = par_f, color = par_f)) +
+    geom_linerange(aes(xmin = ll, xmax = hh),
+                   linewidth = 3, alpha = 0.5) +
+    geom_point(size = 8) +
+    vline_at(v = 0) +
+    scale_x_continuous(limits = c(-6, 6),
+                       breaks = c(-6, -4, -2, 0, 2, 4, 6)) +
+    labs(x = "Posterior Estimates",
+         y = "Predictors",
+         title = "Stage II: Stream Proximity") +
+    scale_y_discrete(labels = c("b_muCluster1_scale_light" = "Light (Lag)",
+                                "b_muCluster1_scale_wind" = "Wind (Lag)",
+                                "b_muCluster1_scale_q" = "Q (Lag)",
+                                "b_muCluster1_shoreGB" = "East (Lag)",
+                                "b_muCluster2_scale_light" = "Light (Syn)",
+                                "b_muCluster2_scale_wind" = "Wind (Syn)",
+                                "b_muCluster2_scale_q" = "Q (Syn)",
+                                "b_muCluster2_shoreGB" = "East (Syn)")) +
+    theme_bw() +
+    scale_color_manual(values = c("#0FB2D3", "#026779",
+                                  "#0FB2D3", "#026779",
+                                  "#0FB2D3", "#026779",
+                                  "#0FB2D3", "#026779")) +
+    theme(text = element_text(size = 28),
+          axis.title.y = element_blank(),
+          legend.position = "none"))
+
+# For the second alternative model fit.
+post_data23_alt2_sat <- mcmc_intervals_data(fit_2023_dosat_alt2,
+                                            point_est = "median", # default = "median"
+                                            prob = 0.66, # default = 0.5
+                                            prob_outer = 0.95) # default = 0.9
+
+(fig_custom23_dosat_alt2 <- ggplot(post_data23_alt2_sat %>%
+                                     filter(parameter %in% c("b_muCluster1_scale_light",
+                                                             "b_muCluster1_scale_wind",
+                                                             "b_muCluster1_scale_q",
+                                                             "b_muCluster1_group_dosat_lag1Cluster1",
+                                                             "b_muCluster1_group_dosat_lag1Cluster2",
+                                                             "b_muCluster2_scale_light",
+                                                             "b_muCluster2_scale_wind",
+                                                             "b_muCluster2_scale_q",
+                                                             "b_muCluster2_group_dosat_lag1Cluster1",
+                                                             "b_muCluster2_group_dosat_lag1Cluster2")) %>%
+                                     mutate(par_f = factor(parameter, 
+                                                           levels = c("b_muCluster2_scale_wind",
+                                                                      "b_muCluster1_scale_wind",
+                                                                      "b_muCluster2_scale_q",
+                                                                      "b_muCluster1_scale_q",
+                                                                      "b_muCluster2_scale_light",
+                                                                      "b_muCluster1_scale_light",
+                                                                      "b_muCluster2_group_dosat_lag1Cluster1",
+                                                                      "b_muCluster1_group_dosat_lag1Cluster1",
+                                                                      "b_muCluster2_group_dosat_lag1Cluster2",
+                                                                      "b_muCluster1_group_dosat_lag1Cluster2"))), 
+                                   aes(x = m, y = par_f, color = par_f)) +
+    geom_linerange(aes(xmin = ll, xmax = hh),
+                   linewidth = 3, alpha = 0.5) +
+    geom_point(size = 8) +
+    vline_at(v = 0) +
+    scale_x_continuous(limits = c(-60, 60),
+                       breaks = c(-50, -40, -30, -20, -10, 0, 10, 20, 30, 40, 50)) +
+    labs(x = "Posterior Estimates",
+         y = "Predictors",
+         title = "Stage II: Stream Proximity") +
+    scale_y_discrete(labels = c("b_muCluster1_scale_light" = "Light (Lag)",
+                                "b_muCluster1_scale_wind" = "Wind (Lag)",
+                                "b_muCluster1_scale_q" = "Q (Lag)",
+                                "b_muCluster1_group_dosat_lag1Cluster1" = "AR(1) Lag (Lag)",
+                                "b_muCluster1_group_dosat_lag1Cluster2" = "AR(1) Syn (Lag)",
+                                "b_muCluster2_scale_light" = "Light (Syn)",
+                                "b_muCluster2_scale_wind" = "Wind (Syn)",
+                                "b_muCluster2_scale_q" = "Q (Syn)",
+                                "b_muCluster2_group_dosat_lag1Cluster1" = "AR(1) Lag (Syn)",
+                                "b_muCluster2_group_dosat_lag1Cluster2" = "AR(1) Syn (Syn)")) +
+    theme_bw() +
+    scale_color_manual(values = c("#0FB2D3", "#026779",
+                                  "#0FB2D3", "#026779",
+                                  "#0FB2D3", "#026779",
+                                  "#0FB2D3", "#026779",
+                                  "#0FB2D3", "#026779")) +
+    theme(text = element_text(size = 28),
+          axis.title.y = element_blank(),
+          legend.position = "none"))
+
 #### Manuscript Figures ####
 
 # Join the plots above into a single figure.
@@ -1293,11 +1622,31 @@ View(post_data23_sat)
 (fig_custom_both_dosat <- (fig_custom_dosat + fig_custom23_dosat) +
     plot_annotation(tag_levels = 'A'))
 
-ggsave(fig_custom_both_dosat,
-       filename = "figures/brms_dosat_bothyrs_121725.jpg",
-       height = 20,
-       width = 40,
-       units = "cm")
+# ggsave(fig_custom_both_dosat,
+#        filename = "figures/brms_dosat_bothyrs_121725.jpg",
+#        height = 20,
+#        width = 40,
+#        units = "cm")
+
+# Join the first set of alternative % saturation plots above into a single figure.
+(fig_custom_both_dosat_alt1 <- (fig_custom_dosat_alt1 + fig_custom23_dosat_alt1) +
+    plot_annotation(tag_levels = 'A'))
+
+# ggsave(fig_custom_both_dosat_alt1,
+#        filename = "figures/brms_dosat_alt1_bothyrs_020226.jpg",
+#        height = 20,
+#        width = 40,
+#        units = "cm")
+
+# Join the 2nd set of alternative % saturation plots above into a single figure.
+(fig_custom_both_dosat_alt2 <- (fig_custom_dosat_alt2 + fig_custom23_dosat_alt2) +
+    plot_annotation(tag_levels = 'A'))
+
+# ggsave(fig_custom_both_dosat_alt2,
+#        filename = "figures/brms_dosat_alt2_bothyrs_020326.jpg",
+#        height = 20,
+#        width = 50,
+#        units = "cm")
 
 #### Site-Level Fits ####
 

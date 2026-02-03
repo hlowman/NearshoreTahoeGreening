@@ -20,15 +20,18 @@ library(viridis)
 
 # Load data.
 
-# DO data.
-data_2022 <- readRDS("data_working/do_data_2022_052325.rds") 
-data_2023 <- readRDS("data_working/do_data_2023_052325.rds")
+# DO
+data_2022 <- readRDS("data_working/do_data_2022_020226.rds") 
+data_2023 <- readRDS("data_working/do_data_2023_020226.rds")
+
+# Climate
 clim_2022 <- readRDS("data_working/do_covariate_daily_data_2022_052525.rds")
 clim_2023 <- readRDS("data_working/do_covariate_daily_data_2023_052525.rds")
 
 # Tidy data.
 data_2022 <- data_2022 %>%
-  mutate(date_times = ymd_hms(date_times)) %>%
+  mutate(date_times_ed = case_when(hour == 0 ~ ymd_hms(paste(date, "00:00:00")),
+                                   TRUE ~ date_times)) %>%
   # join with climate data
   full_join(clim_2022) %>%
   # and add plotting column
@@ -41,7 +44,8 @@ data_2022 <- data_2022 %>%
                                       "ML", "DL")))
 
 data_2023 <- data_2023 %>%
-  mutate(date_times = ymd_hms(date_times)) %>%
+  mutate(date_times_ed = case_when(hour == 0 ~ ymd_hms(paste(date, "00:00:00")),
+                                   TRUE ~ date_times)) %>%
   # join with climate data
   full_join(clim_2023) %>%
   # and add plotting column
@@ -942,4 +946,117 @@ Date_F <- function(x){
 #        width = 10,
 #        units = "cm")
 
+#### Reviewer Figures ####
+
+# The following are figures created following reviewer
+# comments for Aquatic Sciences.
+
+# Need to trim down both datasets so there is only one
+# entry per day.
+data_2022_daily <- data_2022 %>%
+  group_by(ID_index) %>%
+  summarize(cluster = group_dosat[1],
+            min_dosat = min_dosat[1],
+            sum_light = sum_light[1],
+            day_length = day_length[1]) %>%
+  mutate(cluster_rename = factor(case_when(cluster == "Cluster 1" ~ "Synchronous",
+                                           cluster == "Cluster 2" ~ "Lagged",
+                                           cluster == "Neither" ~ "Neither"),
+                                 levels = c("Synchronous",
+                                            "Lagged",
+                                            "Neither"))) %>%
+  ungroup()
+
+data_2023_daily <- data_2023 %>%
+  group_by(ID_index) %>%
+  summarize(cluster = group_dosat[1],
+            min_dosat = min_dosat[1],
+            sum_light = sum_light[1],
+            day_length = day_length[1]) %>%
+  mutate(cluster_rename = factor(case_when(cluster == "Cluster 1" ~ "Lagged",
+                                           cluster == "Cluster 2" ~ "Synchronous",
+                                           cluster == "Neither" ~ "Neither"),
+                                 levels = c("Synchronous",
+                                            "Lagged",
+                                            "Neither"))) %>%
+  ungroup()
+
+
+# First, a figure comparing day length to light availability.
+(fig22_light <- ggplot(data_2022_daily,
+                 aes(x = day_length,
+                     y = sum_light)) +
+   geom_point(shape = 21, alpha = 0.75) +
+   theme_bw() +
+   labs(x = "Day Length (hrs)", 
+        y = "Light (W/m<sup>2</sup>)",
+        title = "Stage I: Across Depths") +
+    theme(axis.title.y = element_markdown()))
+
+cor.test(data_2022_daily$day_length,
+         data_2022_daily$sum_light) # 0.9403221 
+
+(fig23_light <- ggplot(data_2023_daily,
+                       aes(x = day_length,
+                           y = sum_light)) +
+    geom_point(shape = 21, alpha = 0.75) +
+    theme_bw() +
+    labs(x = "Day Length (hrs)", 
+         y = "Light (W/m<sup>2</sup>)",
+         title = "Stage II: Stream Proximity") +
+    theme(axis.title.y = element_markdown()))
+
+(figboth_light <- fig22_light + fig23_light +
+    plot_annotation(tag_levels = 'A'))
+
+cor.test(data_2023_daily$day_length,
+         data_2023_daily$sum_light) # 0.6948265
+
+# ggsave(figboth_light,
+#        filename = "figures/light_bothyrs_020226.jpg",
+#        height = 12,
+#        width = 24,
+#        units = "cm")
+
+
+# Next, a figure showing the breakdown of DO minimum
+# according to cluster membership.
+
+(fig22 <- ggplot(data_2022_daily,
+                 aes(x = cluster_rename,
+                     y = min_dosat,
+                     fill = cluster_rename)) +
+    geom_boxplot() +
+    scale_fill_manual(values = c("#FABA39FF", 
+                                 "#D46F10",
+                                 "gray80")) +
+    theme_bw() +
+    labs(x = "Cluster", 
+         y = "Minimum DO (% saturation)",
+         title = "Stage I: Across Depths") +
+    theme(legend.position = "FALSE"))
+
+(fig23 <- ggplot(data_2023_daily,
+                 aes(x = cluster_rename,
+                     y = min_dosat,
+                     fill = cluster_rename)) +
+    geom_boxplot() +
+    scale_fill_manual(values = c("#0FB2D3", 
+                                 "#026779", 
+                                 "gray70")) +
+    theme_bw() +
+    labs(x = "Cluster", 
+         y = "Minimum DO (% saturation)",
+         title = "Stage II: Stream Proximity") +
+    theme(legend.position = "FALSE"))
+
+(figboth <- fig22 + fig23 +
+    plot_annotation(tag_levels = 'A'))
+
+# ggsave(figboth,
+#        filename = "figures/DOmin_bothyrs_012826.jpg",
+#        height = 12,
+#        width = 24,
+#        units = "cm")
+    
 # End of script.
