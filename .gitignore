@@ -46,6 +46,7 @@ data_modelfits
 others_code
 Metabolism_Loria_Scordo
 R/ts_modeling/shiny
+zenodo
 
 # Folder for large plotly files
 plotly
